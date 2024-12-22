@@ -1,0 +1,194 @@
+---
+title: "model_inference"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{model_inference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(abcneuralnet)
+```
+
+
+## Principles of ABC inference
+
+
+
+
+## Load the data
+
+
+Reference table (simulations summary stats) and priors.
+
+
+```{r, echo = T}
+# Import the reference table and other data
+sumstats = read.table("../inst/extdata/reference_table.csv",
+                             sep = "\t", header = T, row.names = NULL)
+
+ncol(sumstats)
+colnames(sumstats)
+
+row.names(sumstats) = sumstats$sample
+sumstats = sumstats[,-1]
+colnames(sumstats)[1]
+
+theta_sim = read.table("../inst/extdata/theta_simulations.csv",
+                    sep = "\t", header = T, fill = TRUE)
+head(theta_sim)
+row.names(theta_sim) = theta_sim$sample
+theta_sim = theta_sim[,-1]
+colnames(theta_sim)[1]
+
+# Check consistency between priors and reference table
+nrow(sumstats) == nrow(theta_sim)
+sum(row.names(sumstats) == row.names(theta_sim)) == nrow(theta_sim)
+
+
+# Split datasets
+# Two parameters, t1 and t2
+idx_training = c(1:39000)
+idx_observed = c(39001:40000)
+
+theta_training = theta_sim[idx_training,c("t1", "t2")]
+theta_observed = theta_sim[idx_observed,c("t1", "t2")]
+
+sumstats_training = sumstats[idx_training,]
+sumstats_observed = sumstats[idx_observed,]
+
+# colnames(theta_training)
+```
+
+
+
+## Fit a model with `abcnn`
+
+We use a Concrete Dropout regression model described in [ref].
+
+```{r, echo = T}
+# Init an abcnn object with inputs and targets
+abc = abcnn$new(theta_training,
+            sumstats_training,
+            sumstats_observed,
+            method = 'concrete dropout',
+            num_hidden_layers = 3,
+            num_hidden_dim = 256,
+            epochs = 4)
+
+# abc
+```
+
+The `abcnn` object is a `R6Class` object.
+Modern implementation, OOP
+
+
+For example, the model can be accessed with `abc$model`.
+
+
+The model is trained by calling `abc$fit()`.
+
+
+```{r, echo = T}
+# Use the fit() method to training the neural network
+abc$fit()
+```
+
+
+
+
+## Parameter inference from observed summary statistics
+
+
+After the model is trained, parameter estimates can be predicted with `abc$predict()`.
+
+
+
+```{r, echo = T}
+abc$predict()
+```
+
+
+Model output.
+
+Check model fit.
+
+```{r, echo = T}
+# Check the fit of the model
+as.numeric(unlist(abc$fitted$records$metrics$train))
+as.numeric(unlist(abc$fitted$records$metrics$valid))
+abc$test_scores
+
+plot(abc)
+```
+
+
+Look at the distribution of approximate posterior estimates with predictive mean and credible intervals.
+
+```{r, echo = T}
+abc$plot()
+```
+
+
+
+
+
+```{r}
+# Predictions
+i = 10 # Look at the tenth prediction
+abc$predictive_mean[i]
+abc$CI_epistemic_lower[i]
+abc$CI_epistemic_upper[i]
+abc$CI_overall_lower[i]
+abc$CI_overall_upper[i]
+
+theta_observed[i,]
+
+
+df = data.frame(x_sample = as.numeric(x_sample),
+                y_sample = as.numeric(y_sample),
+                y_lower = out_mu_sample_final - out_sig_sample_final,
+                y_upper = out_mu_sample_final + out_sig_sample_final,
+                y_lower_e = out_mu_sample_final - out_sig_sample_epistemic,
+                y_upper_e = out_mu_sample_final + out_sig_sample_epistemic,
+                y_lower_a = out_mu_sample_final - out_sig_sample_aleatoric,
+                y_upper_a = out_mu_sample_final + out_sig_sample_aleatoric)
+
+
+ggplot(data = df_data, aes(x = data_x, y = data_y)) +
+  geom_point(color = "Blue", alpha = 0.2) +
+  geom_ribbon(data = df, aes(x = x_sample, y = y_sample, ymin = y_lower, ymax = y_upper), alpha = 0.3, fill = "red") +
+  geom_ribbon(data = df, aes(x = x_sample, y = y_sample, ymin = y_lower_e, ymax = y_upper_e), alpha = 0.3, fill = "red") +
+  geom_line(data = df, aes(x = x_sample, y = y_sample), color = "Red") +
+  theme_bw()
+
+
+
+
+hist(model_concretedropout$posterior_samples[,1,1], xlim = c(-100,500), breaks = 40)
+abline(v = model_concretedropout$predictive_mean$t1, col = 'Red')
+abline(v = model_concretedropout$CI_overall_upper$t1, col = 'Red', lty = 'dashed')
+abline(v = model_concretedropout$CI_overall_lower$t1, col = 'Red', lty = 'dashed')
+abline(v = theta_testing[samp,"t1"], col = 'Blue')
+abline(v = mean(mod.abc$adj.values[,"t1"]), col = 'Green')
+abline(v = mean(mod.abc$adj.values[,"t1"]) + 1.96*sd(mod.abc$adj.values[,"t1"]), col = 'Green', lty = 'dashed')
+abline(v = mean(mod.abc$adj.values[,"t1"]) - 1.96*sd(mod.abc$adj.values[,"t1"]), col = 'Green', lty = 'dashed')
+
+
+hist(model_concretedropout$posterior_samples[,1,2], xlim = c(-10000,10000), breaks = 40)
+abline(v = model_concretedropout$predictive_mean$t2, col = 'Red')
+abline(v = model_concretedropout$CI_overall_upper$t2, col = 'Red', lty = 'dashed')
+abline(v = model_concretedropout$CI_overall_lower$t2, col = 'Red', lty = 'dashed')
+abline(v = theta_testing[samp,"t2"], col = 'Blue')
+abline(v = mean(mod.abc$adj.values[,"t2"]), col = 'Green')
+abline(v = mean(mod.abc$adj.values[,"t2"]) + 1.96*sd(mod.abc$adj.values[,"t2"]), col = 'Green', lty = 'dashed')
+abline(v = mean(mod.abc$adj.values[,"t2"]) - 1.96*sd(mod.abc$adj.values[,"t2"]), col = 'Green', lty = 'dashed')
+```
