@@ -79,6 +79,7 @@ abcnn = R6::R6Class("abcnn",
     output_dim = NA,
     n_train = NA,
     sumstat_names = NA,
+    output_names = NA,
     n_obs = NA,
     prior_lower = NA,
     prior_upper = NA,
@@ -96,7 +97,6 @@ abcnn = R6::R6Class("abcnn",
     epistemic_uncertainty = NA,
     aleatoric_uncertainty = NA,
     dropout_rates = NA,
-    test_scores = NA,
     sumstat_mean = NA,
     sumstat_sd = NA,
 
@@ -187,6 +187,7 @@ abcnn = R6::R6Class("abcnn",
       self$sumstat_names = colnames(observed)
       colnames(self$sumstat) = self$sumstat_names
       self$n_obs = nrow(self$observed)
+      self$output_names = NA
 
       # Keep metadata of prior boundaries for plotting
       self$prior_lower = apply(as.matrix(self$theta), 1, min)
@@ -208,7 +209,6 @@ abcnn = R6::R6Class("abcnn",
       self$aleatoric_uncertainty = NA # Raw aleatoric uncertainty, expressed as sd
 
       self$dropout_rates = NA # The dropout rates hyperparameter estimated by concrete dropout
-      self$test_scores = NA # test score on the validation dataset
 
       #-----------------------------------
       # CALLBACKS
@@ -388,6 +388,7 @@ abcnn = R6::R6Class("abcnn",
         logvar = mc_samples[, , (self$output_dim + 1):(self$output_dim * 2), drop = F]
 
         self$posterior_samples = mc_samples
+        self$output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(self$theta), x, sep = "_")))
 
         # average over the MC samples
         # If more than one parameter to estimate
@@ -546,12 +547,119 @@ abcnn = R6::R6Class("abcnn",
 
     # Plot the training curves (training/validation)
     plot_training = function() {
-      plot(self$fitted)
+      train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
+      valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+      eval = self$eval_metrics$value
+
+
+      train_eval = data.frame(Epoch = rep(1:length(train_metric), 2),
+                              Metric = c(train_metric, valid_metric),
+                              Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+      ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+        geom_point() +
+        geom_line() +
+        xlab("Epoch") + ylab("Loss") +
+        geom_hline(yintercept = eval) +
+        theme_bw()
+    },
+
+    # Plot predicted values (predicted ~ observed)
+    plot_predicted = function() {
+      df_predicted = data.frame(param = rep(colnames(self$theta), each = nrow(self$observed)),
+                                x = as.numeric(unlist(self$observed)),
+                                mean = as.numeric(unlist(self$predictive_mean)),
+                                ci_overall_upper = as.numeric(unlist(self$CI_overall_upper)),
+                                ci_overall_lower = as.numeric(unlist(self$CI_overall_lower)),
+                                ci_e_upper = as.numeric(unlist(self$CI_epistemic_upper)),
+                                ci_e_lower = as.numeric(unlist(self$CI_epistemic_lower)))
+
+
+      ggplot(data = df_predicted, aes(x = x)) +
+        geom_line(aes(x = x, y = mean), color = "black") +
+        facet_wrap(~ param, scales = "free") +
+        geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
+        geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
+        xlab("Observed") + ylab("Predicted") +
+        theme_bw()
     },
 
     # Plot the distributions of estimates and predictions
-    plot_posterior = function() {
+    plot_posterior = function(sample = 1, prior = TRUE) {
+      # Dim 1 is number of MC samples (predictions)
+      # Dim 2 is number of observations
+      # Dim 3 is parameters (mu + sigma)
+      posteriors = self$posterior_samples[,sample,]
+      # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
+      posteriors = as.data.frame(posteriors)
+      posteriors = posteriors[,1:self$output_dim]
+      colnames(posteriors) = colnames(self$theta)
+      posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
+
+      tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
+
+      tidy_predictions = data.frame(param = colnames(self$theta),
+                                    mean = as.numeric(self$predictive_mean[sample,]),
+                                    ci_lower = as.numeric(self$CI_overall_lower[sample,]),
+                                    ci_upper = as.numeric(self$CI_overall_upper[sample,]),
+                                    ci_e_lower = as.numeric(self$CI_epistemic_lower[sample,]),
+                                    ci_e_upper = as.numeric(self$CI_epistemic_upper[sample,]))
+
+      cols = c("Epistemic"="#D55E00","Overall"="#0072B2")
+
+      if (prior) {
+        tidy_priors = data.frame(param = rep(colnames(self$theta), each = nrow(self$theta)),
+                                 prior = as.numeric(unlist(self$theta)))
+
+        ggplot() +
+          geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1) +
+          geom_histogram(data = tidy_df, aes(x = prediction)) +
+          geom_vline(data = tidy_predictions, aes(xintercept = mean, colour = "Epistemic")) +
+          geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epitstemic", fill = "Epistemic"), alpha = 0.2) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
+          geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.2) +
+          facet_wrap(~ param, scales = "free") +
+          scale_colour_manual(name = "Uncertainty", values = cols) +
+          scale_fill_manual(name = "Uncertainty", values = cols) +
+          xlab("Value") + ylab("Count") +
+          theme_bw() +
+          theme(legend.position = "right")
+      } else {
+        ggplot() +
+          geom_histogram(data = tidy_df, aes(x = prediction)) +
+          geom_vline(data = tidy_predictions, aes(xintercept = mean, colour = "Epistemic")) +
+          geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epitstemic", fill = "Epistemic"), alpha = 0.2) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
+          geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.2) +
+          facet_wrap(~ param, scales = "free") +
+          scale_colour_manual(name = "Uncertainty", values = cols) +
+          scale_fill_manual(name = "Uncertainty", values = cols) +
+          xlab("Value") + ylab("Count") +
+          theme_bw() +
+          theme(legend.position = "right")
+      }
 
     }
   )
 )
+
+
+
+
+
+# Save the abcnn object and internal torch model
+save_abcnn = function(object, prefix = "") {
+
+}
+
+
+# Load an abcnn object and internal torch model
+load_abcnn = function(prefix = "") {
+
+}

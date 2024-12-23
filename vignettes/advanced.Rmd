@@ -17,3 +17,14 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(abcneuralnet)
 ```
+
+
+
+## Presentation of the three Bayesian Neural Networks
+
+
+Loss functions
+
+
+
+## Build a custom model
