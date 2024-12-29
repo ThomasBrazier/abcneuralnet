@@ -1,0 +1,206 @@
+# The base model for Deep Ensemble, a stack of linear layers
+single_model = nn_module(
+  "Model",
+  initialize = function(num_input_dim = 1,
+                        num_output_dim = 1,
+                        num_hidden_layers = 3,
+                        num_hidden_dim = 512) {
+
+    self$num_hidden_layers = num_hidden_layers
+    self$num_hidden_dim = num_hidden_dim
+
+    self$linear_ensemble = nn_sequential(nn_linear(num_input_dim, num_hidden_dim),
+                                  nn_relu())
+
+    for (i in 2:num_hidden_layers) {
+      self$linear_ensemble$add_module(paste0("hidden_layer", i), nn_linear(num_hidden_dim,
+                                                                    num_hidden_dim))
+      self$linear_ensemble$add_module(paste0("relu", i), nn_relu())
+    }
+
+    self$mu = nn_linear(num_hidden_dim, num_output_dim)
+    self$sigma = nn_linear(num_hidden_dim, num_output_dim)
+
+  },
+
+  forward = function(x) {
+    x1 = self$linear_ensemble(x)
+    mu = self$mu(x1)
+    sig = self$sigma(x1)
+    sig = torch_clamp(sig, min = 1e-6)  # To avoid undefined behavior with log(0)
+    # return a concatenated tensor
+    torch_stack(list(mu, sig), dim = 1)
+  }
+)
+
+
+# Custom dataset retunring an array of n = num_models input and target
+ensemble_dataset = dataset(
+
+  name = "ensemble_dataset",
+
+  initialize = function(x, y, num_models, randomize = TRUE) {
+    # x and y are inputs and targets to shuffle independently
+    x_array = torch_empty(num_models, x$shape[1], x$shape[2])
+    y_array = torch_empty(num_models, y$shape[1], y$shape[2])
+
+    for (i in 1:num_models) {
+      if (randomize) {
+        idx = sample(1:x$shape[1], replace = FALSE)
+        x_rand = x[idx,]$view(x$size())
+        y_rand = y[idx,]$view(y$size())
+      } else {
+        x_rand = x
+        y_rand = y
+      }
+
+      # print(x_rand)
+      # print(y_rand)
+
+      x_array[i,,] = x_rand$detach()
+      y_array[i,,] = y_rand$detach()
+    }
+
+    # Input data x
+    # self$x = torch_stack(x_list,
+    # dim = 1)
+    # print(x_array)
+    self$x = x_array
+
+    # Target data y
+    # self$y = torch_stack(y_list,
+    #                      dim = 1)
+    # print(y_array)
+    self$y = y_array
+
+  },
+
+  .getitem = function(i) {
+    list(x = self$x[,i,], y = self$y[,i,])
+  },
+
+  .length = function() {
+    self$y$size()[[2]]
+  }
+
+)
+
+
+
+
+nn_ensemble = nn_module(
+  classname = "DeepEnsemble",
+
+  # Initialize function called whenever we instantiate the model
+  initialize = function(model,
+                        num_models = 5,
+                        learning_rate = 0.001,
+                        num_input_dim = 1,
+                        num_output_dim = 1,
+                        num_hidden_dim = 128,
+                        num_hidden_layers = 3) {
+    # print("Init")
+    self$num_models = num_models
+    self$learning_rate = learning_rate
+
+    # Initialize multiple models
+    model_list = lapply(1:num_models, function(x) model(num_input_dim = num_input_dim,
+                                                        num_output_dim = num_output_dim,
+                                                        num_hidden_dim = num_hidden_dim,
+                                                        num_hidden_layers = num_hidden_layers))
+    names(model_list) = seq(1, self$num_models)
+    self$model_list = nn_module_list(model_list)
+    # self$model_list = model()
+
+    # Initialize optimizers
+    opt_list = lapply(self$model_list, function(m) optim_adam(m$parameters, lr = self$learning_rate))
+    names(opt_list) = seq(1, self$num_models)
+    # opt_list = optim_adam(self$model_list$parameters, lr = self$learning_rate)
+    self$optimizers = opt_list
+  },
+
+  # Set optimizers method
+  set_optimizers = function() {
+    # Return the stored optimizers
+    self$optimizers
+  },
+
+  # Forward pass: Collect predictions from all models
+  forward = function(input) {
+    # print("forward")
+    # Collect predictions from each model
+    predictions = lapply(fitted$model$model_list, function(model) model(x_sample))
+    predictions = torch_stack(predictions, dim = 4)  # Stack predictions along a new dimension
+
+    # Compute the mean and variance of predictions
+    # dim (2 i.e. mu + var, num samples, num parameters, num networks)
+    mean_prediction = torch_mean(predictions[1,,,], dim = 3)  # Mean of means
+    variance_prediction = torch_mean(predictions[2,,,], dim = 3)  # Mean of variances
+
+    # TODO Correct variance using ensemble variance formula
+    # variance_prediction = torch_sqrt(variance_prediction +
+    #                                    torch_mean(torch_square(predictions[, 1, ]), dim = 3) -
+    #                                    torch_square(mean_prediction))
+    variance_prediction = torch_log(1 + torch_exp(variance_prediction)) + 1e-6
+
+    return(list(mean = mean_prediction, variance = variance_prediction))
+  },
+
+  # Training step
+  step = function() {
+    # print("step")
+    # Store loss for each model
+    # print("Init loss")
+    ctx$loss = list()
+
+    # Iterate over each model and optimizer
+    # print("Iterate")
+    for (i in seq_along(self$model_list)) {
+
+      if (ctx$training) {
+        input = ctx$input[i,]
+        target = ctx$target[i,]
+      } else {
+        input = ctx$input
+        target = ctx$target
+      }
+
+      opt_name = names(self$optimizers)[i]
+      model = self$model_list[[i]]
+      optimizer = self$optimizers[[opt_name]]
+
+      # Forward pass
+      preds = model(input)
+
+      # Compute loss
+      loss = self$nll_loss(preds, target)
+
+      if (ctx$training) {
+        # Zero gradients
+        optimizer$zero_grad()
+
+        # Backpropagation
+        loss$backward()
+
+        # Update parameters
+        optimizer$step()
+      }
+
+      # Detach loss to store it
+      ctx$loss[[opt_name]] = loss$detach()
+    }
+  },
+
+  # Negative Log-Likelihood loss for Gaussian predictions
+  nll_loss = function(preds, target) {
+    mu_train = preds[1]
+    sig_train = preds[2]
+    sig_train_pos = torch_log(1 + torch_exp(sig_train)) + 1e-6
+
+    loss = torch_mean(0.5 * torch_log(sig_train_pos) + 0.5 * (torch_square(target - mu_train)/sig_train_pos)) + 1
+    if (is.nan(loss$item())) {
+      stop("Loss computation returned NaN. Check inputs!")
+    }
+    loss
+  }
+)

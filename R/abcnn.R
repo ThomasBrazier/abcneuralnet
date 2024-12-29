@@ -32,6 +32,7 @@
 #' @import torch
 #' @import luz
 #' @import ggplot2
+#' @import tidyr
 #' @import R6Class
 #'
 #' @return an `abcnn` object
@@ -70,7 +71,7 @@ abcnn = R6::R6Class("abcnn",
     wr=NA,
     dr=NA,
     num_val=100,
-    num_networks=10,
+    num_networks=5,
     num_iter=10000,
     num_print=1000,
     epsilon_adversarial=0.01,
@@ -129,7 +130,7 @@ abcnn = R6::R6Class("abcnn",
                           bandwith=1.0,
                           prior_length_scale=1e-4,
                           num_val=100,
-                          num_networks=10,
+                          num_networks=5,
                           num_iter=10000,
                           num_print=1000,
                           epsilon_adversarial=0.01,
@@ -242,7 +243,7 @@ abcnn = R6::R6Class("abcnn",
         dl = self$dataloader()
 
         # Fit
-        self$model = mc_dropout_model %>%
+        model = mc_dropout_model %>%
           setup(optimizer = self$optimizer,
                 loss = self$loss) %>%
           set_hparams(num_input_dim = self$input_dim,
@@ -253,11 +254,13 @@ abcnn = R6::R6Class("abcnn",
                       dropout_input = self$dropout_input) %>%
           set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weigth_decay)
 
-        self$fitted = self$model %>%
+        self$fitted = model %>%
           fit(dl$train,
               epochs = self$epochs,
               valid_data = dl$valid,
               callbacks = self$callbacks)
+        self$model = self$fitted$model
+
       }
 
       if (self$method == 'concrete dropout') {
@@ -283,7 +286,7 @@ abcnn = R6::R6Class("abcnn",
 
         # print(self$callbacks)
 
-        self$model = concrete_model %>%
+        model = concrete_model %>%
           setup(optimizer = self$optimizer) %>%
           set_hparams(num_input_dim = self$input_dim,
                       num_hidden_dim = self$num_hidden_dim,
@@ -294,18 +297,33 @@ abcnn = R6::R6Class("abcnn",
                       dropout_input = self$dropout_input) %>%
           set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weigth_decay)
 
-        self$fitted = self$model %>%
+        self$fitted = model %>%
           fit(dl$train,
               epochs = self$epochs,
               valid_data = dl$valid,
               callbacks = self$callbacks)
+        self$model = self$fitted$model
       }
 
       if (self$method == 'deep ensemble') {
         # Load data
+        dl = self$dataloader()
 
         # Fit
-        self$fitted = fit_deep_ensemble()
+        model = nn_ensemble %>%
+          setup() %>%
+          set_hparams (model = single_model,
+                       num_models = self$num_networks,
+                       num_input_dim = self$input_dim,
+                       num_output_dim = self$output_dim,
+                       num_hidden_layers = self$num_hidden_layers,
+                       num_hidden_dim = self$num_hidden_dim)
+
+        self$fitted = model %>%
+          fit(dl$train,
+              epochs = self$epochs,
+              valid_data = dl$valid)
+        self$model = self$fitted$model
       }
 
       # Evaluation
@@ -316,11 +334,14 @@ abcnn = R6::R6Class("abcnn",
       metrics = get_metrics(self$fitted)
       print(metrics)
 
-      self$evaluation = self$fitted %>% luz::evaluate(data = dl$test)
-      self$eval_metrics = get_metrics(self$evaluation)
-      print(self$eval_metrics)
-      print(self$evaluation)
-
+      # TODO luz::evaluate currently not working with Deep Ensemble
+      # fitted returns n values named value.x instead of a single value
+      if (self$method != "deep ensemble") {
+        self$evaluation = self$fitted %>% luz::evaluate(data = dl$test)
+        self$eval_metrics = get_metrics(self$evaluation)
+        print(self$eval_metrics)
+        print(self$evaluation)
+      }
     },
 
     # Predict parameters from a vector/array of observed summary statistics
@@ -441,7 +462,47 @@ abcnn = R6::R6Class("abcnn",
         self$dropout_rates = p
       }
 
-      if (self$method == 'deep ensemble') {}
+      if (self$method == 'deep ensemble') {
+        # Use forward to get mean prediction + variance
+
+        # Infer epistemic + aleatoric uncertainty
+        out_mu_sample  = torch_zeros(c(observed$shape[1], observed$shape[2], self$num_networks))
+        out_sig_sample = torch_zeros(c(observed$shape[1], observed$shape[2], self$num_networks))
+
+        for (i in 1:self$num_networks) {
+          preds = self$fitted$model$model_list[[i]](observed)
+          mu_sample = preds[1,,]
+          sig_sample = preds[2,,]
+          sig_sample = torch_log(1 + torch_exp(sig_sample)) + 1e-6
+
+          out_mu_sample[,,i]  = mu_sample
+          out_sig_sample[,,i] = sig_sample
+        }
+
+        self$predictive_mean  = torch_mean(out_mu_sample, dim = 3)
+
+        # out_sig_sample_final = torch_sqrt(torch_mean(out_sig_sample, dim = 3) + torch_mean(torch_square(out_mu_sample), dim = 3)
+        #                                   - torch_square(out_mu_sample_final))
+        self$aleatoric_uncertainty = torch_sqrt(torch_mean(out_sig_sample, dim = 3))
+        self$epistemic_uncertainty = torch_sqrt(torch_mean(torch_square(out_mu_sample), dim = 3) - torch_square(self$predictive_mean))
+
+        self$CI_aleatoric_lower = self$predictive_mean -
+          2 * sqrt(self$aleatoric_uncertainty)
+        self$CI_aleatoric_upper = self$predictive_mean +
+          2 * sqrt(self$aleatoric_uncertainty)
+
+        self$CI_epistemic_lower = self$predictive_mean -
+          2 * sqrt(self$epistemic_uncertainty)
+        self$CI_epistemic_upper = self$predictive_mean +
+          2 * sqrt(self$epistemic_uncertainty)
+
+        self$CI_overall_lower = self$predictive_mean -
+          2 * sqrt(self$epistemic_uncertainty) -
+          2 * sqrt(self$aleatoric_uncertainty)
+        self$CI_overall_upper = self$predictive_mean +
+          2 * sqrt(self$epistemic_uncertainty) +
+          2 * sqrt(self$aleatoric_uncertainty)
+      }
 
     },
 
@@ -501,7 +562,39 @@ abcnn = R6::R6Class("abcnn",
         return(list(train = train_dl, valid = valid_dl, test = test_dl))
       }
 
-      if (self$method == 'deep ensemble') {}
+      if (self$method == 'deep ensemble') {
+        # Randomly sample indexes
+        n_val = round(self$n_train * self$validation_split, digits=0)
+        n_test = round(self$n_train * self$test_split, digits=0)
+        n_train = self$n_train - n_val -n_test - self$num_conformal
+
+        random_idx = sample(1:nrow(theta), replace = FALSE)
+        train_idx = random_idx[1:n_train]
+        valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
+        test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
+        # conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + num_conformal)]
+
+        sumstat_tensor = torch_tensor(as.matrix(sumstat))
+        theta_tensor = torch_tensor(as.matrix(theta))
+        # sumstat_tensor = sumstat_tensor$unsqueeze(length(dim(sumstat_tensor)) + 1)
+        # theta_tensor = theta_tensor$unsqueeze(length(dim(theta_tensor)) + 1)
+
+        ds = tensor_dataset(sumstat_tensor, theta_tensor)
+
+        valid_ds = dataset_subset(ds, valid_idx)
+        valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+
+        test_ds = dataset_subset(ds, test_idx)
+        test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+
+        # Make Ensemble dataset
+        train_x = sumstat_tensor[train_idx,]
+        train_y = theta_tensor[train_idx,]
+        train_ds_list = ensemble_dataset(train_x, train_y, self$num_networks, randomize = TRUE)
+        train_dl_list = train_ds_list %>% dataloader(batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+
+        return(list(train = train_dl_list, valid = valid_dl, test = test_dl))
+      }
 
     },
 
@@ -547,21 +640,38 @@ abcnn = R6::R6Class("abcnn",
 
     # Plot the training curves (training/validation)
     plot_training = function() {
-      train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
-      valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
-      eval = self$eval_metrics$value
+      if (self$method != "deep ensemble") {
+        train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
+        valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+        eval = ifelse(self$method != "deep ensemble", self$eval_metrics$value, NA)
 
 
-      train_eval = data.frame(Epoch = rep(1:length(train_metric), 2),
-                              Metric = c(train_metric, valid_metric),
-                              Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+        train_eval = data.frame(Epoch = rep(1:length(train_metric), self$output_dim),
+                                Metric = c(train_metric, valid_metric),
+                                Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
 
-      ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
-        geom_point() +
-        geom_line() +
-        xlab("Epoch") + ylab("Loss") +
-        geom_hline(yintercept = eval) +
-        theme_bw()
+        ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+          geom_point() +
+          geom_line() +
+          xlab("Epoch") + ylab("Loss") +
+          geom_hline(yintercept = eval) +
+          theme_bw()
+      } else {
+        train_metric = as.numeric(unlist(abc_ensemble$fitted$records$metrics$train))
+        valid_metric = as.numeric(unlist(abc_ensemble$fitted$records$metrics$valid))
+
+        train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/abc_ensemble$num_networks), each = abc_ensemble$num_networks), abc_ensemble$output_dim),
+                                Model = rep(1:abc_ensemble$num_networks, (length(train_metric)/abc_ensemble$num_networks)),
+                                Metric = c(train_metric, valid_metric),
+                                Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+        ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+          geom_point() +
+          geom_line() +
+          xlab("Epoch") + ylab("Loss") +
+          facet_wrap(~ Model) +
+          theme_bw()
+      }
     },
 
     # Plot predicted values (predicted ~ observed)
@@ -655,11 +765,28 @@ abcnn = R6::R6Class("abcnn",
 
 # Save the abcnn object and internal torch model
 save_abcnn = function(object, prefix = "") {
+  # Save the torch module used as model
+  # torch_save(object$model, paste0(prefix, "_torch.Rds"))
 
+  # Save the luz fitted object
+  luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
+
+  # Save the abcnn object
+  # Remove torch module and luz fitted to avoid serialization issues
+  # object$model = NULL
+  # object$fitted = NULL
+
+  saveRDS(object, paste0(prefix, "_abcnn.Rds"))
 }
 
 
 # Load an abcnn object and internal torch model
 load_abcnn = function(prefix = "") {
+  object = readRDS(paste0(prefix, "_abcnn.Rds"))
+
+  object$fitted = luz_load(paste0(prefix, "_luz.Rds"))
+  object$model = object$fitted$model
+
+  return(object)
 
 }
