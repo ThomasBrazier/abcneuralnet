@@ -1,5 +1,17 @@
+#------------------------------------------
+# KERNELS
+#------------------------------------------
+# See ?density
+# kernel = c("gaussian", "epanechnikov", "rectangular",
+#            "triangular", "biweight",
+#            "cosine", "optcosine")
+
+#' Generic density kernel
+
+
+
 #' Compute the Epanechnikov kernel between two points or sets of points.
-epanechnikov_kernel = function(x1, x2, bandwidth=bandwidth) {
+epanechnikov_kernel = function(x1, x2, bandwidth = bandwidth) {
   # Eculidean distance
   dist = unlist(lapply(1:nrow(x1), function(x) {dist(rbind(x1[x,], x2))}))
   # Normalize by bandwidth
@@ -14,7 +26,7 @@ epanechnikov_kernel = function(x1, x2, bandwidth=bandwidth) {
 
 
 #' Compute the RBF kernel between two points or sets of points.
-rbf_kernel = function(x1, x2, length_scale=1.0) {
+rbf_kernel = function(x1, x2, length_scale = 1.0) {
   # Euclidean distance
   sq_dist = unlist(lapply(1:nrow(x1), function(x) {dist(rbind(x1[x,], x2))^2}))
   # RBF kernel
@@ -23,23 +35,25 @@ rbf_kernel = function(x1, x2, length_scale=1.0) {
 }
 
 
-
+#------------------------------------------
+# SAMPLING
+#------------------------------------------
 # ABC sampling functions
 #' Rejection sampling
-rejection_sampling = function(kernel_values, theta, tol=0.01) {
+rejection_sampling = function(kernel_values, theta, tol = 0.01) {
   # Sample posterior based on the weighted kernel values
   # Keep values above the tolerance threshold
-  sampled_indices = which(kernel_values > quantile(kernel_values, 1-tol))
+  sampled_indices = which(kernel_values > quantile(kernel_values, 1 - tol))
   # sampled_indices = sample(c(1:nrow(theta)), size=size, p=kernel_values)
   # return(theta[sampled_indices,])
   return(sampled_indices)
 }
 
 #' Importance sampling
-importance_sampling = function(kernel_values, theta, tol=0.01) {
+importance_sampling = function(kernel_values, theta, tol = 0.01) {
   # Randomly sample indices based on the weights
   size = tol * length(kernel_values)
-  sampled_indices = sample(1:nrow(theta), size=size, p=kernel_values)
+  sampled_indices = sample(1:nrow(theta), size = size, p = kernel_values)
   # return(theta[sampled_indices,])
   return(sampled_indices)
 }

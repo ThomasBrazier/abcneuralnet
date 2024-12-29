@@ -26,6 +26,7 @@ single_model = nn_module(
   forward = function(x) {
     x1 = self$linear_ensemble(x)
     mu = self$mu(x1)
+    mu = torch_clamp(mu, min = 1e-6)
     sig = self$sigma(x1)
     sig = torch_clamp(sig, min = 1e-6)  # To avoid undefined behavior with log(0)
     # return a concatenated tensor
@@ -98,10 +99,14 @@ nn_ensemble = nn_module(
                         num_input_dim = 1,
                         num_output_dim = 1,
                         num_hidden_dim = 128,
-                        num_hidden_layers = 3) {
+                        num_hidden_layers = 3,
+                        adversarial = FALSE,
+                        epsilon = NULL) {
     # print("Init")
     self$num_models = num_models
     self$learning_rate = learning_rate
+    self$adversarial = adversarial
+    self$epsilon = epsilon
 
     # Initialize multiple models
     model_list = lapply(1:num_models, function(x) model(num_input_dim = num_input_dim,
@@ -169,19 +174,55 @@ nn_ensemble = nn_module(
       model = self$model_list[[i]]
       optimizer = self$optimizers[[opt_name]]
 
-      # Forward pass
-      preds = model(input)
+      # Forward pass and loss - Combine two losses if adversarial
+      if (!is.null(self$epsilon) & ctx$training) {
+        # Adversarial
+        # Loss without perturbation to get the gradient sign
+        input$requires_grad = TRUE
+        preds = model(input)
+        mean = preds[1]
+        var = preds[2]
+        # print("Loss for gradient sign")
+        loss_for_adv = self$adversarial_nll_loss(mean, target, var)
 
-      # Compute loss
-      loss = self$nll_loss(preds, target)
+        # Gradient for Gaussian NLL loss
+        grad = autograd_grad(loss_for_adv, input, retain_graph = FALSE)[[1]]
+
+        batch_x = input$detach()
+        batch_y = target$detach()
+        # print(batch_x)
+        # print(batch_y)
+
+        mean = mean$detach()
+        var = var$detach()
+        loss_for_adv$detach_()
+        # print(mean)
+        # print(var)
+
+
+        # print("Perturb input data")
+        perturbed_data = self$fgsm_attack(batch_x, self$epsilon, grad)
+        out_adv = model(perturbed_data)
+        mean_adv = out_adv[1]
+        var_adv = out_adv[2]
+        # print(mean_adv)
+        # print(var_adv)
+
+        # print("Adversarial loss")
+        loss = self$adversarial_nll_loss(mean, batch_y, var) + self$adversarial_nll_loss(mean_adv, batch_y, var_adv)
+
+      } else {
+        # Forward pass
+        preds = model(input)
+        # Compute loss
+        loss = self$nll_loss(preds, target)
+      }
 
       if (ctx$training) {
         # Zero gradients
         optimizer$zero_grad()
-
         # Backpropagation
         loss$backward()
-
         # Update parameters
         optimizer$step()
       }
@@ -198,9 +239,37 @@ nn_ensemble = nn_module(
     sig_train_pos = torch_log(1 + torch_exp(sig_train)) + 1e-6
 
     loss = torch_mean(0.5 * torch_log(sig_train_pos) + 0.5 * (torch_square(target - mu_train)/sig_train_pos)) + 1
+
     if (is.nan(loss$item())) {
+      print(input)
+      print(target)
+      print(var)
+      print(var_pos)
       stop("Loss computation returned NaN. Check inputs!")
     }
-    loss
+    return(loss)
+  },
+
+  # Adversarial function
+  fgsm_attack = function(input, epsilon, data_grad) {
+    sign_data_grad = data_grad$sign()
+    perturbed_input = input + epsilon * sign_data_grad
+    return(perturbed_input)
+  },
+
+  # Adversarial loss
+  adversarial_nll_loss = function(input, target, var) {
+    var_pos = torch_log(1 + torch_exp(var)) + 1e-6
+    loss = torch_mean(0.5 * torch_log(var_pos) + 0.5 * (torch_square(target - input)/var_pos)) + 1
+
+    if (is.nan(loss$item())) {
+      print(input)
+      print(target)
+      print(var)
+      print(var_pos)
+      stop("Loss computation returned NaN. Check inputs!")
+    }
+
+    return(loss)
   }
 )

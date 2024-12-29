@@ -41,8 +41,11 @@ bound1 = -2
 bound2 = 2
 
 # Random noise applied on y
-data_sigma1 = 0.1
-data_sigma2 = 0.5
+data_sigma1a = 0.1
+data_sigma2a = 0.5
+
+data_sigma1b = 0.2
+data_sigma2b = 0.1
 
 # Number of simulated data points
 # num_data = 10000
@@ -51,15 +54,15 @@ data_sigma2 = 0.5
 data_x1a = seq(-data_range, bound1 + data_step, by = data_step)
 data_x1b = seq(bound2, data_range + data_step, by = data_step)
 # Simulate targets y
-data_y1a = sin(data_x1a) + rnorm(length(data_x1a), 0, data_sigma1)
-data_y1b = sin(data_x1b) + rnorm(length(data_x1b), 0, data_sigma2)
+data_y1a = sin(data_x1a) + rnorm(length(data_x1a), 0, data_sigma1a)
+data_y1b = sin(data_x1b) + rnorm(length(data_x1b), 0, data_sigma2a)
 
 # Shift X1 to get X2
 data_x2a = data_x1a + 7
 data_x2b = data_x1b + 7
 # Simulate targets y
-data_y2a = cos(data_x2a) + rnorm(length(data_x2a), 0, data_sigma1)
-data_y2b = cos(data_x2b) + rnorm(length(data_x2b), 0, data_sigma2)
+data_y2a = cos(data_x2a) + rnorm(length(data_x2a), 0, data_sigma1b)
+data_y2b = cos(data_x2b) + rnorm(length(data_x2b), 0, data_sigma2b)
 
 df = data.frame(x1 = c(data_x1a, data_x1b),
                     x2 = c(data_x2a, data_x2b),
@@ -152,7 +155,7 @@ The `abcnn` object is a `R6Class` object.
 Modern implementation, OOP
 
 
-For example, the model can be accessed with `abc$model`.
+For example, the fitted model can be accessed with `abc$model`.
 
 
 The model is trained by calling `abc$fit()`.
@@ -207,7 +210,7 @@ abc$plot_training()
 
 
 
-Save the abccn object and fitted model.
+Save the `abccn` object with the fitted model.
 
 
 ```{r, echo = T}
@@ -372,6 +375,8 @@ abc$plot_posterior(sample = 520, prior = TRUE)
 ## Deep Ensemble prediction
 
 
+Train five netwroks with the Deep Ensemble algorithm and adversarial training.
+
 
 ```{r, echo = T}
 abc_ensemble = abcnn$new(theta,
@@ -379,7 +384,13 @@ abc_ensemble = abcnn$new(theta,
             observed,
             method = 'deep ensemble',
             num_networks = 5,
-            epochs = 20)
+            epochs = 100,
+            num_hidden_layers = 3,
+            num_hidden_dim = 500,
+            epsilon_adversarial = 0.01)
+
+# The perturbation on input
+abc_ensemble$epsilon_adversarial * 2 * abc_ensemble$sumstat_sd
 
 abc_ensemble$fit()
 ```
@@ -409,12 +420,26 @@ abc_ensemble$plot_predicted()
 ```
 
 
-For Deep Ensemble, there are no posterior samples as in Monte Carlo dropout or Concrete Dropout. Hence no need for the `plot_posterior` method.
+For Deep Ensemble, there are no posterior samples to plot with the `plot_posterior` method as in Monte Carlo dropout or Concrete Dropout. But it is still interesting to check a single prediction with its uncertainty within or without training distribution.
+
+```{r, echo = T}
+# Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
+# which(abc$observed < -4 & abc$observed > -5)
+abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
+
+# Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
+# which(abc$observed < 5 & abc$observed > 4)
+abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
+
+# Print a sample with -1 < x1 < 1 (out of training distribution)
+# which(abc$observed < 1 & abc$observed > -1)
+abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
+```
 
 
 
 
-## Apply to infer population genetics parameters
+## Apply ABC Neural Networks to infer population genetics parameters
 
 Simulations with `msprime`.
 
@@ -458,6 +483,148 @@ sumstats_observed = sumstats[idx_observed,]
 
 # colnames(theta_training)
 ```
+
+
+
+Train with full data.
+
+
+```{r, echo = T}
+abc_popgen = abcnn$new(theta_training,
+            sumstats_training,
+            sumstats_observed,
+            method = 'concrete dropout',
+            num_hidden_layers = 3,
+            num_hidden_dim = 512,
+            epochs = 40)
+
+abc_popgen$fit()
+
+abc_popgen$plot_training()
+# With Concrete dropout, the first training loss can be huge compared to subsequent steps
+# Remove it from the plot to better see training curves
+abc_popgen$plot_training(discard_first = TRUE)
+```
+
+
+```{r, echo = T}
+abc_popgen$predict()
+
+abc_popgen$plot_predicted()
+```
+
+
+```{r, echo = T}
+save_abcnn(abc_popgen, prefix = "../inst/extdata/abc_popgen")
+
+abc_popgen = load_abcnn(prefix = "../inst/extdata/abc_popgen")
+```
+
+
+
+```{r, echo = T}
+abc_popgen$plot_posterior(100)
+
+abc_popgen$predictive_mean[100,]
+theta_observed[100,]
+
+# Plot the best estimate (lower C.I)
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.min(abc_popgen$epistemic_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.min(abc_popgen$epistemic_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.min(abc_popgen$aleatoric_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.min(abc_popgen$aleatoric_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+
+
+# Plot the worst estimate (larger C.I.)
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.max(abc_popgen$epistemic_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.max(abc_popgen$epistemic_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.max(abc_popgen$aleatoric_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.max(abc_popgen$aleatoric_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+```
+
+
+
+
+Train with a Deep Ensemble.
+
+
+
+```{r, echo = T}
+abc_popgen = abcnn$new(theta_training,
+            sumstats_training,
+            sumstats_observed,
+            method = 'deep ensemble',
+            scale = TRUE,
+            num_hidden_layers = 3,
+            num_hidden_dim = 512,
+            batch_size = 256,
+            epochs = 100,
+            epsilon_adversarial = 0.01)
+
+abc_popgen$fit()
+
+abc_popgen$plot_training()
+```
+
+
+```{r, echo = T}
+abc_popgen$predict()
+
+abc_popgen$plot_predicted()
+```
+
+
+```{r, echo = T}
+save_abcnn(abc_popgen, prefix = "../inst/extdata/abc_popgen_ensemble")
+
+abc_popgen = load_abcnn(prefix = "../inst/extdata/abc_popgen_ensemble")
+```
+
+
+
+```{r, echo = T}
+abc_popgen$plot_posterior(100)
+
+abc_popgen$predictive_mean[100,]
+theta_observed[100,]
+
+# Plot the best estimate (lower C.I)
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.min(abc_popgen$epistemic_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.min(abc_popgen$epistemic_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.min(abc_popgen$aleatoric_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.min(abc_popgen$aleatoric_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+
+
+# Plot the worst estimate (larger C.I.)
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.max(abc_popgen$epistemic_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.max(abc_popgen$epistemic_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[which.max(abc_popgen$aleatoric_uncertainty[,2]),])))
+abc_popgen$plot_posterior(which.max(abc_popgen$aleatoric_uncertainty[,2])) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+```
+
+
+Train with ABC Importance sampling.
+
 
 
 

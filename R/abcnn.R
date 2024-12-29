@@ -28,6 +28,7 @@
 #' @param prior_length_scale the prior length scale hyperparameter for the concrete dropout method
 #' @param num_val the number of duplicate observed sample to provide for each iteration of `concrete dropout` approximate posterior prediction
 #' @param num_net the number of iterations in the `regression adjustment` approach
+#' @param epsilon_adversarial The multiplying factor for perturbed inputs in adversarial training (Deep Ensemble). Set NULL to disable adverarial training (default) or 0.01 is a good value to start with.
 #'
 #' @import torch
 #' @import luz
@@ -74,8 +75,9 @@ abcnn = R6::R6Class("abcnn",
     num_networks=5,
     num_iter=10000,
     num_print=1000,
-    epsilon_adversarial=0.01,
+    epsilon_adversarial=NULL,
     inference=TRUE,
+    device="cpu",
     input_dim = NA,
     output_dim = NA,
     n_train = NA,
@@ -133,8 +135,9 @@ abcnn = R6::R6Class("abcnn",
                           num_networks=5,
                           num_iter=10000,
                           num_print=1000,
-                          epsilon_adversarial=0.01,
-                          inference=TRUE) {
+                          epsilon_adversarial=NULL,
+                          inference=TRUE,
+                          device="cpu") {
       #-----------------------------------
       # CHECK INPUTS
       #-----------------------------------
@@ -146,6 +149,13 @@ abcnn = R6::R6Class("abcnn",
       if(!is.data.frame(sumstat)) stop("'sumstat' has to be a data.frame with column names.")
       if(!is.data.frame(observed)) stop("'observed' has to be a data.frame with column names.")
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
+
+      # Device. Use CUDA if available
+      self$device = torch_device(if (cuda_is_available()) {"cuda"} else {"cpu"})
+      # "When fitting, luz will use the fastest possible accelerator;
+      # if a CUDA-capable GPU is available it will be used, otherwise we fall back to the CPU.
+      # It also automatically moves data, optimizers,
+      # and models to the selected device so you don’t need to handle it manually."
 
       # TODO Check input dim and type
       # Coerce data to array
@@ -180,6 +190,7 @@ abcnn = R6::R6Class("abcnn",
       self$length_scale=length_scale
       self$bandwith=bandwith
       self$l2_weight_decay
+      self$epsilon_adversarial = epsilon_adversarial
 
       self$input_dim = ncol(sumstat)
       self$output_dim = ncol(theta)
@@ -223,13 +234,13 @@ abcnn = R6::R6Class("abcnn",
       }
 
       #-----------------------------------
-      # POST-PROCESSING
+      # PRE-PROCESSING
       #-----------------------------------
       # Scale summary statistics (optional)
       # Save mean and sd of training data to apply on observed data at prediction time
+      self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
+      self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
       if (scale) {
-        self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
-        self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
         self$sumstat = (self$sumstat - self$sumstat_mean) / self$sumstat_sd
         self$observed = (self$observed - self$sumstat_mean) / self$sumstat_sd
       }
@@ -271,7 +282,6 @@ abcnn = R6::R6Class("abcnn",
 
         # TODO Make utility functions for wr and dr
         l = self$prior_length_scale
-
         N = self$n_train
         self$wr = l^2 / N
         self$dr = 2 / N
@@ -309,6 +319,13 @@ abcnn = R6::R6Class("abcnn",
         # Load data
         dl = self$dataloader()
 
+        # The range of noise to add to perturbed inputs in adversarial training
+        if (!is.null(self$epsilon_adversarial)) {
+          epsilon = self$epsilon_adversarial * 2 * self$sumstat_sd
+        } else {
+          epsilon = NULL
+        }
+
         # Fit
         model = nn_ensemble %>%
           setup() %>%
@@ -317,7 +334,8 @@ abcnn = R6::R6Class("abcnn",
                        num_input_dim = self$input_dim,
                        num_output_dim = self$output_dim,
                        num_hidden_layers = self$num_hidden_layers,
-                       num_hidden_dim = self$num_hidden_dim)
+                       num_hidden_dim = self$num_hidden_dim,
+                       epsilon = epsilon)
 
         self$fitted = model %>%
           fit(dl$train,
@@ -349,6 +367,7 @@ abcnn = R6::R6Class("abcnn",
 
       observed = torch_tensor(as.matrix(self$observed))
 
+
       if (self$method == 'monte carlo dropout') {
         # Set model to evaluation mode
         # TODO Implement this directly in the torch module
@@ -358,11 +377,15 @@ abcnn = R6::R6Class("abcnn",
         # Approximate posterior samples in lines (axis 1)
         # Each observation is a column (axis 2)
         # Mean prediction on axis 3, multiplied by the number of parameters to estimate
+        pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
+
         mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], self$output_dim))
         for (k in 1:self$num_posterior_samples) {
           preds = self$fitted$model(observed)
           mc_samples[k, , 1:self$output_dim] = as.array(preds)
+          setTxtProgressBar(pb, k)
         }
+        close(pb)
 
         self$posterior_samples = mc_samples
 
@@ -398,11 +421,15 @@ abcnn = R6::R6Class("abcnn",
       }
 
       if (self$method == 'concrete dropout') {
+        pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
+
         mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
         for (k in 1:self$num_posterior_samples) {
           preds = self$fitted$model(observed)
           mc_samples[k, , ] = cbind(as.matrix(preds[1]), as.matrix(preds[2]))
+          setTxtProgressBar(pb, k)
         }
+        close(pb)
 
         # the means are in the first output column
         means = mc_samples[, , 1:self$output_dim, drop = F]
@@ -470,6 +497,8 @@ abcnn = R6::R6Class("abcnn",
         out_sig_sample = torch_zeros(c(observed$shape[1], observed$shape[2], self$num_networks))
 
         for (i in 1:self$num_networks) {
+          pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
+
           preds = self$fitted$model$model_list[[i]](observed)
           mu_sample = preds[1,,]
           sig_sample = preds[2,,]
@@ -477,7 +506,10 @@ abcnn = R6::R6Class("abcnn",
 
           out_mu_sample[,,i]  = mu_sample
           out_sig_sample[,,i] = sig_sample
+
+          setTxtProgressBar(pb, i)
         }
+        close(pb)
 
         self$predictive_mean  = torch_mean(out_mu_sample, dim = 3)
 
@@ -630,7 +662,12 @@ abcnn = R6::R6Class("abcnn",
 
     # Print a summary of the abcnn object
     summary = function() {
+      # TODO Print number of samples and basic information on methods
 
+      # CUDA is installed?
+      cuda_is_available()
+
+      print(self$device)
     },
 
     # Plot LDA projection of simulations with the observed points
@@ -639,12 +676,15 @@ abcnn = R6::R6Class("abcnn",
     },
 
     # Plot the training curves (training/validation)
-    plot_training = function() {
+    plot_training = function(discard_first = FALSE) {
       if (self$method != "deep ensemble") {
         train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
         valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
         eval = ifelse(self$method != "deep ensemble", self$eval_metrics$value, NA)
 
+        if (discard_first) {
+          train_metric[1] = NA
+        }
 
         train_eval = data.frame(Epoch = rep(1:length(train_metric), self$output_dim),
                                 Metric = c(train_metric, valid_metric),
@@ -659,6 +699,10 @@ abcnn = R6::R6Class("abcnn",
       } else {
         train_metric = as.numeric(unlist(abc_ensemble$fitted$records$metrics$train))
         valid_metric = as.numeric(unlist(abc_ensemble$fitted$records$metrics$valid))
+
+        if (discard_first) {
+          train_metric[1] = NA
+        }
 
         train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/abc_ensemble$num_networks), each = abc_ensemble$num_networks), abc_ensemble$output_dim),
                                 Model = rep(1:abc_ensemble$num_networks, (length(train_metric)/abc_ensemble$num_networks)),
@@ -676,8 +720,15 @@ abcnn = R6::R6Class("abcnn",
 
     # Plot predicted values (predicted ~ observed)
     plot_predicted = function() {
+      # If same number of parameters x and y, infer pairwise relationship between each x and y (i.e. x1 ~ y1, x2 ~ y2...)
+      # Otherwise order x axis by index
+      if (ncol(self$theta) == ncol(self$sumstat)) {
+        x_pos = as.numeric(unlist(self$observed))
+      } else {
+        x_pos = seq(1, nrow(self$observed))
+      }
       df_predicted = data.frame(param = rep(colnames(self$theta), each = nrow(self$observed)),
-                                x = as.numeric(unlist(self$observed)),
+                                x = x_pos,
                                 mean = as.numeric(unlist(self$predictive_mean)),
                                 ci_overall_upper = as.numeric(unlist(self$CI_overall_upper)),
                                 ci_overall_lower = as.numeric(unlist(self$CI_overall_lower)),
@@ -699,15 +750,6 @@ abcnn = R6::R6Class("abcnn",
       # Dim 1 is number of MC samples (predictions)
       # Dim 2 is number of observations
       # Dim 3 is parameters (mu + sigma)
-      posteriors = self$posterior_samples[,sample,]
-      # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
-      posteriors = as.data.frame(posteriors)
-      posteriors = posteriors[,1:self$output_dim]
-      colnames(posteriors) = colnames(self$theta)
-      posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
-
-      tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
-
       tidy_predictions = data.frame(param = colnames(self$theta),
                                     mean = as.numeric(self$predictive_mean[sample,]),
                                     ci_lower = as.numeric(self$CI_overall_lower[sample,]),
@@ -721,39 +763,41 @@ abcnn = R6::R6Class("abcnn",
         tidy_priors = data.frame(param = rep(colnames(self$theta), each = nrow(self$theta)),
                                  prior = as.numeric(unlist(self$theta)))
 
-        ggplot() +
-          geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1) +
-          geom_histogram(data = tidy_df, aes(x = prediction)) +
-          geom_vline(data = tidy_predictions, aes(xintercept = mean, colour = "Epistemic")) +
-          geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epitstemic", fill = "Epistemic"), alpha = 0.2) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
-          geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.2) +
-          facet_wrap(~ param, scales = "free") +
-          scale_colour_manual(name = "Uncertainty", values = cols) +
-          scale_fill_manual(name = "Uncertainty", values = cols) +
-          xlab("Value") + ylab("Count") +
-          theme_bw() +
-          theme(legend.position = "right")
+        p = ggplot() +
+          geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1)
       } else {
-        ggplot() +
-          geom_histogram(data = tidy_df, aes(x = prediction)) +
-          geom_vline(data = tidy_predictions, aes(xintercept = mean, colour = "Epistemic")) +
-          geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epitstemic", fill = "Epistemic"), alpha = 0.2) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
-          geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.2) +
-          facet_wrap(~ param, scales = "free") +
-          scale_colour_manual(name = "Uncertainty", values = cols) +
-          scale_fill_manual(name = "Uncertainty", values = cols) +
-          xlab("Value") + ylab("Count") +
-          theme_bw() +
-          theme(legend.position = "right")
+        p = ggplot()
       }
+
+      if (self$method %in% c("monte carlo dropout", "concrete dropout")) {
+        posteriors = self$posterior_samples[,sample,]
+        # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
+        posteriors = as.data.frame(posteriors)
+        posteriors = posteriors[,1:self$output_dim]
+        colnames(posteriors) = colnames(self$theta)
+        posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
+
+        tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
+
+        p = p + geom_histogram(data = tidy_df, aes(x = prediction))
+      }
+
+      p = p +
+        geom_vline(data = tidy_predictions, aes(xintercept = mean, colour = "Epistemic")) +
+        geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epitstemic", fill = "Epistemic"), alpha = 0.2) +
+        geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
+        geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
+        geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
+        geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
+        geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.2) +
+        facet_wrap(~ param, scales = "free") +
+        scale_colour_manual(name = "Uncertainty", values = cols) +
+        scale_fill_manual(name = "Uncertainty", values = cols) +
+        xlab("Value") + ylab("Count") +
+        theme_bw() +
+        theme(legend.position = "right")
+
+      p
 
     }
   )
