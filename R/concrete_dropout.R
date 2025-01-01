@@ -166,8 +166,12 @@ concrete_model = nn_module(
     log_var = preds[2,,]
 
     precision = torch_exp(-log_var)
+    # Logsumexp for numerical stability
+    # precision = torch_logsumexp(-log_var, 1, keepdim = TRUE)
+
     # Must return a scalar - Do two times the sum when more than one parameter (sum of losses)
     heteroscedastic_loss = torch_sum(torch_mean(torch_sum(precision * (target - mu)^2 + log_var, 1), 1))
+
     return(heteroscedastic_loss)
   }
 )

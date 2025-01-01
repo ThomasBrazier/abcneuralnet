@@ -60,7 +60,7 @@ abcnn = R6::R6Class("abcnn",
     patience=4,
     optimizer=NULL,
     learning_rate=0.001,
-    l2_weigth_decay=1e-5,
+    l2_weight_decay=1e-5,
     loss=NULL,
     tol=NULL,
     num_posterior_samples=1000,
@@ -122,7 +122,7 @@ abcnn = R6::R6Class("abcnn",
                           patience=4,
                           optimizer=optim_adam,
                           learning_rate=0.001,
-                          l2_weigth_decay=1e-5,
+                          l2_weight_decay=1e-5,
                           loss=nn_mse_loss,
                           tol=NULL,
                           num_posterior_samples=1000,
@@ -263,7 +263,7 @@ abcnn = R6::R6Class("abcnn",
                       num_hidden_layers = self$num_hidden_layers,
                       dropout_hidden = self$dropout,
                       dropout_input = self$dropout_input) %>%
-          set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weigth_decay)
+          set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
 
         self$fitted = model %>%
           fit(dl$train,
@@ -305,7 +305,7 @@ abcnn = R6::R6Class("abcnn",
                       weight_regularizer = self$wr,
                       dropout_regularizer = self$dr,
                       dropout_input = self$dropout_input) %>%
-          set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weigth_decay)
+          set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
 
         self$fitted = model %>%
           fit(dl$train,
@@ -330,6 +330,8 @@ abcnn = R6::R6Class("abcnn",
         model = nn_ensemble %>%
           setup() %>%
           set_hparams (model = single_model,
+                       learning_rate = self$learning_rate,
+                       weight_decay = self$l2_weight_decay,
                        num_models = self$num_networks,
                        num_input_dim = self$input_dim,
                        num_output_dim = self$output_dim,
@@ -492,17 +494,27 @@ abcnn = R6::R6Class("abcnn",
       if (self$method == 'deep ensemble') {
         # Use forward to get mean prediction + variance
 
+        print("Predictions")
+
         # Infer epistemic + aleatoric uncertainty
-        out_mu_sample  = torch_zeros(c(observed$shape[1], observed$shape[2], self$num_networks))
-        out_sig_sample = torch_zeros(c(observed$shape[1], observed$shape[2], self$num_networks))
+        out_mu_sample  = torch_zeros(c(self$n_obs, self$output_dim, self$num_networks))
+        out_sig_sample = torch_zeros(c(self$n_obs, self$output_dim, self$num_networks))
 
         for (i in 1:self$num_networks) {
           pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
 
+          print(paste("Network", i))
+
           preds = self$fitted$model$model_list[[i]](observed)
+
+          print(preds)
           mu_sample = preds[1,,]
+          print(mu_sample)
+
           sig_sample = preds[2,,]
-          sig_sample = torch_log(1 + torch_exp(sig_sample)) + 1e-6
+          # sig_sample = torch_logsumexp(sig_sample, 1, keepdim = TRUE) + 1e-6
+          sig_sample = log1pexp(sig_sample)
+          print(sig_sample)
 
           out_mu_sample[,,i]  = mu_sample
           out_sig_sample[,,i] = sig_sample
@@ -511,7 +523,13 @@ abcnn = R6::R6Class("abcnn",
         }
         close(pb)
 
+        print("Compute predictive mean")
+
         self$predictive_mean  = torch_mean(out_mu_sample, dim = 3)
+
+        print(self$predictive_mean)
+
+        print("Compute uncertainty")
 
         # out_sig_sample_final = torch_sqrt(torch_mean(out_sig_sample, dim = 3) + torch_mean(torch_square(out_mu_sample), dim = 3)
         #                                   - torch_square(out_mu_sample_final))
@@ -596,8 +614,8 @@ abcnn = R6::R6Class("abcnn",
 
       if (self$method == 'deep ensemble') {
         # Randomly sample indexes
-        n_val = round(self$n_train * self$validation_split, digits=0)
-        n_test = round(self$n_train * self$test_split, digits=0)
+        n_val = round(self$n_train * self$validation_split, digits = 0)
+        n_test = round(self$n_train * self$test_split, digits = 0)
         n_train = self$n_train - n_val -n_test - self$num_conformal
 
         random_idx = sample(1:nrow(theta), replace = FALSE)
@@ -697,15 +715,15 @@ abcnn = R6::R6Class("abcnn",
           geom_hline(yintercept = eval) +
           theme_bw()
       } else {
-        train_metric = as.numeric(unlist(abc_ensemble$fitted$records$metrics$train))
-        valid_metric = as.numeric(unlist(abc_ensemble$fitted$records$metrics$valid))
+        train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
+        valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
 
         if (discard_first) {
           train_metric[1] = NA
         }
 
-        train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/abc_ensemble$num_networks), each = abc_ensemble$num_networks), abc_ensemble$output_dim),
-                                Model = rep(1:abc_ensemble$num_networks, (length(train_metric)/abc_ensemble$num_networks)),
+        train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/self$num_networks), each = self$num_networks), self$output_dim),
+                                Model = rep(1:self$num_networks, (length(train_metric)/self$num_networks)),
                                 Metric = c(train_metric, valid_metric),
                                 Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
 

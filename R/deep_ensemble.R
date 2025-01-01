@@ -9,13 +9,13 @@ single_model = nn_module(
     self$num_hidden_layers = num_hidden_layers
     self$num_hidden_dim = num_hidden_dim
 
-    self$linear_ensemble = nn_sequential(nn_linear(num_input_dim, num_hidden_dim),
+    self$mlp = nn_sequential(nn_linear(num_input_dim, num_hidden_dim),
                                   nn_relu())
 
     for (i in 2:num_hidden_layers) {
-      self$linear_ensemble$add_module(paste0("hidden_layer", i), nn_linear(num_hidden_dim,
+      self$mlp$add_module(paste0("hidden_layer", i), nn_linear(num_hidden_dim,
                                                                     num_hidden_dim))
-      self$linear_ensemble$add_module(paste0("relu", i), nn_relu())
+      self$mlp$add_module(paste0("relu", i), nn_relu())
     }
 
     self$mu = nn_linear(num_hidden_dim, num_output_dim)
@@ -24,9 +24,9 @@ single_model = nn_module(
   },
 
   forward = function(x) {
-    x1 = self$linear_ensemble(x)
+    x1 = self$mlp(x)
     mu = self$mu(x1)
-    mu = torch_clamp(mu, min = 1e-6)
+    # mu = torch_clamp(mu, min = 1e-16, max = 1e16)
     sig = self$sigma(x1)
     sig = torch_clamp(sig, min = 1e-6)  # To avoid undefined behavior with log(0)
     # return a concatenated tensor
@@ -96,16 +96,16 @@ nn_ensemble = nn_module(
   initialize = function(model,
                         num_models = 5,
                         learning_rate = 0.001,
+                        weight_decay = 1e-5,
                         num_input_dim = 1,
                         num_output_dim = 1,
                         num_hidden_dim = 128,
                         num_hidden_layers = 3,
-                        adversarial = FALSE,
                         epsilon = NULL) {
     # print("Init")
     self$num_models = num_models
     self$learning_rate = learning_rate
-    self$adversarial = adversarial
+    self$weight_decay = weight_decay
     self$epsilon = epsilon
 
     # Initialize multiple models
@@ -118,7 +118,9 @@ nn_ensemble = nn_module(
     # self$model_list = model()
 
     # Initialize optimizers
-    opt_list = lapply(self$model_list, function(m) optim_adam(m$parameters, lr = self$learning_rate))
+    opt_list = lapply(self$model_list, function(m) optim_adam(m$parameters,
+                                                              lr = self$learning_rate,
+                                                              weight_decay = self$weight_decay))
     names(opt_list) = seq(1, self$num_models)
     # opt_list = optim_adam(self$model_list$parameters, lr = self$learning_rate)
     self$optimizers = opt_list
@@ -139,14 +141,26 @@ nn_ensemble = nn_module(
 
     # Compute the mean and variance of predictions
     # dim (2 i.e. mu + var, num samples, num parameters, num networks)
-    mean_prediction = torch_mean(predictions[1,,,], dim = 3)  # Mean of means
-    variance_prediction = torch_mean(predictions[2,,,], dim = 3)  # Mean of variances
+    mu = predictions[1,,,]
+    sigma = predictions[2,,,]
+    # mean_prediction = torch_mean(predictions[1,,,], dim = 3)  # Mean of means
+    # variance_prediction = torch_mean(predictions[2,,,], dim = 3)  # Mean of variances
+    mean_prediction = torch_mean(mu, dim = 3)  # Mean of means across networks
+    variance_prediction = torch_sqrt(torch_mean(sigma, dim = 3) +
+                                       torch_mean(torch_square(mu), dim = 3) -
+                                       torch_square(mean_prediction))
+
 
     # TODO Correct variance using ensemble variance formula
     # variance_prediction = torch_sqrt(variance_prediction +
     #                                    torch_mean(torch_square(predictions[, 1, ]), dim = 3) -
     #                                    torch_square(mean_prediction))
-    variance_prediction = torch_log(1 + torch_exp(variance_prediction)) + 1e-6
+    # variance_prediction = torch_log(1 + torch_exp(variance_prediction)) + 1e-6
+
+    # TODO Check and compare
+    # Get final test result
+    # out_mu_final = torch_mean(out_mu, dim = 1)
+    # out_sig_final = torch_sqrt(torch_mean(out_sig, dim = 1) + torch_mean(torch_square(out_mu), dim = 1) - torch_square(out_mu_final))
 
     return(list(mean = mean_prediction, variance = variance_prediction))
   },
@@ -163,12 +177,15 @@ nn_ensemble = nn_module(
     for (i in seq_along(self$model_list)) {
 
       if (ctx$training) {
-        input = ctx$input[i,]
-        target = ctx$target[i,]
+        input = ctx$input[,i,]
+        target = ctx$target[,i,]
       } else {
         input = ctx$input
         target = ctx$target
       }
+
+      # print(input)
+      # print(input$shape)
 
       opt_name = names(self$optimizers)[i]
       model = self$model_list[[i]]
@@ -183,7 +200,12 @@ nn_ensemble = nn_module(
         mean = preds[1]
         var = preds[2]
         # print("Loss for gradient sign")
+        # print(mean$shape)
+        # print(mean)
+        # print(preds$shape)
+
         loss_for_adv = self$adversarial_nll_loss(mean, target, var)
+        # print(loss_for_adv)
 
         # Gradient for Gaussian NLL loss
         grad = autograd_grad(loss_for_adv, input, retain_graph = FALSE)[[1]]
@@ -210,6 +232,7 @@ nn_ensemble = nn_module(
 
         # print("Adversarial loss")
         loss = self$adversarial_nll_loss(mean, batch_y, var) + self$adversarial_nll_loss(mean_adv, batch_y, var_adv)
+        # print(loss)
 
       } else {
         # Forward pass
@@ -236,15 +259,21 @@ nn_ensemble = nn_module(
   nll_loss = function(preds, target) {
     mu_train = preds[1]
     sig_train = preds[2]
-    sig_train_pos = torch_log(1 + torch_exp(sig_train)) + 1e-6
+
+    # !!! When sig_train is high (high variance in data), torch_exp returns Inf
+    # sig_train_pos = torch_log(1 + torch_exp(sig_train)) + 1e-6
+    # Returns the log of summed exponentials of each row of the input tensor in the given dimension dim.
+    # The computation is numerically stabilized.
+    sig_train_pos = torch_logsumexp(sig_train, 1, keepdim = TRUE) + 1e-6
+    # sig_train_pos = log1pexp(sig_train) + 1e-6
 
     loss = torch_mean(0.5 * torch_log(sig_train_pos) + 0.5 * (torch_square(target - mu_train)/sig_train_pos)) + 1
 
     if (is.nan(loss$item())) {
-      print(input)
+      print(mu_train)
       print(target)
-      print(var)
-      print(var_pos)
+      print(sig_train)
+      print(sig_train_pos)
       stop("Loss computation returned NaN. Check inputs!")
     }
     return(loss)
@@ -259,7 +288,10 @@ nn_ensemble = nn_module(
 
   # Adversarial loss
   adversarial_nll_loss = function(input, target, var) {
-    var_pos = torch_log(1 + torch_exp(var)) + 1e-6
+    # var_pos = torch_log(1 + torch_exp(var)) + 1e-6
+    var_pos = torch_logsumexp(var, 1, keepdim = TRUE) + 1e-6
+    # var_pos = log1pexp(var) + 1e-6
+
     loss = torch_mean(0.5 * torch_log(var_pos) + 0.5 * (torch_square(target - input)/var_pos)) + 1
 
     if (is.nan(loss$item())) {
