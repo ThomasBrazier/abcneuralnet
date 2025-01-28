@@ -78,7 +78,7 @@ nn_concrete_linear = nn_module(
     self$linear = nn_linear(n_dim_in, n_dim_out)
     self$conc_drop = nn_concrete_dropout(weight_regularizer=weight_regularizer,
                                          dropout_regularizer=dropout_regularizer)
-    self$relu = nn_relu()
+    self$relu = nn_leaky_relu()
   },
   forward = function(x) {
     x = self$conc_drop(x, nn_sequential(self$linear, self$relu))
@@ -123,9 +123,11 @@ concrete_model = nn_module(
                                                 dropout_regularizer=dropout_regularizer)
 
     # TODO
+    self$p = NA
     # self$p = data.frame() # Monitor dropout rates at each iteration
 
   },
+
   # this function is called whenever we call our model on input.
   forward = function(x) {
 
@@ -149,15 +151,16 @@ concrete_model = nn_module(
     self$regularization = torch_sum(regularization)
 
     # TODO Monitor dropout rates
-    # params = self$named_parameters()
-    # p_logit = params[grepl("p_logit", names(params))]
-    # p = lapply(p_logit, function(x) torch_sigmoid(x))
-    # p = unlist(lapply(p, function(x) as.numeric(x)))
-    # self$p = p
+    params = self$named_parameters()
+    p_logit = params[grepl("p_logit", names(params))]
+    p = lapply(p_logit, function(x) torch_sigmoid(x))
+    p = unlist(lapply(p, function(x) as.numeric(x)))
+    self$p = p
 
     # return a concatenated tensor
     torch_stack(list(mean, log_var), dim = 1)
   },
+
   # Heteroscedastic loss function
   loss = function(preds, target) {
     # preds = ctx$model(input)
@@ -170,7 +173,8 @@ concrete_model = nn_module(
     # precision = torch_logsumexp(-log_var, 1, keepdim = TRUE)
 
     # Must return a scalar - Do two times the sum when more than one parameter (sum of losses)
-    heteroscedastic_loss = torch_sum(torch_mean(torch_sum(precision * (target - mu)^2 + log_var, 1), 1))
+    # heteroscedastic_loss = torch_sum(torch_mean(torch_sum(precision * (target - mu)^2 + log_var, 1), 1))
+    heteroscedastic_loss = torch_mean(torch_sum(precision * (target - mu)^2 + log_var, 1), 1)
 
     return(heteroscedastic_loss)
   }

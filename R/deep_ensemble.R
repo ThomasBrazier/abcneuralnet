@@ -10,12 +10,13 @@ single_model = nn_module(
     self$num_hidden_dim = num_hidden_dim
 
     self$mlp = nn_sequential(nn_linear(num_input_dim, num_hidden_dim),
-                                  nn_relu())
+                             nn_leaky_relu())
 
     for (i in 2:num_hidden_layers) {
       self$mlp$add_module(paste0("hidden_layer", i), nn_linear(num_hidden_dim,
                                                                     num_hidden_dim))
-      self$mlp$add_module(paste0("relu", i), nn_relu())
+      # self$mlp$add_module(paste0("batch_norm", i), nn_batch_norm1d(num_hidden_dim))
+      self$mlp$add_module(paste0("relu", i), nn_leaky_relu())
     }
 
     self$mu = nn_linear(num_hidden_dim, num_output_dim)
@@ -28,7 +29,7 @@ single_model = nn_module(
     mu = self$mu(x1)
     # mu = torch_clamp(mu, min = 1e-16, max = 1e16)
     sig = self$sigma(x1)
-    sig = torch_clamp(sig, min = 1e-6)  # To avoid undefined behavior with log(0)
+    # sig = torch_clamp(sig, min = 1e-16)  # To avoid undefined behavior with log(0)
     # return a concatenated tensor
     torch_stack(list(mu, sig), dim = 1)
   }
@@ -180,6 +181,7 @@ nn_ensemble = nn_module(
         input = ctx$input[,i,]
         target = ctx$target[,i,]
       } else {
+        # Test/eval all networks on the same batch
         input = ctx$input
         target = ctx$target
       }
@@ -246,6 +248,8 @@ nn_ensemble = nn_module(
         optimizer$zero_grad()
         # Backpropagation
         loss$backward()
+        # Gradient clipping to avoid exploding gradients
+        # nn_utils_clip_grad_norm_(model$parameters, max_norm = 1, norm_type = 2)
         # Update parameters
         optimizer$step()
       }
@@ -264,16 +268,16 @@ nn_ensemble = nn_module(
     # sig_train_pos = torch_log(1 + torch_exp(sig_train)) + 1e-6
     # Returns the log of summed exponentials of each row of the input tensor in the given dimension dim.
     # The computation is numerically stabilized.
-    sig_train_pos = torch_logsumexp(sig_train, 1, keepdim = TRUE) + 1e-6
-    # sig_train_pos = log1pexp(sig_train) + 1e-6
+    # sig_train_pos = torch_logsumexp(sig_train, 1, keepdim = TRUE) + 1e-6
+    sig_train_pos = log1pexp(sig_train) + 1e-6
 
     loss = torch_mean(0.5 * torch_log(sig_train_pos) + 0.5 * (torch_square(target - mu_train)/sig_train_pos)) + 1
 
     if (is.nan(loss$item())) {
       print(mu_train)
       print(target)
-      print(sig_train)
-      print(sig_train_pos)
+      # print(sig_train)
+      # print(sig_train_pos)
       stop("Loss computation returned NaN. Check inputs!")
     }
     return(loss)
@@ -289,16 +293,16 @@ nn_ensemble = nn_module(
   # Adversarial loss
   adversarial_nll_loss = function(input, target, var) {
     # var_pos = torch_log(1 + torch_exp(var)) + 1e-6
-    var_pos = torch_logsumexp(var, 1, keepdim = TRUE) + 1e-6
-    # var_pos = log1pexp(var) + 1e-6
+    # var_pos = torch_logsumexp(var, 1, keepdim = TRUE) + 1e-6
+    var_pos = log1pexp(var) + 1e-6
 
     loss = torch_mean(0.5 * torch_log(var_pos) + 0.5 * (torch_square(target - input)/var_pos)) + 1
 
     if (is.nan(loss$item())) {
       print(input)
       print(target)
-      print(var)
-      print(var_pos)
+      # print(var)
+      # print(var_pos)
       stop("Loss computation returned NaN. Check inputs!")
     }
 

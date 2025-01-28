@@ -15,17 +15,321 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(abcneuralnet)
+# library(abcneuralnet)
 library(ggplot2)
 library(torch)
+library(keras3)
 ```
 
 
-## Principles of ABC inference
+## Principles of Bayesian Neural Network inference
+
+
+### Toy dataset - a simple linear regression problem
+
+
+```{r, echo = T}
+n_train = 2000 # Number of data points
+n_obs = 1000 # Validation size
+
+gen_data_1d = function(n) {
+  sigma = 1
+  X = matrix(rnorm(n))
+  w = 2
+  b = 8
+  Y = matrix(X %*% w + b + sigma * rnorm(n))
+  list(X, Y)
+}
+
+c(X, Y) %<-% gen_data_1d(n_train + n_obs)
+
+c(X_train, Y_train) %<-% list(X[1:n_train], Y[1:n_train])
+c(X_obs, Y_obs) %<-% list(X[(n_train + 1):(n_train + n_obs)], 
+                          Y[(n_train + 1):(n_train + n_obs)])
+
+
+# Predict Y when X is observed
+theta = data.frame(y1 = Y_train)
+sumstats = data.frame(x1 = X_train)
+observed = data.frame(X1 = X_obs)
+```
+
+### Fit a model with `abcnn`
+
+We use a Concrete Dropout regression model described in [ref]. See https://blogs.rstudio.com/ai/posts/2018-11-12-uncertainty_estimates_dropout/ for more details.
+
+
+```{r, echo = T}
+# Init an abcnn object with inputs and targets
+abc = abcnn$new(theta,
+            sumstats,
+            observed,
+            method = 'concrete dropout',
+            num_hidden_layers = 3,
+            num_hidden_dim = 256,
+            epochs = 30,
+            l2_weight_decay = 1e-5)
+
+
+# abc$summary()
+
+# Plot simulation distribution and observed data points
+# abc$plot_lda()
+```
+
+The `abcnn` object is a `R6Class` object.
+Modern implementation, OOP
+
+
+For example, the fitted model can be accessed with `abc$model`.
+
+
+The model is trained by calling `abc$fit()`.
+
+
+```{r, echo = T}
+# Use the fit() method to train the neural network
+abc$fit()
+```
+
+Don't worry, sometimes the loss can be negative. It is normal and does not impact the training procedure.
+
+Check model fit.
+
+```{r, echo = T}
+# Check the fit of the model
+as.numeric(unlist(abc$fitted$records$metrics$train))
+as.numeric(unlist(abc$fitted$records$metrics$valid))
+abc$eval_metrics
+
+# The dropout rate
+abc$dropout_rates # Not yet implemented
+```
 
 
 
-## Make a toy dataset
+Plot the training curve. The black horizontal line is the loss computed on the test dataset.
+
+
+```{r, echo = T}
+train_metric = as.numeric(unlist(abc$fitted$records$metrics$train))
+valid_metric = as.numeric(unlist(abc$fitted$records$metrics$valid))
+eval = abc$eval_metrics$value
+
+
+train_eval = data.frame(Epoch = rep(1:length(train_metric), 2),
+                        Metric = c(train_metric, valid_metric),
+                        Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+  geom_point() +
+  geom_line() +
+  xlab("Epoch") + ylab("Loss") +
+  geom_hline(yintercept = eval) +
+  theme_bw()
+```
+
+
+
+```{r, echo = T}
+abc$plot_training()
+```
+
+
+
+
+
+Save the `abccn` object with the fitted model.
+
+
+```{r, echo = T}
+save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
+
+abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
+```
+
+
+
+
+
+## Parameter inference from observed summary statistics
+
+
+After the model is trained, parameter estimates can be predicted with `abc$predict()`.
+
+
+
+```{r, echo = T}
+abc$predict()
+```
+
+
+Model predictions.
+
+```{r, echo = T}
+# Return a tidy data frame
+head(abc$predictions())
+```
+
+
+
+Predictions for the test dataset. Here I can plot the true Y value since we used a simulated observed dataset.
+
+
+```{r, echo = T}
+df_predicted = abc$predictions()
+
+df_predicted$ci_overall_upper = df_predicted$Predictive_mean + df_predicted$Overall_uncertainty
+df_predicted$ci_overall_lower = df_predicted$Predictive_mean - df_predicted$Overall_uncertainty
+
+df_predicted$ci_e_upper = df_predicted$Predictive_mean + df_predicted$Epistemic_uncertainty
+df_predicted$ci_e_lower = df_predicted$Predictive_mean - df_predicted$Epistemic_uncertainty
+
+df_predicted$ci_conformal_upper = df_predicted$Predictive_mean + df_predicted$Overall_conformal_credible_interval
+df_predicted$ci_conformal_lower = df_predicted$Predictive_mean - df_predicted$Overall_conformal_credible_interval
+
+df_predicted$ci_conformal_e_upper = df_predicted$Predictive_mean + df_predicted$Epistemic_conformal_credible_interval
+df_predicted$ci_conformal_e_lower = df_predicted$Predictive_mean - df_predicted$Epistemic_conformal_credible_interval
+
+df_predicted$x = X_obs
+df_predicted$y_true = Y_obs
+
+df_training = data.frame(x = X_train,
+                         y = Y_train)
+
+ggplot(data = df_training, aes(x = x, y = y)) +
+  geom_point(color = "blue", alpha = 0.3) +
+  # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
+  geom_line(data = df_predicted, aes(x = x, y = Predictive_mean), color = "Red") +
+  geom_point(data = df_predicted, aes(x = x, y = Predictive_mean), color = "Red") +
+  facet_wrap(~ Parameter, scales = "free") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = Predictive_mean, ymin = ci_conformal_e_upper, ymax = ci_conformal_e_lower), alpha = 0.4, fill = "purple") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = Predictive_mean, ymin = ci_conformal_upper, ymax = ci_conformal_lower), alpha = 0.3, fill = "green") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = Predictive_mean, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "red") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = Predictive_mean, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "red") +
+  theme_bw()
+```
+
+
+Alternatively you can use the `plot_predicted()` method.
+
+
+```{r, echo = T}
+# predicted (+ C.I.) ~ observed
+abc$plot_predicted(paired = TRUE, type = "uncertainty")
+
+abc$plot_predicted(paired = TRUE, type = "conformal")
+
+abc$plot_predicted(paired = TRUE, type = "posterior")
+```
+
+
+
+To focus on a single prediction, you can look at the distribution of approximate posterior estimates with predictive mean and credible intervals. Compared with prior distribution.
+
+
+```{r, echo = T}
+# Dim 1 is number of MC samples (predictions)
+# Dim 2 is number of observations
+# Dim 3 is parameters (mu + sigma)
+i = 500 # The sample to plot
+posteriors = abc$posterior_samples[,i,]
+# output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
+posteriors = as.data.frame(posteriors)
+posteriors = posteriors[,1:abc$output_dim]
+posteriors = as.data.frame(posteriors)
+colnames(posteriors) = colnames(abc$theta)
+posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
+
+tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(abc$theta)))
+# tidy_df
+
+
+
+tidy_predictions = abc$predictions()
+tidy_predictions = tidy_predictions[tidy_predictions$Sample == i,]
+
+tidy_predictions$ci_upper = tidy_predictions$Predictive_mean + tidy_predictions$Overall_uncertainty
+tidy_predictions$ci_lower = tidy_predictions$Predictive_mean - tidy_predictions$Overall_uncertainty
+
+tidy_predictions$ci_e_upper = tidy_predictions$Predictive_mean + tidy_predictions$Epistemic_uncertainty
+tidy_predictions$ci_e_lower = tidy_predictions$Predictive_mean - tidy_predictions$Epistemic_uncertainty
+
+tidy_predictions$ci_conformal_e_upper = tidy_predictions$Predictive_mean + tidy_predictions$Epistemic_conformal_credible_interval
+tidy_predictions$ci_conformal_e_lower = tidy_predictions$Predictive_mean - tidy_predictions$Epistemic_conformal_credible_interval
+
+tidy_predictions$ci_conformal_upper = tidy_predictions$Predictive_mean + tidy_predictions$Overall_conformal_credible_interval
+tidy_predictions$ci_conformal_lower = tidy_predictions$Predictive_mean - tidy_predictions$Overall_conformal_credible_interval
+
+# abc$theta
+tidy_priors = data.frame(param = rep(colnames(abc$theta), each = nrow(abc$theta)),
+                         prior = as.numeric(unlist(abc$theta)))
+# tidy_priors
+
+pal = RColorBrewer::brewer.pal(8, "Dark2")
+
+cols = c("Epistemic"=pal[1],"Overall"=pal[2], "Epistemic conformal"=pal[3], "Overall conformal"=pal[4])
+
+ggplot() +
+  geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1) +
+  geom_histogram(data = tidy_df, aes(x = prediction)) +
+  geom_vline(data = tidy_predictions, aes(xintercept = Predictive_mean, colour = "Epistemic")) +
+  geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_lower, colour = "Overall conformal")) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_upper, colour = "Overall conformal")) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_e_lower, colour = "Epistemic conformal")) +
+  geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_e_upper, colour = "Epistemic conformal")) +
+  geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.1) +
+  geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_lower, xmax = ci_conformal_upper, ymin = -Inf, ymax = Inf, colour = "Overall conformal", fill = "Overall conformal"), alpha = 0.1) +
+  geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_e_lower, xmax = ci_conformal_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic conformal", fill = "Epistemic conformal"), alpha = 0.1) +
+  facet_wrap(~ Parameter, scales = "free") +
+  scale_colour_manual(name = "Uncertainty", values = cols) +
+  scale_fill_manual(name = "Uncertainty", values = cols) +
+  xlab("Value") + ylab("Count") +
+  theme_bw() +
+  theme(legend.position = "right")
+```
+
+
+Try to compare a prediction within the training data with a prediction out of prior distribution. See the effect of random noise or out of distribution on uncertainty.
+
+
+```{r, echo = T}
+# Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
+# which(abc$observed$X1 < 2 & abc$observed > -2)
+abc$plot_posterior(sample = 501, prior = TRUE) +
+  geom_vline(xintercept = Y_obs[501], color = "red", size = 1.5)
+Y_obs[501]
+abc$predictive_mean$y1[501]
+
+# Print a sample out of distribution
+# which(abc$observed$X1 > 7)
+abc$plot_posterior(sample = 735, prior = TRUE) +
+  geom_vline(xintercept = Y_obs[735], color = "red", size = 1.5)
+Y_obs[735]
+abc$predictive_mean$y1[735]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Deep Ensemble prediction
+
+
+### A more complex relationship (sinus and cosinus functions)
 
 Two parameters to estimate.
 
@@ -125,271 +429,26 @@ ggpubr::ggarrange(p1, p2, ncol = 2)
 
 
 
-## Fit a model with `abcnn`
 
-We use a Concrete Dropout regression model described in [ref].
-
-```{r, echo = T}
-# Predict Y when X is observed
-theta = train_y
-sumstats = train_x
-observed = observed_x
-
-# Init an abcnn object with inputs and targets
-abc = abcnn$new(theta,
-            sumstats,
-            observed,
-            method = 'concrete dropout',
-            num_hidden_layers = 3,
-            num_hidden_dim = 256,
-            epochs = 10)
-
-
-# abc$summary()
-
-# Plot simulation distribution and observed data points
-# abc$plot_lda()
-```
-
-The `abcnn` object is a `R6Class` object.
-Modern implementation, OOP
-
-
-For example, the fitted model can be accessed with `abc$model`.
-
-
-The model is trained by calling `abc$fit()`.
-
-
-```{r, echo = T}
-# Use the fit() method to train the neural network
-abc$fit()
-```
-
-Don't worry, sometimes the loss can be negative. It is normal and does not impact the training procedure.
-
-Check model fit.
-
-```{r, echo = T}
-# Check the fit of the model
-as.numeric(unlist(abc$fitted$records$metrics$train))
-as.numeric(unlist(abc$fitted$records$metrics$valid))
-abc$eval_metrics
-```
-
-
-
-Plot the training curve. The black horizontal line is the loss computed on the test dataset.
-
-
-```{r, echo = T}
-train_metric = as.numeric(unlist(abc$fitted$records$metrics$train))
-valid_metric = as.numeric(unlist(abc$fitted$records$metrics$valid))
-eval = abc$eval_metrics$value
-
-
-train_eval = data.frame(Epoch = rep(1:length(train_metric), 2),
-                        Metric = c(train_metric, valid_metric),
-                        Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
-
-ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
-  geom_point() +
-  geom_line() +
-  xlab("Epoch") + ylab("Loss") +
-  geom_hline(yintercept = eval) +
-  theme_bw()
-```
-
-
-
-```{r, echo = T}
-abc$plot_training()
-```
-
-
-
-
-
-Save the `abccn` object with the fitted model.
-
-
-```{r, echo = T}
-save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
-
-abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
-```
-
-
-
-
-
-## Parameter inference from observed summary statistics
-
-
-After the model is trained, parameter estimates can be predicted with `abc$predict()`.
-
-
-
-```{r, echo = T}
-abc$predict()
-```
-
-
-Model predictions.
-
-Predictions for the test dataset. Here I can plot the true Y value since we used a simulated observed dataset.
-
-
-```{r, echo = T}
-df_predicted = data.frame(param = rep(colnames(theta), each = nrow(abc$observed)),
-                          x = as.numeric(unlist(abc$observed)),
-                          y_true = as.numeric(unlist(observed_y)),
-                          mean = as.numeric(unlist(abc$predictive_mean)),
-                          ci_overall_upper = as.numeric(unlist(abc$CI_overall_upper)),
-                          ci_overall_lower = as.numeric(unlist(abc$CI_overall_lower)),
-                          ci_e_upper = as.numeric(unlist(abc$CI_epistemic_upper)),
-                          ci_e_lower = as.numeric(unlist(abc$CI_epistemic_lower)))
-
-
-ggplot(data = df_predicted, aes(x = x, y = y_true)) +
-  geom_line() +
-  geom_line(aes(x = x, y = mean), color = "Red") +
-  facet_wrap(~ param, scales = "free") +
-  geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "red") +
-  geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "red") +
-  theme_bw()
-```
-
-
-
-
-```{r, echo = F}
-# Plot the simulated data
-df_predicted_x1= df_predicted[which(df_predicted$param == "y1"),]
-df_predicted_x2 = df_predicted[which(df_predicted$param == "y2"),]
-
-p1 = ggplot(data = df_train, aes(x = x1, y = y1)) +
-  geom_point(color = "Blue", alpha = 0.2) +
-  geom_line(data = df_test, aes(x = x1, y = y1), color = "black") +
-  geom_line(data = df_predicted_x1, aes(x = x, y = mean), color = "red") +
-  geom_ribbon(data = df_predicted_x1, aes(x = x, y = mean, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "red") +
-  geom_ribbon(data = df_predicted_x1, aes(x = x, y = mean, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "red") +
-  theme_bw()
-
-p2 = ggplot(data = df_train, aes(x = x2, y = y2)) +
-  geom_point(color = "Green", alpha = 0.2) +
-  geom_line(data = df_test, aes(x = x2, y = y2), color = "black") +
-  geom_line(data = df_predicted_x2, aes(x = x, y = mean), color = "red") +
-  geom_ribbon(data = df_predicted_x2, aes(x = x, y = mean, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "red") +
-  geom_ribbon(data = df_predicted_x2, aes(x = x, y = mean, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "red") +
-  theme_bw()
-
-ggpubr::ggarrange(p1, p2, ncol = 2)
-```
-
-
-
-
-Alternatively you can use the `plot_predicted()` method.
-
-
-```{r, echo = T}
-# predicted (+ C.I.) ~ observed
-abc$plot_predicted()
-```
-
-
-
-To focus on a single prediction, you can look at the distribution of approximate posterior estimates with predictive mean and credible intervals. Compared with prior distribution.
-
-
-```{r, echo = T}
-# Dim 1 is number of MC samples (predictions)
-# Dim 2 is number of observations
-# Dim 3 is parameters (mu + sigma)
-i = 1 # The sample to plot
-posteriors = abc$posterior_samples[,i,]
-# output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
-posteriors = as.data.frame(posteriors)
-posteriors = posteriors[,1:abc$output_dim]
-colnames(posteriors) = colnames(abc$theta)
-posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
-
-tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(abc$theta)))
-# tidy_df
-
-tidy_predictions = data.frame(param = colnames(abc$theta),
-                              mean = as.numeric(abc$predictive_mean[i,]),
-                              ci_lower = as.numeric(abc$CI_overall_lower[i,]),
-                              ci_upper = as.numeric(abc$CI_overall_upper[i,]),
-                              ci_e_lower = as.numeric(abc$CI_epistemic_lower[i,]),
-                              ci_e_upper = as.numeric(abc$CI_epistemic_upper[i,]))
-# tidy_predictions
-
-
-# abc$theta
-tidy_priors = data.frame(param = rep(colnames(abc$theta), each = nrow(abc$theta)),
-                         prior = as.numeric(unlist(abc$theta)))
-# tidy_priors
-
-cols = c("Epistemic"="#D55E00","Overall"="#0072B2")
-
-ggplot() +
-  geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1) +
-  geom_histogram(data = tidy_df, aes(x = prediction)) +
-  geom_vline(data = tidy_predictions, aes(xintercept = mean, colour = "Epistemic")) +
-  geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epitstemic", fill = "Epistemic"), alpha = 0.2) +
-  geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
-  geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
-  geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
-  geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
-  geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.2) +
-  facet_wrap(~ param, scales = "free") +
-  scale_colour_manual(name = "Uncertainty", values = cols) +
-  scale_fill_manual(name = "Uncertainty", values = cols) +
-  xlab("Value") + ylab("Count") +
-  theme_bw() +
-  theme(legend.position = "right")
-```
-
-
-Try to compare a prediction within the training data with a prediction out of prior distribution. See the effect of random noise or out of distribution on uncertainty.
-
-
-```{r, echo = T}
-# Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
-# which(abc$observed < -4 & abc$observed > -5)
-abc$plot_posterior(sample = 155, prior = TRUE)
-
-# Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
-# which(abc$observed < 5 & abc$observed > 4)
-abc$plot_posterior(sample = 800, prior = TRUE)
-
-# Print a sample with -1 < x1 < 1 (out of training distribution)
-# which(abc$observed < 1 & abc$observed > -1)
-abc$plot_posterior(sample = 520, prior = TRUE)
-```
-
-
-
-## Deep Ensemble prediction
-
+### Fit a Deep Ensemble network
 
 Train five networks with the Deep Ensemble algorithm and adversarial training.
 
+Try with a single parameter to estimate first.
+
 
 ```{r, echo = T}
 # Predict Y when X is observed
-theta = train_y
-sumstats = train_x
-observed = observed_x
+theta = data.frame(y = train_y$y1)
+sumstats = data.frame(x = train_x$x1)
+observed = data.frame(x = observed_x$x1)
 
 abc_ensemble = abcnn$new(theta,
             sumstats,
             observed,
             method = 'deep ensemble',
             num_networks = 5,
-            epochs = 100,
+            epochs = 30,
             num_hidden_layers = 3,
             num_hidden_dim = 500,
             batch_size = 256,
@@ -422,27 +481,10 @@ abc_ensemble$plot_training()
 ````{r, echo = T}
 abc_ensemble$predict()
 
-abc_ensemble$plot_predicted()
+abc_ensemble$plot_predicted(paired = TRUE) +
+  geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
 ```
 
-
-```{r, echo = F}
-# Plot the simulated data
-df_predicted_x1= df_predicted[which(df_predicted$param == "y1"),]
-df_predicted_x2 = df_predicted[which(df_predicted$param == "y2"),]
-
-p1 = ggplot(data = df_train, aes(x = x1, y = y1)) +
-  geom_point(color = "Blue", alpha = 0.2) +
-  geom_line(data = df_test, aes(x = x1, y = y1), color = "black") +
-  theme_bw()
-
-p2 = ggplot(data = df_train, aes(x = x2, y = y2)) +
-  geom_point(color = "Green", alpha = 0.2) +
-  geom_line(data = df_test, aes(x = x2, y = y2), color = "black") +
-  theme_bw()
-
-ggpubr::ggarrange(p1, p2, ncol = 2)
-```
 
 
 For Deep Ensemble, there are no posterior samples to plot with the `plot_posterior` method as in Monte Carlo dropout or Concrete Dropout. But it is still interesting to check a single prediction with its uncertainty within or without training distribution.
@@ -463,8 +505,80 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 
 
+### Multi parameter inference
 
-## Apply ABC Neural Networks to infer population genetics parameters
+And for two parameters jointly estimated?
+
+
+
+```{r, echo = T}
+# Predict Y when X is observed
+theta = train_y
+sumstats = train_x
+observed = observed_x
+
+abc_ensemble = abcnn$new(theta,
+            sumstats,
+            observed,
+            method = 'deep ensemble',
+            num_networks = 5,
+            epochs = 30,
+            num_hidden_layers = 3,
+            num_hidden_dim = 500,
+            batch_size = 256,
+            epsilon_adversarial = 0.01)
+
+# The perturbation on input
+abc_ensemble$epsilon_adversarial * 2 * abc_ensemble$sumstat_sd
+
+abc_ensemble$fit()
+```
+
+
+
+```{r, echo = T}
+save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble_2param")
+
+abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble_2param")
+```
+
+
+
+
+```{r, echo = T}
+abc_ensemble$plot_training()
+```
+
+
+
+
+````{r, echo = T}
+abc_ensemble$predict()
+
+abc_ensemble$plot_predicted(paired = TRUE)
+```
+
+
+
+
+```{r, echo = T}
+# Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
+# which(abc$observed < -4 & abc$observed > -5)
+abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
+
+# Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
+# which(abc$observed < 5 & abc$observed > 4)
+abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
+
+# Print a sample with -1 < x1 < 1 (out of training distribution)
+# which(abc$observed < 1 & abc$observed > -1)
+abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
+```
+
+
+
+
+## Combine ABC and Bayesian Neural Networks to estimate population genetics parameters
 
 Simulations with `msprime`.
 
@@ -473,8 +587,8 @@ Reference table (simulations summary stats) and priors.
 
 ```{r, echo = T}
 # Import the reference table and other data
-sumstats = read.table("../inst/extdata/reference_table.csv",
-                             sep = "\t", header = T, row.names = NULL)
+sumstats = read.table("../inst/extdata/reference_table_full.csv",
+                             sep = ",", header = T, row.names = NULL)
 
 ncol(sumstats)
 colnames(sumstats)
@@ -483,7 +597,7 @@ row.names(sumstats) = sumstats$sample
 sumstats = sumstats[,-1]
 colnames(sumstats)[1]
 
-theta_sim = read.table("../inst/extdata/theta_simulations.csv",
+theta_sim = read.table("../inst/extdata/theta_simulations_full.csv",
                     sep = "\t", header = T, fill = TRUE)
 head(theta_sim)
 row.names(theta_sim) = theta_sim$sample
@@ -558,27 +672,25 @@ abc_popgen$predictive_mean[100,]
 theta_observed[100,]
 
 # Plot the best estimate (lower C.I)
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.min(abc_popgen$epistemic_uncertainty[,2]),])))
-abc_popgen$plot_posterior(which.min(abc_popgen$epistemic_uncertainty[,2])) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+idx = which.min(abc_popgen$epistemic_uncertainty[,2])
+idx
+true_theta = data.frame(Parameter = colnames(theta_observed),
+                        Value = unlist(c(theta_observed[idx,])))
+true_theta
 
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.min(abc_popgen$aleatoric_uncertainty[,2]),])))
-abc_popgen$plot_posterior(which.min(abc_popgen$aleatoric_uncertainty[,2])) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+abc_popgen$plot_posterior(idx) +
+  geom_vline(data = true_theta, aes(xintercept = Value), color = "red")
 
 
 # Plot the worst estimate (larger C.I.)
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.max(abc_popgen$epistemic_uncertainty[,2]),])))
-abc_popgen$plot_posterior(which.max(abc_popgen$epistemic_uncertainty[,2])) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+idx = which.max(abc_popgen$epistemic_uncertainty[,2])
+idx
+true_theta = data.frame(Parameter = colnames(theta_observed),
+                        Value = unlist(c(theta_observed[idx,])))
+true_theta
 
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.max(abc_popgen$aleatoric_uncertainty[,2]),])))
-abc_popgen$plot_posterior(which.max(abc_popgen$aleatoric_uncertainty[,2])) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+abc_popgen$plot_posterior(idx) +
+  geom_vline(data = true_theta, aes(xintercept = Value), color = "red")
 ```
 
 
@@ -596,10 +708,11 @@ abc_popgen = abcnn$new(theta_training,
             scale = TRUE,
             learning_rate = 0.0001,
             num_hidden_layers = 3,
-            num_hidden_dim = 256,
+            num_hidden_dim = 512,
             batch_size = 390,
-            epochs = 3,
+            epochs = 30,
             epsilon_adversarial = 0.01)
+
 
 abc_popgen$fit()
 
@@ -625,30 +738,31 @@ abc_popgen$plot_predicted()
 ```{r, echo = T}
 abc_popgen$plot_posterior(100)
 
-abc_popgen$predictive_mean[100,]
-theta_observed[100,]
+abc_popgen$predictive_mean[1:10,]
+theta_observed[1:10,]
+
+idx = 100
+true_theta = data.frame(param = colnames(theta_observed),
+                        value = unlist(c(theta_observed[idx,])))
+
+abc_popgen$plot_posterior(idx) +
+  geom_vline(data = true_theta, aes(xintercept = value))
+
 
 # Plot the best estimate (lower C.I)
+idx = which.min(as.numeric(abc_popgen$epistemic_uncertainty[,1]))
 true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.min(as.numeric(abc_popgen$epistemic_uncertainty[,2])),])))
-abc_popgen$plot_posterior(which.min(as.numeric(abc_popgen$epistemic_uncertainty[,2]))) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+                        value = unlist(c(theta_observed[idx,])))
 
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.min(as.numeric(abc_popgen$aleatoric_uncertainty[,2])),])))
-abc_popgen$plot_posterior(which.min(as.numeric(abc_popgen$aleatoric_uncertainty[,2]))) +
+abc_popgen$plot_posterior(idx) +
   geom_vline(data = true_theta, aes(xintercept = value))
-
 
 # Plot the worst estimate (larger C.I.)
+idx = which.max(as.numeric(abc_popgen$epistemic_uncertainty[,1]))
 true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.max(abc_popgen$epistemic_uncertainty[,2]),])))
-abc_popgen$plot_posterior(which.max(abc_popgen$epistemic_uncertainty[,2])) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+                        value = unlist(c(theta_observed[idx,])))
 
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[which.max(abc_popgen$aleatoric_uncertainty[,2]),])))
-abc_popgen$plot_posterior(which.max(abc_popgen$aleatoric_uncertainty[,2])) +
+abc_popgen$plot_posterior(idx) +
   geom_vline(data = true_theta, aes(xintercept = value))
 ```
 

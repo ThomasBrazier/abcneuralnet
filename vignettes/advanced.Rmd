@@ -28,3 +28,8 @@ Loss functions
 
 
 ## Build a custom model
+
+
+Build a CNN model with Monte Carlo Dropout.
+
+
