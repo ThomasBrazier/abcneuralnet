@@ -220,7 +220,7 @@ abc$plot_predicted(paired = TRUE, type = "uncertainty")
 
 abc$plot_predicted(paired = TRUE, type = "conformal")
 
-abc$plot_predicted(paired = TRUE, type = "posterior")
+abc$plot_predicted(paired = TRUE, type = "posterior quantile")
 ```
 
 
@@ -338,7 +338,7 @@ Simulate two different functions (sin and cos), with missing data (gaps) and dif
 ```{r, echo = T}
 # Parameters of simulated input x
 data_range = 7
-data_step = 0.001
+data_step = 0.0005
 
 # Boundaries of the gap in the data range
 bound1 = -2
@@ -481,7 +481,7 @@ abc_ensemble$plot_training()
 ````{r, echo = T}
 abc_ensemble$predict()
 
-abc_ensemble$plot_predicted(paired = TRUE) +
+abc_ensemble$plot_predicted(paired = TRUE, type = "conformal") +
   geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
 ```
 

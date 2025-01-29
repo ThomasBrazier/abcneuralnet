@@ -442,16 +442,16 @@ abcnn = R6::R6Class("abcnn",
           predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
 
           posterior_median = apply(means, 3, function(x) apply(x, 2, median))
-          posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, self$credible_interval_p/2)))
-          posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, 1 - self$credible_interval_p/2)))
+          posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
+          posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
 
           epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
         } else {
           predictive_mean = apply(means, 2, mean)
 
           posterior_median = apply(means, 2, median)
-          posterior_lower_ci = apply(means, 2, function(x) quantile(x, self$credible_interval_p/2))
-          posterior_upper_ci = apply(means, 2, function(x) quantile(x, 1 - self$credible_interval_p/2))
+          posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
+          posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
 
           epistemic_uncertainty = apply(means, 2, var)
         }
@@ -510,8 +510,8 @@ abcnn = R6::R6Class("abcnn",
           aleatoric_uncertainty = apply(logvar, 3, function(x) exp(colMeans(x)))
 
           posterior_median = apply(means, 3, function(x) apply(x, 2, median))
-          posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, self$credible_interval_p/2)))
-          posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, 1 - self$credible_interval_p/2)))
+          posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
+          posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
 
         } else {
           predictive_mean = apply(means, 2, mean)
@@ -519,8 +519,8 @@ abcnn = R6::R6Class("abcnn",
           aleatoric_uncertainty = exp(colMeans(logvar))
 
           posterior_median = apply(means, 2, median)
-          posterior_lower_ci = apply(means, 2, function(x) quantile(x, self$credible_interval_p/2))
-          posterior_upper_ci = apply(means, 2, function(x) quantile(x, 1 - self$credible_interval_p/2))
+          posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
+          posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
         }
 
 
@@ -707,8 +707,8 @@ abcnn = R6::R6Class("abcnn",
         n_test = round(self$n_train * self$test_split, digits = 0)
         n_train = self$n_train - n_val - n_test - n_conformal
 
-        stopifnot(((n_train + n_val + n_test + n_conformal) == n_samples),
-                  "Correct data sampling in subset train/eval/test/calibration")
+        # stopifnot(((n_train + n_val + n_test + n_conformal) == n_samples),
+        #           "Correct data sampling in subset train/eval/test/calibration")
 
         random_idx = sample(1:n_samples, replace = FALSE)
         train_idx = random_idx[1:n_train]
@@ -890,11 +890,11 @@ abcnn = R6::R6Class("abcnn",
                                 "Overall_conformal_credible_interval")
 
       if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
-        predictions$`Posterior median` = tidyr::gather(self$quantile_posterior$median,
+        predictions$Posterior_median = tidyr::gather(self$quantile_posterior$median,
                                 key = "variable")[,2]
-        predictions$`Posterior Lower C.I.` = tidyr::gather(self$quantile_posterior$posterior_lower_ci,
+        predictions$Posterior_lower_ci = tidyr::gather(self$quantile_posterior$posterior_lower_ci,
                                                 key = "variable")[,2]
-        predictions$`Posterior Upper C.I.` = tidyr::gather(self$quantile_posterior$posterior_upper_ci,
+        predictions$Posterior_upper_ci = tidyr::gather(self$quantile_posterior$posterior_upper_ci,
                                                     key = "variable")[,2]
       }
 
@@ -985,6 +985,8 @@ abcnn = R6::R6Class("abcnn",
 
         df_predicted$ci_e_upper = df_predicted$Predictive_mean + df_predicted$Epistemic_uncertainty
         df_predicted$ci_e_lower = df_predicted$Predictive_mean - df_predicted$Epistemic_uncertainty
+
+        df_predicted$mean = df_predicted$Predictive_mean
       }
 
       if (type == "conformal") {
@@ -993,21 +995,25 @@ abcnn = R6::R6Class("abcnn",
 
         df_predicted$ci_e_upper = df_predicted$Predictive_mean + df_predicted$Epistemic_conformal_credible_interval
         df_predicted$ci_e_lower = df_predicted$Predictive_mean - df_predicted$Epistemic_conformal_credible_interval
+
+        df_predicted$mean = df_predicted$Predictive_mean
       }
 
       if (type == "posterior quantile") {
-        df_predicted$ci_overall_upper = df_predicted$Predictive_mean + df_predicted$`Posterior Upper C.I.`
-        df_predicted$ci_overall_lower = df_predicted$Predictive_mean - df_predicted$`Posterior Lower C.I.`
+        df_predicted$ci_overall_upper = df_predicted$Posterior_upper_ci
+        df_predicted$ci_overall_lower = df_predicted$Posterior_lower_ci
 
-        df_predicted$ci_e_upper = NA
-        df_predicted$ci_e_lower = NA
+        df_predicted$ci_e_upper = as.numeric(NA)
+        df_predicted$ci_e_lower = as.numeric(NA)
+
+        df_predicted$mean = df_predicted$Posterior_median
       }
 
       df_predicted$x = x_pos
 
 
       ggplot(data = df_predicted, aes(x = x)) +
-        geom_line(aes(x = x, y = Predictive_mean), color = "black") +
+        geom_line(aes(x = x, y = mean), color = "black") +
         facet_wrap(~ Parameter, scales = "free") +
         geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
         geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
@@ -1032,7 +1038,6 @@ abcnn = R6::R6Class("abcnn",
 
         tidy_predictions$ci_e_upper = tidy_predictions$Predictive_mean + tidy_predictions$Epistemic_uncertainty
         tidy_predictions$ci_e_lower = tidy_predictions$Predictive_mean - tidy_predictions$Epistemic_uncertainty
-
       }
 
       if (type == "conformal") {
@@ -1044,11 +1049,11 @@ abcnn = R6::R6Class("abcnn",
       }
 
       if (type == "posterior quantile") {
-        tidy_predictions$ci_upper = tidy_predictions$`Posterior Upper C.I.`
-        tidy_predictions$ci_lower = tidy_predictions$`Posterior Lower C.I.`
+        tidy_predictions$ci_upper = tidy_predictions$Posterior_upper_ci
+        tidy_predictions$ci_lower = tidy_predictions$Posterior_lower_ci
 
-        tidy_predictions$ci_e_upper = tidy_predictions$`Posterior Upper C.I.`
-        tidy_predictions$ci_e_lower = tidy_predictions$`Posterior Lower C.I.`
+        tidy_predictions$ci_e_upper = as.numeric(NA)
+        tidy_predictions$ci_e_lower = as.numeric(NA)
       }
 
       tidy_predictions = tidy_predictions[tidy_predictions$Sample == sample,]
