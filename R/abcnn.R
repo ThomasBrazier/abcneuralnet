@@ -464,6 +464,10 @@ abcnn = R6::R6Class("abcnn",
         colnames(epistemic_uncertainty) = colnames(self$theta)
         self$epistemic_uncertainty = epistemic_uncertainty
 
+        aleatoric_uncertainty = as.data.frame(array(NA, dim = c(observed$shape[1], self$output_dim)))
+        colnames(aleatoric_uncertainty) = colnames(self$theta)
+        self$aleatoric_uncertainty = aleatoric_uncertainty
+
         self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
 
         posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
@@ -666,8 +670,8 @@ abcnn = R6::R6Class("abcnn",
           self$calibration_sumstat = conformal_sumstat
         }
 
-        sumstat_tensor = torch_tensor(as.matrix(sumstat))
-        theta_tensor = torch_tensor(as.matrix(theta))
+        sumstat_tensor = torch_tensor(as.matrix(sumstat), dtype = torch_float())
+        theta_tensor = torch_tensor(as.matrix(theta), dtype = torch_float())
         # sumstat_tensor = sumstat_tensor$unsqueeze(length(dim(sumstat_tensor)) + 1)
         # theta_tensor = theta_tensor$unsqueeze(length(dim(theta_tensor)) + 1)
 
@@ -798,7 +802,7 @@ abcnn = R6::R6Class("abcnn",
 
       # Compute the calibration score sj using the score function
       # a) Epistemic uncertainty
-      scores_epistemic = matrix(nrow = nrow(calibration_set), ncol = ncol(calibration_set))
+      scores_epistemic = matrix(nrow = nrow(calibration_truth), ncol = ncol(calibration_truth))
 
       for (i in 1:n_cal) {
         true = as.matrix(calibration_truth[i,,drop=F])
@@ -810,7 +814,7 @@ abcnn = R6::R6Class("abcnn",
       }
 
       # b) Overall uncertainty
-      scores_overall = matrix(nrow = nrow(calibration_set), ncol = ncol(calibration_set))
+      scores_overall = matrix(nrow = nrow(calibration_truth), ncol = ncol(calibration_truth))
 
       for (i in 1:n_cal) {
         true = as.matrix(calibration_truth[i,,drop=F])
@@ -824,11 +828,11 @@ abcnn = R6::R6Class("abcnn",
       # For the new data sample x, approximation of Eπ[θ | x] and confidence set for θ :
       alpha = self$credible_interval_p
 
-      epistemic_conformal_quantile = apply(scores_epistemic, 2, function(x) quantile(x, 1 - ((n_cal + 1)*(1 - alpha))/n_cal))
+      epistemic_conformal_quantile = apply(scores_epistemic, 2, function(x) quantile(x, 1 - ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
       epistemic_conformal_quantile = as.data.frame(t(epistemic_conformal_quantile))
       colnames(epistemic_conformal_quantile) = abcnn_conformal$theta_names
 
-      overall_conformal_quantile = apply(scores_overall, 2, function(x) quantile(x, 1 - ((n_cal + 1)*(1 - alpha))/n_cal))
+      overall_conformal_quantile = apply(scores_overall, 2, function(x) quantile(x, 1 - ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
       overall_conformal_quantile = as.data.frame(t(overall_conformal_quantile))
       colnames(overall_conformal_quantile) = abcnn_conformal$theta_names
 
@@ -915,11 +919,6 @@ abcnn = R6::R6Class("abcnn",
       cat("Device is: ")
       print(self$device)
       cat("\n")
-
-    },
-
-    # Plot LDA projection of simulations with the observed points
-    plot_lda = function() {
 
     },
 

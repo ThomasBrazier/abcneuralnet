@@ -589,9 +589,11 @@ Reference table (simulations summary stats) and priors.
 # Import the reference table and other data
 sumstats = read.table("../inst/extdata/reference_table.csv",
                              sep = "\t", header = T, row.names = NULL)
-
+# sumstats = read.table("../inst/extdata/reference_table_full.csv",
+#                              sep = ",", header = T, row.names = NULL)
 ncol(sumstats)
 colnames(sumstats)
+
 
 row.names(sumstats) = sumstats$sample
 sumstats = sumstats[,-1]
@@ -599,6 +601,8 @@ colnames(sumstats)[1]
 
 theta_sim = read.table("../inst/extdata/theta_simulations.csv",
                     sep = "\t", header = T, fill = TRUE)
+# theta_sim = read.table("../inst/extdata/theta_simulations_full.csv",
+#                     sep = "\t", header = T, fill = TRUE)
 head(theta_sim)
 row.names(theta_sim) = theta_sim$sample
 theta_sim = theta_sim[,-1]
@@ -646,6 +650,7 @@ corrplot(res, type = "upper", order = "hclust",
 Test one sample with `abc`.
 
 ```{r, echo = T}
+library(abc)
 res = abc(sumstats_observed[1,], theta_training["t2"], sumstats_training, tol = 0.01, method = "loclinear")
 
 summary(res)
@@ -661,16 +666,18 @@ Train with full data.
 abc_popgen = abcnn$new(theta_training,
             sumstats_training,
             sumstats_observed,
-            method = 'monte carlo dropout',
+            method = 'concrete dropout',
             num_hidden_layers = 3,
             num_hidden_dim = 1024,
-            epochs = 30,
-            early_stopping = TRUE,
-            patience = 2,
+            epochs = 20,
+            early_stopping = FALSE,
             scale = TRUE)
 
 abc_popgen$fit()
+```
 
+
+```{r, echo = T}
 abc_popgen$plot_training()
 
 # With Concrete dropout, the first training loss can be huge compared to subsequent steps
@@ -681,8 +688,13 @@ abc_popgen$plot_training(discard_first = TRUE)
 
 ```{r, echo = T}
 abc_popgen$predict()
+```
 
+
+```{r, echo = T}
 abc_popgen$plot_predicted(type = "uncertainty")
+abc_popgen$plot_predicted(type = "conformal")
+abc_popgen$plot_predicted(type = "posterior quantile")
 ```
 
 
@@ -695,7 +707,7 @@ abc_popgen = load_abcnn(prefix = "../inst/extdata/abc_popgen")
 
 
 ```{r, echo = T}
-abc_popgen$plot_posterior(100, type = "uncertainty")
+abc_popgen$plot_posterior(100)
 
 abc_popgen$predictive_mean[100,]
 theta_observed[100,]
@@ -707,7 +719,7 @@ true_theta = data.frame(Parameter = colnames(theta_observed),
                         Value = unlist(c(theta_observed[idx,])))
 true_theta
 
-abc_popgen$plot_posterior(idx, type = "uncertainty") +
+abc_popgen$plot_posterior(idx) +
   geom_vline(data = true_theta, aes(xintercept = Value), color = "red")
 
 # Plot the worst estimate (larger C.I.)
@@ -717,7 +729,7 @@ true_theta = data.frame(Parameter = colnames(theta_observed),
                         Value = unlist(c(theta_observed[idx,])))
 true_theta
 
-abc_popgen$plot_posterior(idx, type = "uncertainty") +
+abc_popgen$plot_posterior(idx) +
   geom_vline(data = true_theta, aes(xintercept = Value), color = "red")
 ```
 
