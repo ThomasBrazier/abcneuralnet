@@ -95,13 +95,13 @@ concrete_model = nn_module(
                         num_hidden_dim = 1024,
                         num_output_dim = 1,
                         num_hidden_layers = 3,
-                        weight_regularizer=1e-6,
-                        dropout_regularizer=1e-5,
-                        dropout_input = 0) {
+                        weight_regularizer = 1e-6,
+                        dropout_regularizer = 1e-5,
+                        clamp = c(-1e25, 1e25)) {
 
     self$num_hidden_layers = num_hidden_layers
 
-    self$concrete_dropout = nn_sequential(nn_dropout(dropout_input))
+    self$concrete_dropout = nn_sequential()
 
     self$concrete_dropout$add_module("conc_drop1", nn_concrete_linear(num_input_dim,
                                                                       num_hidden_dim,
@@ -122,6 +122,7 @@ concrete_model = nn_module(
     self$conc_drop_logvar = nn_concrete_dropout(weight_regularizer=weight_regularizer,
                                                 dropout_regularizer=dropout_regularizer)
 
+    self$clamp = clamp
     # TODO
     self$p = NA
     # self$p = data.frame() # Monitor dropout rates at each iteration
@@ -135,6 +136,10 @@ concrete_model = nn_module(
     x1 = self$concrete_dropout(x)
     mean = self$conc_drop_mu(x1, self$linear_mu)
     log_var = self$conc_drop_logvar(x1, self$linear_logvar)
+    # ensure that the variance does not become too small, which can lead to numerical instability
+    log_var = torch_clamp(log_var,
+                          min = sign(-1e25) * log(abs(self$clamp[1])),
+                          max = log(self$clamp[2]))
 
     # Regularization terms
     conc_drop_layers = paste0("concrete_dropout.conc_drop", c(1:self$num_hidden_layers))
@@ -168,7 +173,8 @@ concrete_model = nn_module(
     mu = preds[1,,]
     log_var = preds[2,,]
 
-    precision = torch_exp(-log_var)
+    # add a small constant to the variance to prevent it from being zero
+    precision = torch_exp(-log_var) + 1e-6
     # Logsumexp for numerical stability
     # precision = torch_logsumexp(-log_var, 1, keepdim = TRUE)
 

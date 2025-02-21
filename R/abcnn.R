@@ -53,23 +53,24 @@ abcnn = R6::R6Class("abcnn",
     observed = NULL,
     model=NULL,
     method='concrete dropout',
-    scale=FALSE,
-    num_hidden_layers=3,
-    num_hidden_dim=128,
-    validation_split=0.1,
-    n_conformal=1000,
-    credible_interval_p = 0.95,
-    test_split=0.1,
-    dropout=0.5,
-    dropout_input=0,
-    batch_size=32,
-    epochs=20,
+    scale_input=NULL,
+    scale_target=NULL,
+    num_hidden_layers=NA,
+    num_hidden_dim=NA,
+    validation_split=NA,
+    n_conformal=NA,
+    credible_interval_p = NA,
+    test_split=NA,
+    dropout=NA,
+    batch_size=NA,
+    epochs=NA,
     early_stopping=FALSE,
     callbacks=NULL,
     patience=4,
     optimizer=NULL,
     learning_rate=0.001,
     l2_weight_decay=1e-5,
+    variance_clamping=TRUE,
     loss=NULL,
     tol=NULL,
     num_posterior_samples=1000,
@@ -108,10 +109,13 @@ abcnn = R6::R6Class("abcnn",
     epistemic_conformal_quantile = NA,
     overall_conformal_quantile = NA,
     dropout_rates = NA,
-    sumstat_mean = NA,
-    sumstat_sd = NA,
+    input_summary = NA,
+    target_summary = NA,
+    scalers_input = NA,
+    scalers_target = NA,
     sumstat_adj = NA,
     observed_adj = NA,
+    theta_adj = NA,
     calibration_theta = NA,
     calibration_sumstat = NA,
 
@@ -120,7 +124,8 @@ abcnn = R6::R6Class("abcnn",
                           observed,
                           model=NULL,
                           method='concrete dropout',
-                          scale=FALSE,
+                          scale_input="minmax",
+                          scale_target="minmax",
                           num_hidden_layers=3,
                           num_hidden_dim=128,
                           validation_split=0.1,
@@ -128,7 +133,6 @@ abcnn = R6::R6Class("abcnn",
                           credible_interval_p = 0.95,
                           test_split=0.1,
                           dropout=0.5,
-                          dropout_input=0,
                           batch_size=32,
                           epochs=20,
                           early_stopping=FALSE,
@@ -136,6 +140,7 @@ abcnn = R6::R6Class("abcnn",
                           optimizer=optim_adam,
                           learning_rate=0.001,
                           l2_weight_decay=1e-5,
+                          variance_clamping=c(-1e15, 1e15),
                           loss=nn_mse_loss(),
                           tol=NULL,
                           num_posterior_samples=1000,
@@ -183,7 +188,8 @@ abcnn = R6::R6Class("abcnn",
       # INIT ATTRIBUTES
       #-----------------------------------
       self$method=method
-      self$scale=scale
+      self$scale_input=scale_input
+      self$scale_target=scale_target
       self$num_hidden_layers=num_hidden_layers
       self$num_hidden_dim=num_hidden_dim
       self$validation_split=validation_split
@@ -205,6 +211,20 @@ abcnn = R6::R6Class("abcnn",
       self$l2_weight_decay
       self$epsilon_adversarial = epsilon_adversarial
       self$credible_interval_p = credible_interval_p
+      self$variance_clamping = variance_clamping
+      self$n_conformal = n_conformal
+
+      # Init default value for clamping the variance estimate, or let the user set it
+      # if (variance_clamping & !is.numeric(variance_clamping)) {
+      #   if (method == "concrete dropout") {
+      #     self$variance_clamping = c(-10, 10)
+      #   }
+      #   if (method == "deep ensemble") {
+      #     self$variance_clamping = c(1e-6, 1e6)
+      #   }
+      # } else {
+      #   self$variance_clamping = variance_clamping
+      # }
 
 
       # Init output slots
@@ -214,6 +234,10 @@ abcnn = R6::R6Class("abcnn",
       self$epistemic_uncertainty = NA # Raw epistemic uncertainty, expressed as sd
       self$aleatoric_uncertainty = NA # Raw aleatoric uncertainty, expressed as sd
       self$overall_uncertainty = NA
+      self$quantile_posterior = list(mean = NA,
+                                     median = NA,
+                                     posterior_lower_ci = NA,
+                                     posterior_upper_ci = NA)
 
       self$dropout_rates = NA # The dropout rates hyperparameter estimated by concrete dropout
 
@@ -231,43 +255,13 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------
       # PRE-PROCESSING
       #-----------------------------------
-      # Scale summary statistics (optional)
-      # Save mean and sd of training data to apply on observed data at prediction time
-      self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
-      self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
-
-      # remove data with variance = 0
-      self$sumstat = self$sumstat[,self$sumstat_sd > 0, drop = FALSE]
-      self$observed = self$observed[,self$sumstat_sd > 0, drop = FALSE]
-      # update sumstats
-      self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
-      self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
-
-      # Centered-reduced scaling
-      # Init a copy of original data
-      self$sumstat_adj = self$sumstat
-      self$observed_adj = self$observed
-
-      if (self$scale) {
-        cat("Scaling summary statistics.\n")
-
-        for (j in 1:ncol(self$sumstat)) {
-          # Scale by columns
-          self$sumstat_adj[,j] = (self$sumstat[,j] - self$sumstat_mean[j]) / self$sumstat_sd[j]
-          self$observed_adj[,j] = (self$observed[,j] - self$sumstat_mean[j]) / self$sumstat_sd[j]
-        }
-
-        # self$sumstat_adj = (self$sumstat - self$sumstat_mean) / self$sumstat_sd
-        # self$observed_adj = (self$observed - self$sumstat_mean) / self$sumstat_sd
-      }
-
       # Set 64-bit default dtype for torch_exp computation
       # torch_set_default_dtype(torch_float64())
 
       self$input_dim = ncol(self$sumstat)
       self$output_dim = ncol(self$theta)
 
-      self$n_train = nrow(self$theta)
+      # self$n_train = nrow(self$theta)
       self$sumstat_names = colnames(self$observed)
       colnames(self$sumstat) = self$sumstat_names
       self$n_obs = nrow(self$observed)
@@ -278,60 +272,28 @@ abcnn = R6::R6Class("abcnn",
       self$prior_lower = apply(as.matrix(self$theta), 1, min)
       self$prior_upper = apply(as.matrix(self$theta), 1, max)
 
-
-    },
-
-    # Train the neural network
-    fit = function() {
-      if (self$method == 'monte carlo dropout') {
-        # Load data
-        dl = self$dataloader()
-
-        # Fit
-        model = mc_dropout_model %>%
+      #-----------------------------------
+      # INIT MODELS
+      #-----------------------------------
+      if (self$method == "monte carlo dropout") {
+        self$model = mc_dropout_model %>%
           luz::setup(optimizer = self$optimizer,
-                loss = self$loss) %>%
+                     loss = self$loss) %>%
           set_hparams(num_input_dim = self$input_dim,
                       num_hidden_dim = self$num_hidden_dim,
                       num_output_dim = self$output_dim,
                       num_hidden_layers = self$num_hidden_layers,
-                      dropout_hidden = self$dropout,
-                      dropout_input = self$dropout_input) %>%
+                      dropout_hidden = self$dropout) %>%
           set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
-
-        self$fitted = model
-        self$fitted = self$fitted %>%
-          luz::fit(dl$train,
-              epochs = self$epochs,
-              valid_data = dl$valid,
-              callbacks = self$callbacks)
-        self$model = self$fitted$model
-
       }
-
-      if (self$method == 'concrete dropout') {
-        # Load data
-        dl = self$dataloader()
-
-        # Fit
-
+      if (self$method == "concrete dropout") {
         # TODO Make utility functions for wr and dr
         l = self$prior_length_scale
         N = self$n_train
         self$wr = l^2 / N
         self$dr = 2 / N
 
-        # print(self$optimizer)
-        # print(self$loss)
-
-        # print(dl$train)
-
-        # iter = dl$train$.iter()
-        # print(iter$.next())
-
-        # print(self$callbacks)
-
-        model = concrete_model %>%
+        self$model = concrete_model %>%
           luz::setup(optimizer = self$optimizer) %>%
           set_hparams(num_input_dim = self$input_dim,
                       num_hidden_dim = self$num_hidden_dim,
@@ -339,34 +301,12 @@ abcnn = R6::R6Class("abcnn",
                       num_hidden_layers = self$num_hidden_layers,
                       weight_regularizer = self$wr,
                       dropout_regularizer = self$dr,
-                      dropout_input = self$dropout_input) %>%
+                      clamp = self$variance_clamping) %>%
           set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
-
-        self$fitted = model
-        self$fitted = self$fitted %>%
-          luz::fit(dl$train,
-              epochs = self$epochs,
-              valid_data = dl$valid,
-              callbacks = self$callbacks)
-
-        self$model = self$fitted$model
-
-        self$dropout_rates = self$model$p
       }
+      if (self$method == "deep ensemble") {
 
-      if (self$method == 'deep ensemble') {
-        # Load data
-        dl = self$dataloader()
-
-        # The range of noise to add to perturbed inputs in adversarial training
-        if (!is.null(self$epsilon_adversarial)) {
-          epsilon = self$epsilon_adversarial * 2 * self$sumstat_sd
-        } else {
-          epsilon = NULL
-        }
-
-        # Fit
-        model = nn_ensemble %>%
+        self$model = nn_ensemble %>%
           luz::setup() %>%
           set_hparams (model = single_model,
                        learning_rate = self$learning_rate,
@@ -376,15 +316,83 @@ abcnn = R6::R6Class("abcnn",
                        num_output_dim = self$output_dim,
                        num_hidden_layers = self$num_hidden_layers,
                        num_hidden_dim = self$num_hidden_dim,
-                       epsilon = epsilon)
-
-        self$fitted = model
-        self$fitted = self$fitted %>%
-          fit(dl$train,
-              epochs = self$epochs,
-              valid_data = dl$valid)
-        self$model = self$fitted$model
+                       epsilon = NULL,
+                       clamp = self$variance_clamping)
       }
+
+    },
+
+    # Train the neural network
+    fit = function() {
+
+      self$summary()
+
+      # Load data
+      dl = self$dataloader()
+
+      if (self$method == 'monte carlo dropout') {
+        # Load data
+        # dl = self$dataloader()
+
+        # Fit
+        self$fitted = self$model %>%
+          luz::fit(dl$train,
+              epochs = self$epochs,
+              valid_data = dl$valid,
+              callbacks = self$callbacks)
+        # self$model = self$fitted$model
+
+      }
+
+      if (self$method == 'concrete dropout') {
+        # Load data
+        # dl = self$dataloader()
+
+        # Fit
+        self$fitted = self$model %>%
+          luz::fit(dl$train,
+              epochs = self$epochs,
+              valid_data = dl$valid,
+              callbacks = self$callbacks)
+
+        # self$model = self$fitted$model
+
+        self$dropout_rates = self$fitted$model$p
+      }
+
+      if (self$method == 'deep ensemble') {
+        # Load data
+        # dl = self$dataloader()
+
+        # The range of noise to add to perturbed inputs in adversarial training
+        # if (!is.null(self$epsilon_adversarial)) {
+        #   epsilon = self$epsilon_adversarial * 2 * sd(self$sumstat_adj)
+        # } else {
+        #   epsilon = NULL
+        # }
+        epsilon = NULL
+
+        # Fit
+        # Redefine model with epsilon based on training data
+        self$fitted = nn_ensemble %>%
+          luz::setup() %>%
+          set_hparams (model = single_model,
+                       learning_rate = self$learning_rate,
+                       weight_decay = self$l2_weight_decay,
+                       num_models = self$num_networks,
+                       num_input_dim = self$input_dim,
+                       num_output_dim = self$output_dim,
+                       num_hidden_layers = self$num_hidden_layers,
+                       num_hidden_dim = self$num_hidden_dim,
+                       epsilon = NULL,
+                       clamp = self$variance_clamping) %>%
+          luz::fit(dl$train,
+                   epochs = self$epochs,
+                   valid_data = dl$valid,
+                   callbacks = self$callbacks)
+        # self$model = self$fitted$model
+      }
+      self$model = self$fitted$model
 
       # Evaluation
       # Plot training
@@ -397,6 +405,7 @@ abcnn = R6::R6Class("abcnn",
       # TODO luz::evaluate currently not working with Deep Ensemble
       # fitted returns n values named value.x instead of a single value
       if (self$method != "deep ensemble") {
+        print("Evaluation")
         self$evaluation = self$fitted %>% luz::evaluate(data = dl$test)
         self$eval_metrics = get_metrics(self$evaluation)
         print(self$eval_metrics)
@@ -409,8 +418,10 @@ abcnn = R6::R6Class("abcnn",
 
       observed = torch_tensor(as.matrix(self$observed_adj))
 
+      print("Predictions")
 
       if (self$method == 'monte carlo dropout') {
+
         # Set model to evaluation mode
         # TODO Implement this directly in the torch module
         self$fitted$model$eval()
@@ -567,12 +578,11 @@ abcnn = R6::R6Class("abcnn",
       if (self$method == 'deep ensemble') {
         # Use forward to get mean prediction + variance
 
-        print("Predictions")
-
         # Infer epistemic + aleatoric uncertainty
         # output for ensemble network
-        out_mu_sample  = torch_zeros(c(self$n_obs, self$output_dim, self$num_networks))
-        out_sig_sample = torch_zeros(c(self$n_obs, self$output_dim, self$num_networks))
+        n_obs = nrow(self$observed_adj)
+        out_mu_sample  = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
+        out_sig_sample = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
 
         for (i in 1:self$num_networks) {
           pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
@@ -637,7 +647,10 @@ abcnn = R6::R6Class("abcnn",
     # Prepare the torch dataloader from sumstat/theta (input/target)
     # Return a dataloader object
     dataloader = function() {
-
+      #-----------------------------------
+      # SAMPLING
+      #-----------------------------------
+      # ABC sampling before the neural network
       if (!is.null(self$tol)) {
         abc = self$abc_sampling()
         theta = as.matrix(abc$theta)
@@ -647,35 +660,167 @@ abcnn = R6::R6Class("abcnn",
         sumstat = as.matrix(self$sumstat_adj)
       }
 
+      n_total = nrow(self$sumstat)
+
+      # Randomly sample indexes
+      n_val = round(n_total * self$validation_split, digits=0)
+      n_test = round(n_total * self$test_split, digits=0)
+      n_train = n_total - n_val - n_test - self$n_conformal
+      n_conformal = self$n_conformal
+
+      self$n_train = n_train
+
+      random_idx = sample(1:nrow(theta), replace = FALSE)
+      train_idx = random_idx[1:n_train]
+      valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
+      test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
+
+      #-----------------------------------
+      # PRE-PROCESSING DATA
+      #-----------------------------------
+      # Scale summary statistics (optional)
+      # Scale on training set just before training (hence scaling will be adjusted to each training pass)
+      # De-scale only in self$predictions() method (all computations are done in the scaled space)
+      # scaler = preProcess(train, method = "range")
+      # predict(scaler, train)
+      # predict(scaler, test)
+
+      input_min = apply(self$sumstat[train_idx,,drop = F], 2, function(x) min(x, na.rm = TRUE))
+      input_max = apply(self$sumstat[train_idx,,drop = F], 2, function(x) max(x, na.rm = TRUE))
+      input_mean = apply(self$sumstat[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
+      input_sd = apply(self$sumstat[train_idx,,drop = F], 2, function(x) sd(x, na.rm = TRUE))
+
+      self$input_summary = list(min = input_min,
+                                max = input_max,
+                                mean = input_mean,
+                                sd = input_sd)
+
+      target_min = apply(self$theta[train_idx,,drop = F], 2, function(x) min(x, na.rm = TRUE))
+      target_max = apply(self$theta[train_idx,,drop = F], 2, function(x) max(x, na.rm = TRUE))
+      target_mean = apply(self$theta[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
+      target_sd = apply(self$theta[train_idx,,drop = F], 2, function(x) sd(x, na.rm = TRUE))
+
+      self$target_summary = list(min = target_min,
+                                 max = target_max,
+                                 mean = target_mean,
+                                 sd = target_sd)
+
+      # TESTING
+      # scaled_input = scaler(self$sumstat[train_idx,,drop=F],
+      #                       self$input_summary,
+      #                       method = self$scale_input,
+      #                       type = "forward")
+      #
+      # summary(scaled_input)
+      #
+      # descaled_input = scaler(scaled_input,
+      #                       self$input_summary,
+      #                       method = self$scale_input,
+      #                       type = "backward")
+      # summary(descaled_input)
+      # summary(self$sumstat[train_idx,,drop=F])
+
+      # Scale with summary statistics learned on training set only
+      scaled_input = scaler(self$sumstat,
+                            self$input_summary,
+                            method = self$scale_input,
+                            type = "forward")
+
+      scaled_observed = scaler(self$observed,
+                            self$input_summary,
+                            method = self$scale_input,
+                            type = "forward")
+
+
+      scaled_target = scaler(self$theta,
+                            self$target_summary,
+                            method = self$scale_target,
+                            type = "forward")
+
+      self$sumstat_adj = scaled_input
+      self$observed_adj = scaled_observed
+      self$theta_adj = scaled_target
+
+
+      # # Save mean and sd of training data to apply on observed data at prediction time
+      # self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
+      # self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
+      #
+      # # remove data with variance = 0
+      # self$sumstat = self$sumstat[,self$sumstat_sd > 0, drop = FALSE]
+      # self$observed = self$observed[,self$sumstat_sd > 0, drop = FALSE]
+      # # update sumstats
+      # self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
+      # self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
+      #
+      # # Centered-reduced scaling
+      # # Init a copy of original data
+      # self$sumstat_adj = self$sumstat
+      # self$observed_adj = self$observed
+      #
+      # if (self$scale) {
+      #   cat("Scaling summary statistics.\n")
+      #
+      #   for (j in 1:ncol(self$sumstat)) {
+      #     # Scale by columns
+      #     self$sumstat_adj[,j] = (self$sumstat[,j] - self$sumstat_mean[j]) / self$sumstat_sd[j]
+      #     self$observed_adj[,j] = (self$observed[,j] - self$sumstat_mean[j]) / self$sumstat_sd[j]
+      #   }
+      #
+      #   # self$sumstat_adj = (self$sumstat - self$sumstat_mean) / self$sumstat_sd
+      #   # self$observed_adj = (self$observed - self$sumstat_mean) / self$sumstat_sd
+      # }
+
+      if (n_conformal > 0) {
+        conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
+        self$calibration_theta = self$theta_adj[conformal_idx,,drop=F]
+        self$calibration_sumstat = self$sumstat_adj[conformal_idx,,drop=F]
+      }
+
+      #-----------------------------------
+      # MAKE TENSOR DATASET
+      #-----------------------------------
+      sumstat_tensor = torch_tensor(as.matrix(self$sumstat_adj), dtype = torch_float())
+      theta_tensor = torch_tensor(as.matrix(self$theta_adj), dtype = torch_float())
+
+      ds = tensor_dataset(sumstat_tensor, theta_tensor)
+
+      valid_ds = dataset_subset(ds, valid_idx)
+      valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+
+      test_ds = dataset_subset(ds, test_idx)
+      test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+
+
       if (self$method == 'monte carlo dropout' | self$method == 'concrete dropout') {
         # Make Torch dataloader
-        # train-validation-test sets
+        # train-validation-test sets + conformal calibration set
 
-        # Randomly sample indexes
-        n_val = round(self$n_train * self$validation_split, digits=0)
-        n_test = round(self$n_train * self$test_split, digits=0)
-        n_train = self$n_train - n_val -n_test - self$n_conformal
-        n_conformal = self$n_conformal
+        # # Randomly sample indexes
+        # n_val = round(self$n_train * self$validation_split, digits=0)
+        # n_test = round(self$n_train * self$test_split, digits=0)
+        # n_train = self$n_train - n_val -n_test - self$n_conformal
+        # n_conformal = self$n_conformal
+        #
+        # random_idx = sample(1:nrow(theta), replace = FALSE)
+        # train_idx = random_idx[1:n_train]
+        # valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
+        # test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
+        #
+        # if (n_conformal > 0) {
+        #   conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
+        #   conformal_theta = theta[conformal_idx,,drop=F]
+        #   conformal_sumstat = sumstat[conformal_idx,,drop=F]
+        #   self$calibration_theta = conformal_theta
+        #   self$calibration_sumstat = conformal_sumstat
+        # }
 
-        random_idx = sample(1:nrow(theta), replace = FALSE)
-        train_idx = random_idx[1:n_train]
-        valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
-        test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
-
-        if (n_conformal > 0) {
-          conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
-          conformal_theta = theta[conformal_idx,,drop=F]
-          conformal_sumstat = sumstat[conformal_idx,,drop=F]
-          self$calibration_theta = conformal_theta
-          self$calibration_sumstat = conformal_sumstat
-        }
-
-        sumstat_tensor = torch_tensor(as.matrix(sumstat), dtype = torch_float())
-        theta_tensor = torch_tensor(as.matrix(theta), dtype = torch_float())
+        # sumstat_tensor = torch_tensor(as.matrix(sumstat), dtype = torch_float())
+        # theta_tensor = torch_tensor(as.matrix(theta), dtype = torch_float())
         # sumstat_tensor = sumstat_tensor$unsqueeze(length(dim(sumstat_tensor)) + 1)
         # theta_tensor = theta_tensor$unsqueeze(length(dim(theta_tensor)) + 1)
 
-        ds = tensor_dataset(sumstat_tensor, theta_tensor)
+        # ds = tensor_dataset(sumstat_tensor, theta_tensor)
 
         # Make train-val-test tensors (for Ensemble method)
 
@@ -683,11 +828,11 @@ abcnn = R6::R6Class("abcnn",
         train_ds = dataset_subset(ds, train_idx)
         train_dl = dataloader(train_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
-        valid_ds = dataset_subset(ds, valid_idx)
-        valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
-
-        test_ds = dataset_subset(ds, test_idx)
-        test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+        # valid_ds = dataset_subset(ds, valid_idx)
+        # valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+        #
+        # test_ds = dataset_subset(ds, test_idx)
+        # test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
         # conformal_ds = dataset_subset(ds, conformal_idx)
         # conformal_dl = dataloader(conformal_ds, batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
@@ -704,41 +849,41 @@ abcnn = R6::R6Class("abcnn",
       }
 
       if (self$method == 'deep ensemble') {
-        # Randomly sample indexes
-        n_samples = nrow(theta)
-        n_conformal = self$n_conformal
-        n_val = round(self$n_train * self$validation_split, digits = 0)
-        n_test = round(self$n_train * self$test_split, digits = 0)
-        n_train = self$n_train - n_val - n_test - n_conformal
+        # # Randomly sample indexes
+        # n_samples = nrow(theta)
+        # n_conformal = self$n_conformal
+        # n_val = round(self$n_train * self$validation_split, digits = 0)
+        # n_test = round(self$n_train * self$test_split, digits = 0)
+        # n_train = self$n_train - n_val - n_test - n_conformal
+        #
+        # # stopifnot(((n_train + n_val + n_test + n_conformal) == n_samples),
+        # #           "Correct data sampling in subset train/eval/test/calibration")
+        #
+        # random_idx = sample(1:n_samples, replace = FALSE)
+        # train_idx = random_idx[1:n_train]
+        # valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
+        # test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
+        #
+        # if (n_conformal > 0) {
+        #   conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
+        #   conformal_theta = theta[conformal_idx,,drop=F]
+        #   conformal_sumstat = sumstat[conformal_idx,,drop=F]
+        #   self$calibration_theta = conformal_theta
+        #   self$calibration_sumstat = conformal_sumstat
+        # }
 
-        # stopifnot(((n_train + n_val + n_test + n_conformal) == n_samples),
-        #           "Correct data sampling in subset train/eval/test/calibration")
-
-        random_idx = sample(1:n_samples, replace = FALSE)
-        train_idx = random_idx[1:n_train]
-        valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
-        test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
-
-        if (n_conformal > 0) {
-          conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
-          conformal_theta = theta[conformal_idx,,drop=F]
-          conformal_sumstat = sumstat[conformal_idx,,drop=F]
-          self$calibration_theta = conformal_theta
-          self$calibration_sumstat = conformal_sumstat
-        }
-
-        sumstat_tensor = torch_tensor(as.matrix(sumstat))
-        theta_tensor = torch_tensor(as.matrix(theta))
+        # sumstat_tensor = torch_tensor(as.matrix(sumstat))
+        # theta_tensor = torch_tensor(as.matrix(theta))
         # sumstat_tensor = sumstat_tensor$unsqueeze(length(dim(sumstat_tensor)) + 1)
         # theta_tensor = theta_tensor$unsqueeze(length(dim(theta_tensor)) + 1)
 
-        ds = tensor_dataset(sumstat_tensor, theta_tensor)
-
-        valid_ds = dataset_subset(ds, valid_idx)
-        valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
-
-        test_ds = dataset_subset(ds, test_idx)
-        test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+        # ds = tensor_dataset(sumstat_tensor, theta_tensor)
+        #
+        # valid_ds = dataset_subset(ds, valid_idx)
+        # valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+        #
+        # test_ds = dataset_subset(ds, test_idx)
+        # test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
         # conformal_ds = dataset_subset(ds, conformal_idx)
         # conformal_dl = dataloader(conformal_ds, batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
@@ -787,6 +932,7 @@ abcnn = R6::R6Class("abcnn",
 
     # Estimate a calibrated credible interval with Conformal Prediction
     conformal_prediction = function() {
+      cat("Performing conformal prediction\n")
       # Monte Carlo Dropout prediction on the calibration set
       calibration_set = self$calibration_sumstat
       calibration_truth = self$calibration_theta
@@ -845,29 +991,65 @@ abcnn = R6::R6Class("abcnn",
 
     # Returns a tidy tibble with predictions and C.I.
     predictions = function() {
-      pred_mean = tidyr::gather(self$predictive_mean,
-                         key = "variable")
+      # Back-transform predictions to original scale
+      cat("Back-transform scaled parameters with method:", self$scale_target,"\n")
 
-      aleatoric_uncertainty = tidyr::gather(self$aleatoric_uncertainty,
-                         key = "variable")
+      predictive_mean = scaler(self$predictive_mean,
+                                           self$target_summary,
+                                           method = self$scale_target,
+                                           type = "backward")
+      epistemic_uncertainty = scaler(self$epistemic_uncertainty,
+                                                 self$target_summary,
+                                                 method = self$scale_target,
+                                                 type = "backward")
+      aleatoric_uncertainty = scaler(self$aleatoric_uncertainty,
+                                                 self$target_summary,
+                                                 method = self$scale_target,
+                                                 type = "backward")
+      overall_uncertainty = scaler(self$overall_uncertainty,
+                                               self$target_summary,
+                                               method = self$scale_target,
+                                               type = "backward")
 
-      epistemic_uncertainty = tidyr::gather(self$epistemic_uncertainty,
-                         key = "variable")
-
-      overall_uncertainty = tidyr::gather(self$overall_uncertainty,
-                                     key = "variable")
+      if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
+        posterior_median = scaler(self$quantile_posterior$median,
+                                    self$target_summary,
+                                    method = self$scale_target,
+                                    type = "backward")
+        posterior_lower_ci = scaler(self$quantile_posterior$posterior_lower_ci,
+                                    self$target_summary,
+                                    method = self$scale_target,
+                                    type = "backward")
+        posterior_upper_ci = scaler(self$quantile_posterior$posterior_upper_ci,
+                                    self$target_summary,
+                                    method = self$scale_target,
+                                    type = "backward")
+      }
 
       # Conformal predictions
       # quantile * sqrt(variance heuristic)
-      df_epistemic = self$epistemic_uncertainty
+      df_epistemic = epistemic_uncertainty
       for (j in ncol(df_epistemic)) {
         df_epistemic[,j] = self$epistemic_conformal_quantile[,j] * df_epistemic[,j]
       }
 
-      df_overall = self$overall_uncertainty
+      df_overall = overall_uncertainty
       for (j in ncol(df_overall)) {
         df_overall[,j] = self$overall_conformal_quantile[,j] * df_overall[,j]
       }
+
+      # Tidy data
+      pred_mean = tidyr::gather(predictive_mean,
+                         key = "variable")
+
+      aleatoric_uncertainty = tidyr::gather(aleatoric_uncertainty,
+                         key = "variable")
+
+      epistemic_uncertainty = tidyr::gather(epistemic_uncertainty,
+                         key = "variable")
+
+      overall_uncertainty = tidyr::gather(overall_uncertainty,
+                                     key = "variable")
 
       epistemic_conformal = tidyr::gather(df_epistemic,
                                           key = "variable")
@@ -885,24 +1067,26 @@ abcnn = R6::R6Class("abcnn",
                           epistemic_conformal[,2],
                           overall_conformal[,2])
 
-      colnames(predictions) = c("Sample", "Parameter",
-                                "Predictive_mean",
-                                "Epistemic_uncertainty",
-                                "Aleatoric_uncertainty",
-                                "Overall_uncertainty",
-                                "Epistemic_conformal_credible_interval",
-                                "Overall_conformal_credible_interval")
+      colnames(predictions) = c("sample", "parameter",
+                                "predictive_mean",
+                                "epistemic_uncertainty",
+                                "aleatoric_uncertainty",
+                                "overall_uncertainty",
+                                "epistemic_conformal_credible_interval",
+                                "overall_conformal_credible_interval")
 
       if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
-        predictions$Posterior_median = tidyr::gather(self$quantile_posterior$median,
+        predictions$posterior_median = tidyr::gather(posterior_median,
                                 key = "variable")[,2]
-        predictions$Posterior_lower_ci = tidyr::gather(self$quantile_posterior$posterior_lower_ci,
+        predictions$posterior_lower_ci = tidyr::gather(posterior_lower_ci,
                                                 key = "variable")[,2]
-        predictions$Posterior_upper_ci = tidyr::gather(self$quantile_posterior$posterior_upper_ci,
+        predictions$posterior_upper_ci = tidyr::gather(posterior_upper_ci,
                                                     key = "variable")[,2]
+      } else {
+        predictions$posterior_median = NA
+        predictions$posterior_lower_ci = NA
+        predictions$posterior_upper_ci = NA
       }
-
-      # tib = as_tibble(predictions)
 
       return(predictions)
     },
@@ -975,37 +1159,37 @@ abcnn = R6::R6Class("abcnn",
       if (paired) {
         x_pos = as.numeric(unlist(self$observed))
       } else {
-        x_pos = df_predicted$Sample
+        x_pos = df_predicted$sample
       }
 
       if (type == "uncertainty") {
-        df_predicted$ci_overall_upper = df_predicted$Predictive_mean + df_predicted$Overall_uncertainty
-        df_predicted$ci_overall_lower = df_predicted$Predictive_mean - df_predicted$Overall_uncertainty
+        df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_uncertainty
+        df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_uncertainty
 
-        df_predicted$ci_e_upper = df_predicted$Predictive_mean + df_predicted$Epistemic_uncertainty
-        df_predicted$ci_e_lower = df_predicted$Predictive_mean - df_predicted$Epistemic_uncertainty
+        df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
+        df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
 
-        df_predicted$mean = df_predicted$Predictive_mean
+        df_predicted$mean = df_predicted$predictive_mean
       }
 
       if (type == "conformal") {
-        df_predicted$ci_overall_upper = df_predicted$Predictive_mean + df_predicted$Overall_conformal_credible_interval
-        df_predicted$ci_overall_lower = df_predicted$Predictive_mean - df_predicted$Overall_conformal_credible_interval
+        df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
+        df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
 
-        df_predicted$ci_e_upper = df_predicted$Predictive_mean + df_predicted$Epistemic_conformal_credible_interval
-        df_predicted$ci_e_lower = df_predicted$Predictive_mean - df_predicted$Epistemic_conformal_credible_interval
+        df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
+        df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
 
-        df_predicted$mean = df_predicted$Predictive_mean
+        df_predicted$mean = df_predicted$predictive_mean
       }
 
       if (type == "posterior quantile") {
-        df_predicted$ci_overall_upper = df_predicted$Posterior_upper_ci
-        df_predicted$ci_overall_lower = df_predicted$Posterior_lower_ci
+        df_predicted$ci_overall_upper = df_predicted$posterior_upper_ci
+        df_predicted$ci_overall_lower = df_predicted$posterior_lower_ci
 
         df_predicted$ci_e_upper = as.numeric(NA)
         df_predicted$ci_e_lower = as.numeric(NA)
 
-        df_predicted$mean = df_predicted$Posterior_median
+        df_predicted$mean = df_predicted$posterior_median
       }
 
       df_predicted$x = x_pos
@@ -1013,7 +1197,7 @@ abcnn = R6::R6Class("abcnn",
 
       ggplot(data = df_predicted, aes(x = x)) +
         geom_line(aes(x = x, y = mean), color = "black") +
-        facet_wrap(~ Parameter, scales = "free") +
+        facet_wrap(~ parameter, scales = "free") +
         geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
         geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
         xlab("Observed") + ylab("Predicted") +
@@ -1032,30 +1216,30 @@ abcnn = R6::R6Class("abcnn",
       cols = c("Epistemic"=pal[3],"Overall"=pal[2])
 
       if (type == "uncertainty") {
-        tidy_predictions$ci_upper = tidy_predictions$Predictive_mean + tidy_predictions$Overall_uncertainty
-        tidy_predictions$ci_lower = tidy_predictions$Predictive_mean - tidy_predictions$Overall_uncertainty
+        tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_uncertainty
+        tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_uncertainty
 
-        tidy_predictions$ci_e_upper = tidy_predictions$Predictive_mean + tidy_predictions$Epistemic_uncertainty
-        tidy_predictions$ci_e_lower = tidy_predictions$Predictive_mean - tidy_predictions$Epistemic_uncertainty
+        tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_uncertainty
+        tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_uncertainty
       }
 
       if (type == "conformal") {
-        tidy_predictions$ci_upper = tidy_predictions$Predictive_mean + tidy_predictions$Overall_conformal_credible_interval
-        tidy_predictions$ci_lower = tidy_predictions$Predictive_mean - tidy_predictions$Overall_conformal_credible_interval
+        tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_conformal_credible_interval
+        tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_conformal_credible_interval
 
-        tidy_predictions$ci_e_upper = tidy_predictions$Predictive_mean + tidy_predictions$Epistemic_conformal_credible_interval
-        tidy_predictions$ci_e_lower = tidy_predictions$Predictive_mean - tidy_predictions$Epistemic_conformal_credible_interval
+        tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_conformal_credible_interval
+        tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_conformal_credible_interval
       }
 
       if (type == "posterior quantile") {
-        tidy_predictions$ci_upper = tidy_predictions$Posterior_upper_ci
-        tidy_predictions$ci_lower = tidy_predictions$Posterior_lower_ci
+        tidy_predictions$ci_upper = tidy_predictions$posterior_upper_ci
+        tidy_predictions$ci_lower = tidy_predictions$posterior_lower_ci
 
         tidy_predictions$ci_e_upper = as.numeric(NA)
         tidy_predictions$ci_e_lower = as.numeric(NA)
       }
 
-      tidy_predictions = tidy_predictions[tidy_predictions$Sample == sample,]
+      tidy_predictions = tidy_predictions[tidy_predictions$sample == sample,]
 
       if (prior) {
         tidy_priors = data.frame(param = rep(colnames(self$theta), each = nrow(self$theta)),
@@ -1069,11 +1253,19 @@ abcnn = R6::R6Class("abcnn",
 
       if (self$method %in% c("monte carlo dropout", "concrete dropout")) {
         posteriors = self$posterior_samples[,sample,]
-        # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
         posteriors = as.data.frame(posteriors)
         posteriors = posteriors[,1:self$output_dim, drop = FALSE]
         colnames(posteriors) = self$theta_names
+
+        # Back-transform predictions to original scale
+        cat("Back-transform scaled posteriors with method:", self$scale_target,"\n")
+        posteriors = scaler(posteriors,
+                                 self$target_summary,
+                                 method = self$scale_target,
+                                 type = "backward")
         posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
+
+        # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
 
         tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
 
@@ -1081,7 +1273,7 @@ abcnn = R6::R6Class("abcnn",
       }
 
       p = p +
-        geom_vline(data = tidy_predictions, aes(xintercept = Predictive_mean, colour = "Epistemic")) +
+        geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "Epistemic")) +
         geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1) +
         geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
         geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
@@ -1094,10 +1286,11 @@ abcnn = R6::R6Class("abcnn",
         geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.1) +
         # geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_lower, xmax = ci_conformal_upper, ymin = -Inf, ymax = Inf, colour = "Overall conformal", fill = "Overall conformal"), alpha = 0.1) +
         # geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_e_lower, xmax = ci_conformal_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic conformal", fill = "Epistemic conformal"), alpha = 0.1) +
-        facet_wrap(~ Parameter, scales = "free") +
+        facet_wrap(~ parameter, scales = "free") +
         scale_colour_manual(name = "Uncertainty", values = cols) +
         scale_fill_manual(name = "Uncertainty", values = cols) +
         xlab("Value") + ylab("Count") +
+        ggtitle(type) +
         theme_bw() +
         theme(legend.position = "right")
 

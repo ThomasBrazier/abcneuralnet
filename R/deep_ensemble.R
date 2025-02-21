@@ -4,7 +4,8 @@ single_model = nn_module(
   initialize = function(num_input_dim = 1,
                         num_output_dim = 1,
                         num_hidden_layers = 3,
-                        num_hidden_dim = 512) {
+                        num_hidden_dim = 512,
+                        clamp = c(1e-6, 1e6)) {
 
     self$num_hidden_layers = num_hidden_layers
     self$num_hidden_dim = num_hidden_dim
@@ -22,14 +23,17 @@ single_model = nn_module(
     self$mu = nn_linear(num_hidden_dim, num_output_dim)
     self$sigma = nn_linear(num_hidden_dim, num_output_dim)
 
+    self$clamp = clamp
+
   },
 
   forward = function(x) {
     x1 = self$mlp(x)
     mu = self$mu(x1)
-    # mu = torch_clamp(mu, min = 1e-16, max = 1e16)
+
     sig = self$sigma(x1)
-    # sig = torch_clamp(sig, min = 1e-16)  # To avoid undefined behavior with log(0)
+    sig = torch_clamp(sig, min = self$clamp[1], max = self$clamp[2])  # For numerical stability
+
     # return a concatenated tensor
     torch_stack(list(mu, sig), dim = 1)
   }
@@ -102,7 +106,8 @@ nn_ensemble = nn_module(
                         num_output_dim = 1,
                         num_hidden_dim = 128,
                         num_hidden_layers = 3,
-                        epsilon = NULL) {
+                        epsilon = NULL,
+                        clamp = c(1e-6, 1e6)) {
     # print("Init")
     self$num_models = num_models
     self$learning_rate = learning_rate
@@ -113,7 +118,8 @@ nn_ensemble = nn_module(
     model_list = lapply(1:num_models, function(x) model(num_input_dim = num_input_dim,
                                                         num_output_dim = num_output_dim,
                                                         num_hidden_dim = num_hidden_dim,
-                                                        num_hidden_layers = num_hidden_layers))
+                                                        num_hidden_layers = num_hidden_layers,
+                                                        clamp = clamp))
     names(model_list) = seq(1, self$num_models)
     self$model_list = nn_module_list(model_list)
     # self$model_list = model()

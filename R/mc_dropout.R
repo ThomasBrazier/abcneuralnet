@@ -27,11 +27,9 @@ mc_dropout_model = nn_module(
                         num_hidden_dim = 1024,
                         num_output_dim = 1,
                         num_hidden_layers = 3,
-                        dropout_hidden = 0.5,
-                        dropout_input = 0.2) {
+                        dropout_hidden = 0.5) {
     # Set a minimal model with a single layer and dropout on inputs (facultative)
     self$mc_dropout = nn_sequential(
-      nn_dropout(p = dropout_input),
       nn_linear(num_input_dim, num_hidden_dim),
       nn_mc_dropout(p = dropout_hidden),
       nn_leaky_relu())
@@ -60,7 +58,6 @@ build_mcdropout_model = function(optimizer = optim_adam,
                                  output_dim = 1,
                                  num_hidden_layers = 3,
                                  dropout = 0.5,
-                                 dropout_input = 0,
                                  learning_rate = 0.001,
                                  L2_weigth_decay = 1e-5) {
   model = mc_dropout_model %>%
@@ -70,8 +67,7 @@ build_mcdropout_model = function(optimizer = optim_adam,
                 num_hidden_dim = num_hidden_dim,
                 num_output_dim = output_dim,
                 num_hidden_layers = num_hidden_layers,
-                dropout_hidden = dropout,
-                dropout_input = dropout_input) %>%
+                dropout_hidden = dropout) %>%
     set_opt_hparams(lr = learning_rate, weight_decay = L2_weigth_decay)
 
   return(model)
