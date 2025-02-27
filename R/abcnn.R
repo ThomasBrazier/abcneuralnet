@@ -28,7 +28,7 @@ library(keras3)
 #' @param kernel the kernel function, either `rbf` or `epanechnikov`
 #' @param sampling the ABC sampling function, either `rejection` or `importance`
 #' @param length_scale the length scale parameter of the `rbf` kernel
-#' @param bandwith the bandwith hyperparameter for the kernel smoothing function, either a numeric value or set to "max" if the bandwidth must be estimated as the maximum distance value
+#' @param bandwidth the bandwidth hyperparameter for the kernel smoothing function, either a numeric value or set to "max" if the bandwidth must be estimated as the maximum distance value
 #' @param prior_length_scale the prior length scale hyperparameter for the concrete dropout method
 #' @param num_val the number of duplicate observed sample to provide for each iteration of `concrete dropout` approximate posterior prediction
 #' @param num_net the number of iterations in the `regression adjustment` approach
@@ -66,6 +66,7 @@ abcnn = R6::R6Class("abcnn",
     epochs=NA,
     early_stopping=FALSE,
     callbacks=NULL,
+    verbose=NULL,
     patience=4,
     optimizer=NULL,
     learning_rate=0.001,
@@ -77,16 +78,13 @@ abcnn = R6::R6Class("abcnn",
     kernel='rbf',
     sampling='importance',
     length_scale=1.0,
-    bandwith=1.0,
+    bandwidth=1.0,
     prior_length_scale=1e-4,
     wr=NA,
     dr=NA,
     num_val=100,
     num_networks=5,
-    num_iter=10000,
-    num_print=1000,
     epsilon_adversarial=NULL,
-    inference=TRUE,
     device="cpu",
     input_dim = NA,
     output_dim = NA,
@@ -118,6 +116,7 @@ abcnn = R6::R6Class("abcnn",
     theta_adj = NA,
     calibration_theta = NA,
     calibration_sumstat = NA,
+    kernel_values = NA,
 
     initialize = function(theta,
                           sumstat,
@@ -136,6 +135,7 @@ abcnn = R6::R6Class("abcnn",
                           batch_size=32,
                           epochs=20,
                           early_stopping=FALSE,
+                          verbose=TRUE,
                           patience=4,
                           optimizer=optim_adam,
                           learning_rate=0.001,
@@ -147,14 +147,11 @@ abcnn = R6::R6Class("abcnn",
                           kernel='rbf',
                           sampling='importance',
                           length_scale=1.0,
-                          bandwith=1.0,
+                          bandwidth="max",
                           prior_length_scale=1e-4,
                           num_val=100,
                           num_networks=5,
-                          num_iter=10000,
-                          num_print=1000,
                           epsilon_adversarial=NULL,
-                          inference=TRUE,
                           device="cpu") {
       #-----------------------------------
       # CHECK INPUTS
@@ -207,7 +204,7 @@ abcnn = R6::R6Class("abcnn",
       self$kernel=kernel
       self$sampling=sampling
       self$length_scale=length_scale
-      self$bandwith=bandwith
+      self$bandwidth=bandwidth
       self$l2_weight_decay
       self$epsilon_adversarial = epsilon_adversarial
       self$credible_interval_p = credible_interval_p
@@ -325,6 +322,8 @@ abcnn = R6::R6Class("abcnn",
     # Train the neural network
     fit = function() {
 
+      if (verbose) {cat("Training the Neural Network with the method:", self$method, "\n")}
+
       self$summary()
 
       # Load data
@@ -418,7 +417,7 @@ abcnn = R6::R6Class("abcnn",
 
       observed = torch_tensor(as.matrix(self$observed_adj))
 
-      print("Predictions")
+      if (verbose) {print("Predictions")}
 
       if (self$method == 'monte carlo dropout') {
 
@@ -689,11 +688,15 @@ abcnn = R6::R6Class("abcnn",
       input_max = apply(self$sumstat[train_idx,,drop = F], 2, function(x) max(x, na.rm = TRUE))
       input_mean = apply(self$sumstat[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
       input_sd = apply(self$sumstat[train_idx,,drop = F], 2, function(x) sd(x, na.rm = TRUE))
+      quantile_25 = apply(self$sumstat[train_idx,,drop = F], 2, function(x) quantile(x, 0.25, na.rm = TRUE))
+      quantile_75 = apply(self$sumstat[train_idx,,drop = F], 2, function(x) quantile(x, 0.75, na.rm = TRUE))
 
       self$input_summary = list(min = input_min,
                                 max = input_max,
                                 mean = input_mean,
-                                sd = input_sd)
+                                sd = input_sd,
+                                quantile_25 = quantile_25,
+                                quantile_75 = quantile_75)
 
       target_min = apply(self$theta[train_idx,,drop = F], 2, function(x) min(x, na.rm = TRUE))
       target_max = apply(self$theta[train_idx,,drop = F], 2, function(x) max(x, na.rm = TRUE))
@@ -741,36 +744,6 @@ abcnn = R6::R6Class("abcnn",
       self$observed_adj = scaled_observed
       self$theta_adj = scaled_target
 
-
-      # # Save mean and sd of training data to apply on observed data at prediction time
-      # self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
-      # self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
-      #
-      # # remove data with variance = 0
-      # self$sumstat = self$sumstat[,self$sumstat_sd > 0, drop = FALSE]
-      # self$observed = self$observed[,self$sumstat_sd > 0, drop = FALSE]
-      # # update sumstats
-      # self$sumstat_mean = apply(self$sumstat, 2, function(x) {mean(x, na.rm = TRUE)})
-      # self$sumstat_sd = apply(self$sumstat, 2, function(x) {sd(x, na.rm = TRUE)})
-      #
-      # # Centered-reduced scaling
-      # # Init a copy of original data
-      # self$sumstat_adj = self$sumstat
-      # self$observed_adj = self$observed
-      #
-      # if (self$scale) {
-      #   cat("Scaling summary statistics.\n")
-      #
-      #   for (j in 1:ncol(self$sumstat)) {
-      #     # Scale by columns
-      #     self$sumstat_adj[,j] = (self$sumstat[,j] - self$sumstat_mean[j]) / self$sumstat_sd[j]
-      #     self$observed_adj[,j] = (self$observed[,j] - self$sumstat_mean[j]) / self$sumstat_sd[j]
-      #   }
-      #
-      #   # self$sumstat_adj = (self$sumstat - self$sumstat_mean) / self$sumstat_sd
-      #   # self$observed_adj = (self$observed - self$sumstat_mean) / self$sumstat_sd
-      # }
-
       if (n_conformal > 0) {
         conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
         self$calibration_theta = self$theta_adj[conformal_idx,,drop=F]
@@ -793,102 +766,14 @@ abcnn = R6::R6Class("abcnn",
 
 
       if (self$method == 'monte carlo dropout' | self$method == 'concrete dropout') {
-        # Make Torch dataloader
-        # train-validation-test sets + conformal calibration set
-
-        # # Randomly sample indexes
-        # n_val = round(self$n_train * self$validation_split, digits=0)
-        # n_test = round(self$n_train * self$test_split, digits=0)
-        # n_train = self$n_train - n_val -n_test - self$n_conformal
-        # n_conformal = self$n_conformal
-        #
-        # random_idx = sample(1:nrow(theta), replace = FALSE)
-        # train_idx = random_idx[1:n_train]
-        # valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
-        # test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
-        #
-        # if (n_conformal > 0) {
-        #   conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
-        #   conformal_theta = theta[conformal_idx,,drop=F]
-        #   conformal_sumstat = sumstat[conformal_idx,,drop=F]
-        #   self$calibration_theta = conformal_theta
-        #   self$calibration_sumstat = conformal_sumstat
-        # }
-
-        # sumstat_tensor = torch_tensor(as.matrix(sumstat), dtype = torch_float())
-        # theta_tensor = torch_tensor(as.matrix(theta), dtype = torch_float())
-        # sumstat_tensor = sumstat_tensor$unsqueeze(length(dim(sumstat_tensor)) + 1)
-        # theta_tensor = theta_tensor$unsqueeze(length(dim(theta_tensor)) + 1)
-
-        # ds = tensor_dataset(sumstat_tensor, theta_tensor)
-
-        # Make train-val-test tensors (for Ensemble method)
-
         # Data loader (MC dropout and Concrete dropout)
         train_ds = dataset_subset(ds, train_idx)
         train_dl = dataloader(train_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
-
-        # valid_ds = dataset_subset(ds, valid_idx)
-        # valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
-        #
-        # test_ds = dataset_subset(ds, test_idx)
-        # test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
-
-        # conformal_ds = dataset_subset(ds, conformal_idx)
-        # conformal_dl = dataloader(conformal_ds, batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
-        # conformal_theta = theta[conformal_idx,,drop=F]
-        # conformal_sumstat = sumstat[conformal_idx,,drop=F]
-
-        # observed = torch_tensor(as.matrix(observed))
-        # observed = observed$unsqueeze(length(dim(observed)) + 1)
-
-        # self$calibration_theta = conformal_theta
-        # self$calibration_sumstat = conformal_sumstat
 
         return(list(train = train_dl, valid = valid_dl, test = test_dl))
       }
 
       if (self$method == 'deep ensemble') {
-        # # Randomly sample indexes
-        # n_samples = nrow(theta)
-        # n_conformal = self$n_conformal
-        # n_val = round(self$n_train * self$validation_split, digits = 0)
-        # n_test = round(self$n_train * self$test_split, digits = 0)
-        # n_train = self$n_train - n_val - n_test - n_conformal
-        #
-        # # stopifnot(((n_train + n_val + n_test + n_conformal) == n_samples),
-        # #           "Correct data sampling in subset train/eval/test/calibration")
-        #
-        # random_idx = sample(1:n_samples, replace = FALSE)
-        # train_idx = random_idx[1:n_train]
-        # valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
-        # test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
-        #
-        # if (n_conformal > 0) {
-        #   conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
-        #   conformal_theta = theta[conformal_idx,,drop=F]
-        #   conformal_sumstat = sumstat[conformal_idx,,drop=F]
-        #   self$calibration_theta = conformal_theta
-        #   self$calibration_sumstat = conformal_sumstat
-        # }
-
-        # sumstat_tensor = torch_tensor(as.matrix(sumstat))
-        # theta_tensor = torch_tensor(as.matrix(theta))
-        # sumstat_tensor = sumstat_tensor$unsqueeze(length(dim(sumstat_tensor)) + 1)
-        # theta_tensor = theta_tensor$unsqueeze(length(dim(theta_tensor)) + 1)
-
-        # ds = tensor_dataset(sumstat_tensor, theta_tensor)
-        #
-        # valid_ds = dataset_subset(ds, valid_idx)
-        # valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
-        #
-        # test_ds = dataset_subset(ds, test_idx)
-        # test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
-
-        # conformal_ds = dataset_subset(ds, conformal_idx)
-        # conformal_dl = dataloader(conformal_ds, batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
-
-
         # Make Ensemble dataset
         train_x = sumstat_tensor[train_idx,]
         train_y = theta_tensor[train_idx,]
@@ -905,24 +790,20 @@ abcnn = R6::R6Class("abcnn",
       # Apply kernel weighting to subset the simulations closest to observed
       # Select the theta values that best match the observed data
       # Improved Kernel sampling
-      if (self$kernel == 'rbf') {
-        kernel_values = rbf_kernel(self$sumstat, self$observed, length_scale = self$length_scale)
-      }
-      if (self$kernel == 'epanechnikov') {
-        kernel_values = epanechnikov_kernel(self$sumstat, self$observed, bandwidth = self$bandwidth)
-      }
+      kernel_values = density_kernel(self$sumstat,
+                                     self$observed,
+                                     kernel = self$kernel,
+                                     bandwidth = self$bandwidth,
+                                     length_scale = self$length_scale)
 
       # Normalize the kernel values to form a proper weighting
-      kernel_values = kernel_values/sum(kernel_values)
+      self$kernel_values = kernel_values/sum(kernel_values)
       # Sampling
       # Select sumstats and priors (parameters) in the given sampled region
-      # = sumstats and unadjusted values
-      if (self$sampling == 'rejection') {
-        idx = rejection_sampling(self$kernel_values, self$theta, tol = self$tol)
-      }
-      if (self$sampling == 'importance') {
-        idx = importance_sampling(self$kernel_values, self$theta, tol = self$tol)
-      }
+      idx = abc_sampling(self$kernel_values,
+                         method = self$sampling,
+                         theta = self$theta,
+                         tol = self$tol)
 
       theta = as.matrix(self$theta[idx,])
       sumstat = as.matrix(self$sumstat[idx,])
@@ -1094,10 +975,14 @@ abcnn = R6::R6Class("abcnn",
     # Print a summary of the abcnn object
     summary = function() {
       # TODO Print number of samples and basic information on methods
+      cat("ABC parameter inference with the method:", self$method, "\n")
 
+      cat("The number of samples is", nrow(self$theta), "for the training set (simulations) and", nrow(self$observed), "observations\n")
+      cat("The training set is split between", 1 - self$test_split, "for training,", self$test_split, "for testing and", self$n_conformal, "pseudo-observed samples retained for conformal prediction.\n")
       # CUDA is installed?
+      cat("\n")
       cat("Is CUDA available? ")
-      cuda_is_available()
+      print(cuda_is_available())
       cat("\n")
 
       cat("Device is: ")
@@ -1333,8 +1218,3 @@ load_abcnn = function(prefix = "") {
 }
 
 
-
-# Conformal prediction score
-conformal_score = function() {
-
-}

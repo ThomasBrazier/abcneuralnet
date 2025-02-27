@@ -161,7 +161,7 @@ abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
 
 
 
-## Parameter inference from observed summary statistics
+### Predicting parameters with the Concrete Dropout method
 
 
 After the model is trained, parameter estimates can be predicted with `abc$predict()`.
@@ -458,9 +458,6 @@ abc_ensemble = abcnn$new(theta,
             num_hidden_dim = 512,
             batch_size = 32,
             epsilon_adversarial = 0.01)
-
-# The perturbation on input
-abc_ensemble$epsilon_adversarial * 2 * abc_ensemble$sumstat_sd
 ```
 
 ```{r, echo = T}
@@ -518,17 +515,18 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE) +
 
 
 
-### Multi parameter inference
+## Multi parameter inference
 
 And for two parameters jointly estimated?
 
 
 
 ```{r, echo = T}
+devtools::load_all()
 # Predict Y when X is observed
-theta = train_y
-sumstats = train_x
-observed = observed_x
+theta = train_y[1:1000,]
+sumstats = train_x[1:1000,]
+observed = observed_x[1:10,]
 
 abc_ensemble = abcnn$new(theta,
             sumstats,
@@ -540,10 +538,10 @@ abc_ensemble = abcnn$new(theta,
             num_hidden_dim = 500,
             batch_size = 256,
             epsilon_adversarial = 0.01)
+```
 
-# The perturbation on input
-abc_ensemble$epsilon_adversarial * 2 * abc_ensemble$sumstat_sd
 
+```{r, echo = T}
 abc_ensemble$fit()
 ```
 
