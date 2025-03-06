@@ -524,9 +524,9 @@ And for two parameters jointly estimated?
 ```{r, echo = T}
 devtools::load_all()
 # Predict Y when X is observed
-theta = train_y[1:1000,]
-sumstats = train_x[1:1000,]
-observed = observed_x[1:10,]
+theta = train_y
+sumstats = train_x
+observed = observed_x
 
 abc_ensemble = abcnn$new(theta,
             sumstats,
@@ -537,7 +537,7 @@ abc_ensemble = abcnn$new(theta,
             num_hidden_layers = 3,
             num_hidden_dim = 500,
             batch_size = 256,
-            epsilon_adversarial = 0.01)
+            epsilon_adversarial = NULL)
 ```
 
 

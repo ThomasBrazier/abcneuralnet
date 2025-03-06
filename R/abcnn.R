@@ -117,6 +117,7 @@ abcnn = R6::R6Class("abcnn",
     calibration_theta = NA,
     calibration_sumstat = NA,
     kernel_values = NA,
+    ncores = NA,
 
     initialize = function(theta,
                           sumstat,
@@ -152,7 +153,8 @@ abcnn = R6::R6Class("abcnn",
                           num_val=100,
                           num_networks=5,
                           epsilon_adversarial=NULL,
-                          device="cpu") {
+                          device="cpu",
+                          ncores = 1) {
       #-----------------------------------
       # CHECK INPUTS
       #-----------------------------------
@@ -210,6 +212,8 @@ abcnn = R6::R6Class("abcnn",
       self$credible_interval_p = credible_interval_p
       self$variance_clamping = variance_clamping
       self$n_conformal = n_conformal
+      self$verbose = verbose
+      self$ncores = ncores
 
       # Init default value for clamping the variance estimate, or let the user set it
       # if (variance_clamping & !is.numeric(variance_clamping)) {
@@ -322,9 +326,7 @@ abcnn = R6::R6Class("abcnn",
     # Train the neural network
     fit = function() {
 
-      if (verbose) {cat("Training the Neural Network with the method:", self$method, "\n")}
-
-      self$summary()
+      if (self$verbose) {self$summary()}
 
       # Load data
       dl = self$dataloader()
@@ -417,7 +419,7 @@ abcnn = R6::R6Class("abcnn",
 
       observed = torch_tensor(as.matrix(self$observed_adj))
 
-      if (verbose) {print("Predictions")}
+      if (self$verbose) {print("Predictions")}
 
       if (self$method == 'monte carlo dropout') {
 
@@ -650,16 +652,17 @@ abcnn = R6::R6Class("abcnn",
       # SAMPLING
       #-----------------------------------
       # ABC sampling before the neural network
+      # ABC sampling before scaling
       if (!is.null(self$tol)) {
         abc = self$abc_sampling()
         theta = as.matrix(abc$theta)
-        sumstat = as.matrix(abc$sumstat_adj)
+        sumstat = as.matrix(abc$sumstat)
       } else {
         theta = as.matrix(self$theta)
-        sumstat = as.matrix(self$sumstat_adj)
+        sumstat = as.matrix(self$sumstat)
       }
 
-      n_total = nrow(self$sumstat)
+      n_total = nrow(sumstat)
 
       # Randomly sample indexes
       n_val = round(n_total * self$validation_split, digits=0)
@@ -787,14 +790,19 @@ abcnn = R6::R6Class("abcnn",
 
     # ABC sampling of the simulations closest to the observed summary statistics
     abc_sampling = function() {
+      if (self$verbose) {cat("ABC sampling with kernel", self$kernel, "and tolerance", self$tol,"\n")}
       # Apply kernel weighting to subset the simulations closest to observed
       # Select the theta values that best match the observed data
       # Improved Kernel sampling
-      kernel_values = density_kernel(self$sumstat,
-                                     self$observed,
+      x1 = self$sumstat
+      x2 = self$observed
+
+      kernel_values = density_kernel(x1,
+                                     x2,
                                      kernel = self$kernel,
                                      bandwidth = self$bandwidth,
-                                     length_scale = self$length_scale)
+                                     length_scale = self$length_scale,
+                                     ncores = self$ncores)
 
       # Normalize the kernel values to form a proper weighting
       self$kernel_values = kernel_values/sum(kernel_values)
@@ -813,7 +821,7 @@ abcnn = R6::R6Class("abcnn",
 
     # Estimate a calibrated credible interval with Conformal Prediction
     conformal_prediction = function() {
-      cat("Performing conformal prediction\n")
+      if (self$verbose) {cat("Performing conformal prediction\n")}
       # Monte Carlo Dropout prediction on the calibration set
       calibration_set = self$calibration_sumstat
       calibration_truth = self$calibration_theta
@@ -873,7 +881,7 @@ abcnn = R6::R6Class("abcnn",
     # Returns a tidy tibble with predictions and C.I.
     predictions = function() {
       # Back-transform predictions to original scale
-      cat("Back-transform scaled parameters with method:", self$scale_target,"\n")
+      if (self$verbose) {cat("Back-transform scaled parameters with method:", self$scale_target,"\n")}
 
       predictive_mean = scaler(self$predictive_mean,
                                            self$target_summary,

@@ -5,21 +5,26 @@
 # kernel = c("gaussian", "epanechnikov", "rectangular",
 #            "triangular", "biweight",
 #            "cosine", "optcosine")
+library(pbmcapply)
 
 #' Generic density kernel
 density_kernel = function(x1, x2,
                           kernel = "epanechnikov",
                           bandwidth = 1.0,
-                          length_scale = 1.0) {
+                          length_scale = 1.0,
+                          ncores = 1) {
   if (kernel == "epanechnikov") {
     # One measure per observation
-    w = lapply(1:nrow(x2), function(i) {epanechnikov_kernel(x1, x2[i,], bandwidth = bandwidth)})
+    w = pbmclapply(1:nrow(x2), function(i) {epanechnikov_kernel(x1, x2[i,,drop=F], bandwidth = bandwidth)},
+                   mc.cores = ncores)
   }
   if (kernel == "rbf") {
-    w = lapply(1:nrow(x2), function(i) {rbf_kernel(x1, x2[i,], length_scale)})
+    w = pbmclapply(1:nrow(x2), function(i) {rbf_kernel(x1, x2[i,,drop=F], length_scale)},
+                   mc.cores = ncores)
   }
   if (kernel == "gaussian") {
-    w = lapply(1:nrow(x2), function(i) {gaussian_kernel(x1, x2[i,])})
+    w = pbmclapply(1:nrow(x2), function(i) {gaussian_kernel(x1, x2[i,,drop=F])},
+                   mc.cores = ncores)
   }
   # Do the mean distance across observations
   # cols are training samples
@@ -34,14 +39,27 @@ density_kernel = function(x1, x2,
 #' Compute the Epanechnikov kernel between two points or sets of points.
 epanechnikov_kernel = function(x1, x2, bandwidth = 1.0) {
   # Euclidean distance, one distance per sumstat (col)
+  # dist_obs = rbind(lapply(1:nrow(x2), function(y) rbind(lapply(1:nrow(x1), function(x) {dist(rbind(x1[x,], x2[y,]))}))))
+
   dist_obs = unlist(lapply(1:nrow(x1), function(x) {dist(rbind(x1[x,], x2))}))
+
+  # dist_obs = as.data.frame(matrix(NA, nrow = nrow(x2), ncol = nrow(x1)))
+  # for (j in 1:nrow(x2)) {
+  #   # cat(j, "\n")
+  #   tmp = unlist(lapply(1:nrow(x1), function(x) {dist(rbind(x1[x,], x2[j,]))}))
+  #   dist_obs[j,] = tmp
+  #   rm(tmp)
+  # }
+
   # Normalize by bandwidth
   if (bandwidth == "max") {
     bandwidth = max(dist_obs)
   }
-  dist_obs = dist_obs / bandwidth
+  weights = dist_obs / bandwidth
   # Weights of the kernel smoothing function
-  weights = ifelse(abs(dist_obs) <= 1, 3 / 4 * (1 - dist_obs^2), 0)
+  # weights = data.frame(apply(weights, c(1,2), function(x) {ifelse(abs(x) <= 1, 3 / 4 * (1 - x^2), 0)}))
+  weights = unlist(lapply(1:length(dist_obs), function(x) {ifelse(abs(dist_obs[x]) <= 1, 3 / 4 * (1 - dist_obs[x]^2), 0)}))
+  # weights = ifelse(abs(dist_obs) <= 1, 3 / 4 * (1 - dist_obs^2), 0)
   return(weights)
 }
 

@@ -292,7 +292,9 @@ nn_ensemble = nn_module(
   # Adversarial function
   fgsm_attack = function(input, epsilon, data_grad) {
     sign_data_grad = data_grad$sign()
-    perturbed_input = input + epsilon * sign_data_grad
+    # sigmas for each input dim (batch sigma)
+    batch_sigma = unlist(apply(input, 2, function(x) {sd(x, na.rm = TRUE)}))
+    perturbed_input = input + epsilon * batch_sigma * sign_data_grad
     return(perturbed_input)
   },
 
