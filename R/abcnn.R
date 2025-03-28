@@ -1,6 +1,6 @@
 library(ggplot2)
 library(torch)
-library(keras3)
+# library(keras3)
 
 #' Create an `abcnn` R6 class object
 #'
@@ -276,51 +276,56 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------
       # INIT MODELS
       #-----------------------------------
-      if (self$method == "monte carlo dropout") {
-        self$model = mc_dropout_model %>%
-          luz::setup(optimizer = self$optimizer,
-                     loss = self$loss) %>%
-          set_hparams(num_input_dim = self$input_dim,
-                      num_hidden_dim = self$num_hidden_dim,
-                      num_output_dim = self$output_dim,
-                      num_hidden_layers = self$num_hidden_layers,
-                      dropout_hidden = self$dropout) %>%
-          set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
-      }
-      if (self$method == "concrete dropout") {
-        # TODO Make utility functions for wr and dr
-        l = self$prior_length_scale
-        N = self$n_train
-        self$wr = l^2 / N
-        self$dr = 2 / N
+      if (is.null(model)) {
+        if (self$method == "monte carlo dropout") {
+          self$model = mc_dropout_model %>%
+            luz::setup(optimizer = self$optimizer,
+                       loss = self$loss) %>%
+            set_hparams(num_input_dim = self$input_dim,
+                        num_hidden_dim = self$num_hidden_dim,
+                        num_output_dim = self$output_dim,
+                        num_hidden_layers = self$num_hidden_layers,
+                        dropout_hidden = self$dropout) %>%
+            set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
+        }
+        if (self$method == "concrete dropout") {
+          # TODO Make utility functions for wr and dr
+          l = self$prior_length_scale
+          N = self$n_train
+          self$wr = l^2 / N
+          self$dr = 2 / N
 
-        self$model = concrete_model %>%
-          luz::setup(optimizer = self$optimizer) %>%
-          set_hparams(num_input_dim = self$input_dim,
-                      num_hidden_dim = self$num_hidden_dim,
-                      num_output_dim = self$output_dim,
-                      num_hidden_layers = self$num_hidden_layers,
-                      weight_regularizer = self$wr,
-                      dropout_regularizer = self$dr,
-                      clamp = self$variance_clamping) %>%
-          set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
-      }
-      if (self$method == "deep ensemble") {
+          self$model = concrete_model %>%
+            luz::setup(optimizer = self$optimizer) %>%
+            set_hparams(num_input_dim = self$input_dim,
+                        num_hidden_dim = self$num_hidden_dim,
+                        num_output_dim = self$output_dim,
+                        num_hidden_layers = self$num_hidden_layers,
+                        weight_regularizer = self$wr,
+                        dropout_regularizer = self$dr,
+                        clamp = self$variance_clamping) %>%
+            set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
+        }
+        if (self$method == "deep ensemble") {
 
-        self$model = nn_ensemble %>%
-          luz::setup() %>%
-          set_hparams (model = single_model,
-                       learning_rate = self$learning_rate,
-                       weight_decay = self$l2_weight_decay,
-                       num_models = self$num_networks,
-                       num_input_dim = self$input_dim,
-                       num_output_dim = self$output_dim,
-                       num_hidden_layers = self$num_hidden_layers,
-                       num_hidden_dim = self$num_hidden_dim,
-                       epsilon = NULL,
-                       clamp = self$variance_clamping)
+          self$model = nn_ensemble %>%
+            luz::setup() %>%
+            set_hparams (model = single_model,
+                         learning_rate = self$learning_rate,
+                         weight_decay = self$l2_weight_decay,
+                         num_models = self$num_networks,
+                         num_input_dim = self$input_dim,
+                         num_output_dim = self$output_dim,
+                         num_hidden_layers = self$num_hidden_layers,
+                         num_hidden_dim = self$num_hidden_dim,
+                         epsilon = NULL,
+                         clamp = self$variance_clamping)
+        }
+      } else {
+        self$model = model
       }
 
+      # END ON INIT
     },
 
     # Train the neural network
@@ -393,7 +398,7 @@ abcnn = R6::R6Class("abcnn",
                    callbacks = self$callbacks)
         # self$model = self$fitted$model
       }
-      self$model = self$fitted$model
+      # self$model = self$fitted$model
 
       # Evaluation
       # Plot training
