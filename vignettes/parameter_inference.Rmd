@@ -457,7 +457,7 @@ abc_ensemble = abcnn$new(theta,
             num_hidden_layers = 3,
             num_hidden_dim = 512,
             batch_size = 32,
-            epsilon_adversarial = 0.01)
+            epsilon_adversarial = NULL)
 ```
 
 ```{r, echo = T}
@@ -522,7 +522,7 @@ And for two parameters jointly estimated?
 
 
 ```{r, echo = T}
-devtools::load_all()
+# devtools::load_all()
 # Predict Y when X is observed
 theta = train_y
 sumstats = train_x
@@ -533,11 +533,13 @@ abc_ensemble = abcnn$new(theta,
             observed,
             method = 'deep ensemble',
             num_networks = 5,
+            scale_input = "none",
+            scale_target = "none",
             epochs = 30,
             num_hidden_layers = 3,
-            num_hidden_dim = 500,
-            batch_size = 256,
-            epsilon_adversarial = NULL)
+            num_hidden_dim = 512,
+            batch_size = 32,
+            epsilon_adversarial = 0.01)
 ```
 
 

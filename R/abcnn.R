@@ -990,8 +990,8 @@ abcnn = R6::R6Class("abcnn",
       # TODO Print number of samples and basic information on methods
       cat("ABC parameter inference with the method:", self$method, "\n")
 
-      cat("The number of samples is", nrow(self$theta), "for the training set (simulations) and", nrow(self$observed), "observations\n")
-      cat("The training set is split between", 1 - self$test_split, "for training,", self$test_split, "for testing and", self$n_conformal, "pseudo-observed samples retained for conformal prediction.\n")
+      cat("The number of samples is", nrow(self$theta), "for the training set (simulations) and", nrow(self$observed), "observations for predictions.\n")
+      cat("The validation split during training is", self$validation_split, ", the test split after training is", self$test_split, ", and", self$n_conformal, "simulations retained for conformal prediction.\n")
       # CUDA is installed?
       cat("\n")
       cat("Is CUDA available? ")
