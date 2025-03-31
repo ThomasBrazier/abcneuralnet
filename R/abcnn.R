@@ -445,7 +445,7 @@ abcnn = R6::R6Class("abcnn",
     # Predict parameters from a vector/array of observed summary statistics
     predict = function() {
 
-      observed = torch_tensor(as.matrix(self$observed_adj))
+      observed = torch_tensor(as.matrix(self$observed_adj), device = self$device)
 
       if (self$verbose) {print("Making predictions")}
 
