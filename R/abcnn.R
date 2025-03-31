@@ -124,8 +124,8 @@ abcnn = R6::R6Class("abcnn",
                           observed,
                           model=NULL,
                           method='concrete dropout',
-                          scale_input="minmax",
-                          scale_target="minmax",
+                          scale_input="none",
+                          scale_target="none",
                           num_hidden_layers=3,
                           num_hidden_dim=128,
                           validation_split=0.1,
@@ -226,19 +226,52 @@ abcnn = R6::R6Class("abcnn",
       # } else {
       #   self$variance_clamping = variance_clamping
       # }
+      self$input_dim = ncol(self$sumstat)
+      self$output_dim = ncol(self$theta)
+
+      # self$n_train = nrow(self$theta)
+      self$sumstat_names = colnames(self$observed)
+      colnames(self$sumstat) = self$sumstat_names
+      self$n_obs = nrow(self$observed)
+      self$output_names = NA
+      self$theta_names = colnames(self$theta)
 
 
+      # Fill output slots with NA
       # Init output slots
       self$fitted = NULL
       self$posterior_samples = NA # Raw posterior samples predicted by the NN
-      self$predictive_mean = NA # The mean predicted from MC samples (MC dropout) or pointwise estimate by concrete dropout
-      self$epistemic_uncertainty = NA # Raw epistemic uncertainty, expressed as sd
-      self$aleatoric_uncertainty = NA # Raw aleatoric uncertainty, expressed as sd
-      self$overall_uncertainty = NA
-      self$quantile_posterior = list(mean = NA,
-                                     median = NA,
-                                     posterior_lower_ci = NA,
-                                     posterior_upper_ci = NA)
+      # The mean predicted from MC samples (MC dropout) or pointwise estimate by concrete dropout
+      self$predictive_mean = as.data.frame(array(NA, dim = c(nrow(self$observed), self$output_dim)))
+      colnames(self$predictive_mean) = colnames(self$theta)
+      # Raw epistemic uncertainty, expressed as sd
+      self$epistemic_uncertainty = as.data.frame(array(NA, dim = c(nrow(self$observed), self$output_dim)))
+      colnames(self$epistemic_uncertainty) = colnames(self$theta)
+      # Raw aleatoric uncertainty, expressed as sd
+      self$aleatoric_uncertainty = as.data.frame(array(NA, dim = c(nrow(self$observed), self$output_dim)))
+      colnames(self$aleatoric_uncertainty) = colnames(self$theta)
+      # Overall uncertainty
+      self$overall_uncertainty = as.data.frame(array(NA, dim = c(nrow(self$observed), self$output_dim)))
+      colnames(self$overall_uncertainty) = colnames(self$theta)
+
+      quantile_posterior = as.data.frame(array(NA, dim = c(nrow(self$observed), self$output_dim)))
+      colnames(quantile_posterior) = colnames(self$theta)
+
+      self$quantile_posterior = list(mean = quantile_posterior,
+                                     median = quantile_posterior,
+                                     posterior_lower_ci = quantile_posterior,
+                                     posterior_upper_ci = quantile_posterior)
+
+
+      epistemic_conformal_quantile = as.data.frame(array(NA, dim = c(1, self$output_dim)))
+      colnames(epistemic_conformal_quantile) = colnames(self$theta)
+
+      overall_conformal_quantile = as.data.frame(array(NA, dim = c(1, self$output_dim)))
+      colnames(overall_conformal_quantile) = colnames(self$theta)
+
+      self$epistemic_conformal_quantile = epistemic_conformal_quantile
+      self$overall_conformal_quantile = overall_conformal_quantile
+
 
       self$dropout_rates = NA # The dropout rates hyperparameter estimated by concrete dropout
 
@@ -258,16 +291,6 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------
       # Set 64-bit default dtype for torch_exp computation
       # torch_set_default_dtype(torch_float64())
-
-      self$input_dim = ncol(self$sumstat)
-      self$output_dim = ncol(self$theta)
-
-      # self$n_train = nrow(self$theta)
-      self$sumstat_names = colnames(self$observed)
-      colnames(self$sumstat) = self$sumstat_names
-      self$n_obs = nrow(self$observed)
-      self$output_names = NA
-      self$theta_names = colnames(self$theta)
 
       # Keep metadata of prior boundaries for plotting
       self$prior_lower = apply(as.matrix(self$theta), 1, min)
@@ -424,228 +447,232 @@ abcnn = R6::R6Class("abcnn",
 
       observed = torch_tensor(as.matrix(self$observed_adj))
 
-      if (self$verbose) {print("Predictions")}
+      if (self$verbose) {print("Making predictions")}
 
-      if (self$method == 'monte carlo dropout') {
+      if (is.null(self$fitted)) {
+        warning("The model has not been fitted. NAs returned.")
+      } else {
+        if (self$method == 'monte carlo dropout') {
 
-        # Set model to evaluation mode
-        # TODO Implement this directly in the torch module
-        self$fitted$model$eval()
+          # Set model to evaluation mode
+          # TODO Implement this directly in the torch module
+          self$fitted$model$eval()
 
-        # MC dropout predictions
-        # Approximate posterior samples in lines (axis 1)
-        # Each observation is a column (axis 2)
-        # Mean prediction on axis 3, multiplied by the number of parameters to estimate
-        pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
+          # MC dropout predictions
+          # Approximate posterior samples in lines (axis 1)
+          # Each observation is a column (axis 2)
+          # Mean prediction on axis 3, multiplied by the number of parameters to estimate
+          pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
 
-        mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], self$output_dim))
-        for (k in 1:self$num_posterior_samples) {
-          preds = self$fitted$model(observed)
-          mc_samples[k, , 1:self$output_dim] = as.array(preds)
-          setTxtProgressBar(pb, k)
-        }
-        close(pb)
+          mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], self$output_dim))
+          for (k in 1:self$num_posterior_samples) {
+            preds = self$fitted$model(observed)
+            mc_samples[k, , 1:self$output_dim] = as.array(preds)
+            setTxtProgressBar(pb, k)
+          }
+          close(pb)
 
-        self$posterior_samples = mc_samples
+          self$posterior_samples = mc_samples
 
-        means = mc_samples[, , 1:self$output_dim, drop = F]
+          means = mc_samples[, , 1:self$output_dim, drop = F]
 
-        # average over the MC samples
-        # If more than one parameter to estimate
-        # TODO Generalize to any number of output dim
-        if (self$output_dim > 1) {
-          # Lines are observations
-          # Columns are parameters
-          predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
+          # average over the MC samples
+          # If more than one parameter to estimate
+          # TODO Generalize to any number of output dim
+          if (self$output_dim > 1) {
+            # Lines are observations
+            # Columns are parameters
+            predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
 
-          posterior_median = apply(means, 3, function(x) apply(x, 2, median))
-          posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
-          posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
+            posterior_median = apply(means, 3, function(x) apply(x, 2, median))
+            posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
+            posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
 
-          epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
-        } else {
-          predictive_mean = apply(means, 2, mean)
+            epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
+          } else {
+            predictive_mean = apply(means, 2, mean)
 
-          posterior_median = apply(means, 2, median)
-          posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
-          posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
+            posterior_median = apply(means, 2, median)
+            posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
+            posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
 
-          epistemic_uncertainty = apply(means, 2, var)
-        }
+            epistemic_uncertainty = apply(means, 2, var)
+          }
 
-        predictive_mean = as.data.frame(array(predictive_mean, dim = c(observed$shape[1], self$output_dim)))
-        colnames(predictive_mean) = colnames(self$theta)
-        self$predictive_mean = predictive_mean
+          predictive_mean = as.data.frame(array(predictive_mean, dim = c(observed$shape[1], self$output_dim)))
+          colnames(predictive_mean) = colnames(self$theta)
+          self$predictive_mean = predictive_mean
 
-        epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(observed$shape[1], self$output_dim)))
-        colnames(epistemic_uncertainty) = colnames(self$theta)
-        self$epistemic_uncertainty = epistemic_uncertainty
+          epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(observed$shape[1], self$output_dim)))
+          colnames(epistemic_uncertainty) = colnames(self$theta)
+          self$epistemic_uncertainty = epistemic_uncertainty
 
-        aleatoric_uncertainty = as.data.frame(array(NA, dim = c(observed$shape[1], self$output_dim)))
-        colnames(aleatoric_uncertainty) = colnames(self$theta)
-        self$aleatoric_uncertainty = aleatoric_uncertainty
+          aleatoric_uncertainty = as.data.frame(array(NA, dim = c(observed$shape[1], self$output_dim)))
+          colnames(aleatoric_uncertainty) = colnames(self$theta)
+          self$aleatoric_uncertainty = aleatoric_uncertainty
 
-        self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
+          self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
 
-        posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
-        colnames(posterior_median) = colnames(self$theta)
+          posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_median) = colnames(self$theta)
 
-        posterior_lower_ci = as.data.frame(array(posterior_lower_ci, dim = c(observed$shape[1], self$output_dim)))
-        colnames(posterior_lower_ci) = colnames(self$theta)
+          posterior_lower_ci = as.data.frame(array(posterior_lower_ci, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_lower_ci) = colnames(self$theta)
 
-        posterior_upper_ci = as.data.frame(array(posterior_upper_ci, dim = c(observed$shape[1], self$output_dim)))
-        colnames(posterior_upper_ci) = colnames(self$theta)
+          posterior_upper_ci = as.data.frame(array(posterior_upper_ci, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_upper_ci) = colnames(self$theta)
 
-        self$quantile_posterior = list(mean = predictive_mean,
-                                       median = posterior_median,
-                                       posterior_lower_ci = posterior_lower_ci,
-                                       posterior_upper_ci = posterior_upper_ci)
-      }
-
-      if (self$method == 'concrete dropout') {
-        pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
-
-        mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
-        for (k in 1:self$num_posterior_samples) {
-          preds = self$fitted$model(observed)
-          mc_samples[k, , ] = cbind(as.matrix(preds[1]), as.matrix(preds[2]))
-          setTxtProgressBar(pb, k)
-        }
-        close(pb)
-
-        # the means are in the first output column
-        means = mc_samples[, , 1:self$output_dim, drop = F]
-        logvar = mc_samples[, , (self$output_dim + 1):(self$output_dim * 2), drop = F]
-
-        self$posterior_samples = mc_samples
-        self$output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(self$theta), x, sep = "_")))
-
-        # average over the MC samples
-        # If more than one parameter to estimate
-        # TODO Generalize to any number of output dim
-        if (self$output_dim > 1) {
-          # Lines are observations
-          # Columns are parameters
-          predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
-          epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
-          aleatoric_uncertainty = apply(logvar, 3, function(x) exp(colMeans(x)))
-
-          posterior_median = apply(means, 3, function(x) apply(x, 2, median))
-          posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
-          posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
-
-        } else {
-          predictive_mean = apply(means, 2, mean)
-          epistemic_uncertainty = apply(means, 2, var)
-          aleatoric_uncertainty = exp(colMeans(logvar))
-
-          posterior_median = apply(means, 2, median)
-          posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
-          posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
+          self$quantile_posterior = list(mean = predictive_mean,
+                                         median = posterior_median,
+                                         posterior_lower_ci = posterior_lower_ci,
+                                         posterior_upper_ci = posterior_upper_ci)
         }
 
+        if (self$method == 'concrete dropout') {
+          pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
 
-        predictive_mean = as.data.frame(array(predictive_mean, dim = c(observed$shape[1], self$output_dim)))
-        colnames(predictive_mean) = colnames(self$theta)
-        self$predictive_mean = predictive_mean
+          mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
+          for (k in 1:self$num_posterior_samples) {
+            preds = self$fitted$model(observed)
+            mc_samples[k, , ] = cbind(as.matrix(preds[1]), as.matrix(preds[2]))
+            setTxtProgressBar(pb, k)
+          }
+          close(pb)
 
-        epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(observed$shape[1], self$output_dim)))
-        colnames(epistemic_uncertainty) = colnames(self$theta)
-        self$epistemic_uncertainty = sqrt(epistemic_uncertainty)
+          # the means are in the first output column
+          means = mc_samples[, , 1:self$output_dim, drop = F]
+          logvar = mc_samples[, , (self$output_dim + 1):(self$output_dim * 2), drop = F]
 
-        aleatoric_uncertainty = as.data.frame(array(aleatoric_uncertainty, dim = c(observed$shape[1], self$output_dim)))
-        colnames(aleatoric_uncertainty) = colnames(self$theta)
-        self$aleatoric_uncertainty = sqrt(aleatoric_uncertainty)
+          self$posterior_samples = mc_samples
+          self$output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(self$theta), x, sep = "_")))
 
-        posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
-        colnames(posterior_median) = colnames(self$theta)
+          # average over the MC samples
+          # If more than one parameter to estimate
+          # TODO Generalize to any number of output dim
+          if (self$output_dim > 1) {
+            # Lines are observations
+            # Columns are parameters
+            predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
+            epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
+            aleatoric_uncertainty = apply(logvar, 3, function(x) exp(colMeans(x)))
 
-        posterior_lower_ci = as.data.frame(array(posterior_lower_ci, dim = c(observed$shape[1], self$output_dim)))
-        colnames(posterior_lower_ci) = colnames(self$theta)
+            posterior_median = apply(means, 3, function(x) apply(x, 2, median))
+            posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
+            posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
 
-        posterior_upper_ci = as.data.frame(array(posterior_upper_ci, dim = c(observed$shape[1], self$output_dim)))
-        colnames(posterior_upper_ci) = colnames(self$theta)
+          } else {
+            predictive_mean = apply(means, 2, mean)
+            epistemic_uncertainty = apply(means, 2, var)
+            aleatoric_uncertainty = exp(colMeans(logvar))
 
-        self$quantile_posterior = list(mean = predictive_mean,
-                                       median = posterior_median,
-                                       posterior_lower_ci = posterior_lower_ci,
-                                       posterior_upper_ci = posterior_upper_ci)
+            posterior_median = apply(means, 2, median)
+            posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
+            posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
+          }
 
-        self$overall_uncertainty = sqrt(aleatoric_uncertainty) + sqrt(epistemic_uncertainty)
 
-        # Store dropout rates inferred
-        params = self$fitted$model$named_parameters()
-        p_logit = params[grepl("p_logit", names(params))]
-        p = lapply(p_logit, function(x) torch_sigmoid(x))
-        p = unlist(lapply(p, function(x) as.numeric(x)))
-        self$dropout_rates = p
-      }
+          predictive_mean = as.data.frame(array(predictive_mean, dim = c(observed$shape[1], self$output_dim)))
+          colnames(predictive_mean) = colnames(self$theta)
+          self$predictive_mean = predictive_mean
 
-      if (self$method == 'deep ensemble') {
-        # Use forward to get mean prediction + variance
+          epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(observed$shape[1], self$output_dim)))
+          colnames(epistemic_uncertainty) = colnames(self$theta)
+          self$epistemic_uncertainty = sqrt(epistemic_uncertainty)
 
-        # Infer epistemic + aleatoric uncertainty
-        # output for ensemble network
-        n_obs = nrow(self$observed_adj)
-        out_mu_sample  = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
-        out_sig_sample = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
+          aleatoric_uncertainty = as.data.frame(array(aleatoric_uncertainty, dim = c(observed$shape[1], self$output_dim)))
+          colnames(aleatoric_uncertainty) = colnames(self$theta)
+          self$aleatoric_uncertainty = sqrt(aleatoric_uncertainty)
 
-        for (i in 1:self$num_networks) {
-          pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
+          posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_median) = colnames(self$theta)
 
-          # print(paste("Network", i))
+          posterior_lower_ci = as.data.frame(array(posterior_lower_ci, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_lower_ci) = colnames(self$theta)
 
-          preds = self$fitted$model$model_list[[i]](observed)
+          posterior_upper_ci = as.data.frame(array(posterior_upper_ci, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_upper_ci) = colnames(self$theta)
 
-          # print(preds)
-          mu_sample = preds[1,,]
-          # print(mu_sample)
+          self$quantile_posterior = list(mean = predictive_mean,
+                                         median = posterior_median,
+                                         posterior_lower_ci = posterior_lower_ci,
+                                         posterior_upper_ci = posterior_upper_ci)
 
-          sig_sample = preds[2,,]
-          # sig_sample = torch_logsumexp(sig_sample, 1, keepdim = TRUE) + 1e-6
-          sig_sample = log1pexp(sig_sample) # Numerically stable approximation
-          # print(sig_sample)
+          self$overall_uncertainty = sqrt(aleatoric_uncertainty) + sqrt(epistemic_uncertainty)
 
-          out_mu_sample[,,i]  = mu_sample
-          out_sig_sample[,,i] = sig_sample
-
-          setTxtProgressBar(pb, i)
+          # Store dropout rates inferred
+          params = self$fitted$model$named_parameters()
+          p_logit = params[grepl("p_logit", names(params))]
+          p = lapply(p_logit, function(x) torch_sigmoid(x))
+          p = unlist(lapply(p, function(x) as.numeric(x)))
+          self$dropout_rates = p
         }
-        close(pb)
 
-        # print("Compute predictive mean")
+        if (self$method == 'deep ensemble') {
+          # Use forward to get mean prediction + variance
 
-        # Mean prediction across networks
-        out_mu_sample_final  = torch_mean(out_mu_sample, dim = 3)
-        predictive_mean = as.data.frame(array(as.numeric(out_mu_sample_final), dim = c(observed$shape[1], self$output_dim)))
-        colnames(predictive_mean) = colnames(self$theta)
+          # Infer epistemic + aleatoric uncertainty
+          # output for ensemble network
+          n_obs = nrow(self$observed_adj)
+          out_mu_sample  = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
+          out_sig_sample = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
 
-        out_sig_sample_final = torch_sqrt(torch_mean(out_sig_sample, dim = 3) +
-                                          torch_mean(torch_square(out_mu_sample), dim = 3) -
-                                          torch_square(out_mu_sample_final))
+          for (i in 1:self$num_networks) {
+            pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
 
-        out_sig_sample_aleatoric = torch_sqrt(torch_mean(out_sig_sample, dim = 3))
-        out_sig_sample_epistemic = torch_sqrt(torch_mean(torch_square(out_mu_sample), dim = 3) -
-                                                           torch_square(out_mu_sample_final))
+            # print(paste("Network", i))
 
-        epistemic_uncertainty = as.data.frame(array(as.numeric(out_sig_sample_epistemic), dim = c(observed$shape[1], self$output_dim)))
-        colnames(epistemic_uncertainty) = colnames(self$theta)
+            preds = self$fitted$model$model_list[[i]](observed)
 
-        aleatoric_uncertainty = as.data.frame(array(as.numeric(out_sig_sample_aleatoric), dim = c(observed$shape[1], self$output_dim)))
-        colnames(aleatoric_uncertainty) = colnames(self$theta)
+            # print(preds)
+            mu_sample = preds[1,,]
+            # print(mu_sample)
 
-        # Mean prediction across networks
-        self$predictive_mean  = predictive_mean
+            sig_sample = preds[2,,]
+            # sig_sample = torch_logsumexp(sig_sample, 1, keepdim = TRUE) + 1e-6
+            sig_sample = log1pexp(sig_sample) # Numerically stable approximation
+            # print(sig_sample)
 
-        self$aleatoric_uncertainty = aleatoric_uncertainty
-        self$epistemic_uncertainty = epistemic_uncertainty
+            out_mu_sample[,,i]  = mu_sample
+            out_sig_sample[,,i] = sig_sample
 
-        self$overall_uncertainty = aleatoric_uncertainty + epistemic_uncertainty
-      }
+            setTxtProgressBar(pb, i)
+          }
+          close(pb)
 
-      # Conformal prediction
-      if (self$n_conformal > 0) {
-        self$conformal_prediction()
+          # print("Compute predictive mean")
+
+          # Mean prediction across networks
+          out_mu_sample_final  = torch_mean(out_mu_sample, dim = 3)
+          predictive_mean = as.data.frame(array(as.numeric(out_mu_sample_final), dim = c(observed$shape[1], self$output_dim)))
+          colnames(predictive_mean) = colnames(self$theta)
+
+          out_sig_sample_final = torch_sqrt(torch_mean(out_sig_sample, dim = 3) +
+                                              torch_mean(torch_square(out_mu_sample), dim = 3) -
+                                              torch_square(out_mu_sample_final))
+
+          out_sig_sample_aleatoric = torch_sqrt(torch_mean(out_sig_sample, dim = 3))
+          out_sig_sample_epistemic = torch_sqrt(torch_mean(torch_square(out_mu_sample), dim = 3) -
+                                                  torch_square(out_mu_sample_final))
+
+          epistemic_uncertainty = as.data.frame(array(as.numeric(out_sig_sample_epistemic), dim = c(observed$shape[1], self$output_dim)))
+          colnames(epistemic_uncertainty) = colnames(self$theta)
+
+          aleatoric_uncertainty = as.data.frame(array(as.numeric(out_sig_sample_aleatoric), dim = c(observed$shape[1], self$output_dim)))
+          colnames(aleatoric_uncertainty) = colnames(self$theta)
+
+          # Mean prediction across networks
+          self$predictive_mean  = predictive_mean
+
+          self$aleatoric_uncertainty = aleatoric_uncertainty
+          self$epistemic_uncertainty = epistemic_uncertainty
+
+          self$overall_uncertainty = aleatoric_uncertainty + epistemic_uncertainty
+        }
+
+        # Conformal prediction
+        if (self$n_conformal > 0) {
+          self$conformal_prediction()
+        }
       }
 
     },
@@ -1006,100 +1033,112 @@ abcnn = R6::R6Class("abcnn",
 
     # Plot the training curves (training/validation)
     plot_training = function(discard_first = FALSE) {
-      if (self$method != "deep ensemble") {
-        train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
-        valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
-        eval = ifelse(self$method != "deep ensemble", self$eval_metrics$value, NA)
-
-        if (discard_first) {
-          train_metric[1] = NA
-        }
-
-        train_eval = data.frame(Epoch = rep(1:length(train_metric), self$output_dim),
-                                Metric = c(train_metric, valid_metric),
-                                Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
-
-        ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
-          geom_point() +
-          geom_line() +
-          xlab("Epoch") + ylab("Loss") +
-          geom_hline(yintercept = eval) +
-          theme_bw()
+      if (is.null(self$fitted)) {
+        warning("The model has not been fitted.")
       } else {
-        train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
-        valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+        if (self$method != "deep ensemble") {
+          train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
+          valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+          eval = ifelse(self$method != "deep ensemble", self$eval_metrics$value, NA)
 
-        if (discard_first) {
-          train_metric[1] = NA
+          if (discard_first) {
+            train_metric[1] = NA
+          }
+
+          train_eval = data.frame(Epoch = rep(1:length(train_metric), self$output_dim),
+                                  Metric = c(train_metric, valid_metric),
+                                  Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+          ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+            geom_point() +
+            geom_line() +
+            xlab("Epoch") + ylab("Loss") +
+            geom_hline(yintercept = eval) +
+            theme_bw()
+        } else {
+          train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
+          valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+
+          if (discard_first) {
+            train_metric[1] = NA
+          }
+
+          train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/self$num_networks), each = self$num_networks), self$output_dim),
+                                  Model = rep(1:self$num_networks, (length(train_metric)/self$num_networks)),
+                                  Metric = c(train_metric, valid_metric),
+                                  Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+          ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+            geom_point() +
+            geom_line() +
+            xlab("Epoch") + ylab("Loss") +
+            facet_wrap(~ Model) +
+            theme_bw()
         }
-
-        train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/self$num_networks), each = self$num_networks), self$output_dim),
-                                Model = rep(1:self$num_networks, (length(train_metric)/self$num_networks)),
-                                Metric = c(train_metric, valid_metric),
-                                Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
-
-        ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
-          geom_point() +
-          geom_line() +
-          xlab("Epoch") + ylab("Loss") +
-          facet_wrap(~ Model) +
-          theme_bw()
       }
+
+
     },
 
     # Plot predicted values (predicted ~ observed)
     plot_predicted = function(paired = FALSE,
                               type = "conformal") {
-      # If same number of parameters x and y, infer pairwise relationship between each x and y (i.e. x1 ~ y1, x2 ~ y2...)
-      # Otherwise order x axis by index
-      df_predicted = self$predictions()
 
-      if (paired) {
-        x_pos = as.numeric(unlist(self$observed))
+      if (is.null(self$fitted)) {
+        warning("The model has not been fitted.")
       } else {
-        x_pos = df_predicted$sample
+        # If same number of parameters x and y, infer pairwise relationship between each x and y (i.e. x1 ~ y1, x2 ~ y2...)
+        # Otherwise order x axis by index
+        df_predicted = self$predictions()
+
+        if (paired) {
+          x_pos = as.numeric(unlist(self$observed))
+        } else {
+          x_pos = df_predicted$sample
+        }
+
+        if (type == "uncertainty") {
+          df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_uncertainty
+          df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_uncertainty
+
+          df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
+          df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
+
+          df_predicted$mean = df_predicted$predictive_mean
+        }
+
+        if (type == "conformal") {
+          df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
+          df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
+
+          df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
+          df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
+
+          df_predicted$mean = df_predicted$predictive_mean
+        }
+
+        if (type == "posterior quantile") {
+          df_predicted$ci_overall_upper = df_predicted$posterior_upper_ci
+          df_predicted$ci_overall_lower = df_predicted$posterior_lower_ci
+
+          df_predicted$ci_e_upper = as.numeric(NA)
+          df_predicted$ci_e_lower = as.numeric(NA)
+
+          df_predicted$mean = df_predicted$posterior_median
+        }
+
+        df_predicted$x = x_pos
+
+
+        ggplot(data = df_predicted, aes(x = x)) +
+          geom_line(aes(x = x, y = mean), color = "black") +
+          facet_wrap(~ parameter, scales = "free") +
+          geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
+          geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
+          xlab("Observed") + ylab("Predicted") +
+          theme_bw()
       }
 
-      if (type == "uncertainty") {
-        df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_uncertainty
-        df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_uncertainty
-
-        df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
-        df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
-
-        df_predicted$mean = df_predicted$predictive_mean
-      }
-
-      if (type == "conformal") {
-        df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
-        df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
-
-        df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
-        df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
-
-        df_predicted$mean = df_predicted$predictive_mean
-      }
-
-      if (type == "posterior quantile") {
-        df_predicted$ci_overall_upper = df_predicted$posterior_upper_ci
-        df_predicted$ci_overall_lower = df_predicted$posterior_lower_ci
-
-        df_predicted$ci_e_upper = as.numeric(NA)
-        df_predicted$ci_e_lower = as.numeric(NA)
-
-        df_predicted$mean = df_predicted$posterior_median
-      }
-
-      df_predicted$x = x_pos
-
-
-      ggplot(data = df_predicted, aes(x = x)) +
-        geom_line(aes(x = x, y = mean), color = "black") +
-        facet_wrap(~ parameter, scales = "free") +
-        geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
-        geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
-        xlab("Observed") + ylab("Predicted") +
-        theme_bw()
     },
 
     # Plot the distributions of estimates and predictions
@@ -1109,90 +1148,145 @@ abcnn = R6::R6Class("abcnn",
       # Dim 1 is number of MC samples (predictions)
       # Dim 2 is number of observations
       # Dim 3 is parameters (mu + sigma)
-      tidy_predictions = self$predictions()
-      pal = RColorBrewer::brewer.pal(8, "Dark2")
-      cols = c("Epistemic"=pal[3],"Overall"=pal[2])
 
-      if (type == "uncertainty") {
-        tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_uncertainty
-        tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_uncertainty
-
-        tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_uncertainty
-        tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_uncertainty
-      }
-
-      if (type == "conformal") {
-        tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_conformal_credible_interval
-        tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_conformal_credible_interval
-
-        tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_conformal_credible_interval
-        tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_conformal_credible_interval
-      }
-
-      if (type == "posterior quantile") {
-        tidy_predictions$ci_upper = tidy_predictions$posterior_upper_ci
-        tidy_predictions$ci_lower = tidy_predictions$posterior_lower_ci
-
-        tidy_predictions$ci_e_upper = as.numeric(NA)
-        tidy_predictions$ci_e_lower = as.numeric(NA)
-      }
-
-      tidy_predictions = tidy_predictions[tidy_predictions$sample == sample,]
-
-      if (prior) {
-        tidy_priors = data.frame(param = rep(colnames(self$theta), each = nrow(self$theta)),
-                                 prior = as.numeric(unlist(self$theta)))
-
-        p = ggplot() +
-          geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1)
+      if (is.null(self$fitted)) {
+        warning("The model has not been fitted.")
       } else {
-        p = ggplot()
+        # If same number of parameters x and y, infer pairwise relationship between each x and y (i.e. x1 ~ y1, x2 ~ y2...)
+        # Otherwise order x axis by index
+        df_predicted = self$predictions()
+
+        if (paired) {
+          x_pos = as.numeric(unlist(self$observed))
+        } else {
+          x_pos = df_predicted$sample
+        }
+
+        if (type == "uncertainty") {
+          df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_uncertainty
+          df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_uncertainty
+
+          df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
+          df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
+
+          df_predicted$mean = df_predicted$predictive_mean
+        }
+
+        if (type == "conformal") {
+          df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
+          df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
+
+          df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
+          df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
+
+          df_predicted$mean = df_predicted$predictive_mean
+        }
+
+        if (type == "posterior quantile") {
+          df_predicted$ci_overall_upper = df_predicted$posterior_upper_ci
+          df_predicted$ci_overall_lower = df_predicted$posterior_lower_ci
+
+          df_predicted$ci_e_upper = as.numeric(NA)
+          df_predicted$ci_e_lower = as.numeric(NA)
+
+          df_predicted$mean = df_predicted$posterior_median
+        }
+
+        df_predicted$x = x_pos
+
+
+        ggplot(data = df_predicted, aes(x = x)) +
+          geom_line(aes(x = x, y = mean), color = "black") +
+          facet_wrap(~ parameter, scales = "free") +
+          geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
+          geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
+          xlab("Observed") + ylab("Predicted") +
+          theme_bw()
+        tidy_predictions = self$predictions()
+        pal = RColorBrewer::brewer.pal(8, "Dark2")
+        cols = c("Epistemic"=pal[3],"Overall"=pal[2])
+
+        if (type == "uncertainty") {
+          tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_uncertainty
+          tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_uncertainty
+
+          tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_uncertainty
+          tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_uncertainty
+        }
+
+        if (type == "conformal") {
+          tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_conformal_credible_interval
+          tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_conformal_credible_interval
+
+          tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_conformal_credible_interval
+          tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_conformal_credible_interval
+        }
+
+        if (type == "posterior quantile") {
+          tidy_predictions$ci_upper = tidy_predictions$posterior_upper_ci
+          tidy_predictions$ci_lower = tidy_predictions$posterior_lower_ci
+
+          tidy_predictions$ci_e_upper = as.numeric(NA)
+          tidy_predictions$ci_e_lower = as.numeric(NA)
+        }
+
+        tidy_predictions = tidy_predictions[tidy_predictions$sample == sample,]
+
+        if (prior) {
+          tidy_priors = data.frame(param = rep(colnames(self$theta), each = nrow(self$theta)),
+                                   prior = as.numeric(unlist(self$theta)))
+
+          p = ggplot() +
+            geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1)
+        } else {
+          p = ggplot()
+        }
+
+        if (self$method %in% c("monte carlo dropout", "concrete dropout")) {
+          posteriors = self$posterior_samples[,sample,]
+          posteriors = as.data.frame(posteriors)
+          posteriors = posteriors[,1:self$output_dim, drop = FALSE]
+          colnames(posteriors) = self$theta_names
+
+          # Back-transform predictions to original scale
+          cat("Back-transform scaled posteriors with method:", self$scale_target,"\n")
+          posteriors = scaler(posteriors,
+                              self$target_summary,
+                              method = self$scale_target,
+                              type = "backward")
+          posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
+
+          # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
+
+          tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
+
+          p = p + geom_histogram(data = tidy_df, aes(x = prediction))
+        }
+
+        p = p +
+          geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "Epistemic")) +
+          geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
+          # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_lower, colour = "Overall conformal")) +
+          # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_upper, colour = "Overall conformal")) +
+          # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_e_lower, colour = "Epistemic conformal")) +
+          # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_e_upper, colour = "Epistemic conformal")) +
+          geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.1) +
+          # geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_lower, xmax = ci_conformal_upper, ymin = -Inf, ymax = Inf, colour = "Overall conformal", fill = "Overall conformal"), alpha = 0.1) +
+          # geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_e_lower, xmax = ci_conformal_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic conformal", fill = "Epistemic conformal"), alpha = 0.1) +
+          facet_wrap(~ parameter, scales = "free") +
+          scale_colour_manual(name = "Uncertainty", values = cols) +
+          scale_fill_manual(name = "Uncertainty", values = cols) +
+          xlab("Value") + ylab("Count") +
+          ggtitle(type) +
+          theme_bw() +
+          theme(legend.position = "right")
+
+        p
       }
-
-      if (self$method %in% c("monte carlo dropout", "concrete dropout")) {
-        posteriors = self$posterior_samples[,sample,]
-        posteriors = as.data.frame(posteriors)
-        posteriors = posteriors[,1:self$output_dim, drop = FALSE]
-        colnames(posteriors) = self$theta_names
-
-        # Back-transform predictions to original scale
-        cat("Back-transform scaled posteriors with method:", self$scale_target,"\n")
-        posteriors = scaler(posteriors,
-                                 self$target_summary,
-                                 method = self$scale_target,
-                                 type = "backward")
-        posteriors$mc_sample = as.character(c(1:nrow(posteriors)))
-
-        # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
-
-        tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
-
-        p = p + geom_histogram(data = tidy_df, aes(x = prediction))
-      }
-
-      p = p +
-        geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "Epistemic")) +
-        geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1) +
-        geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
-        geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
-        geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
-        geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
-        # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_lower, colour = "Overall conformal")) +
-        # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_upper, colour = "Overall conformal")) +
-        # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_e_lower, colour = "Epistemic conformal")) +
-        # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_e_upper, colour = "Epistemic conformal")) +
-        geom_rect(data = tidy_predictions, aes(xmin = ci_lower, xmax = ci_upper, ymin = -Inf, ymax = Inf, colour = "Overall", fill = "Overall"), alpha = 0.1) +
-        # geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_lower, xmax = ci_conformal_upper, ymin = -Inf, ymax = Inf, colour = "Overall conformal", fill = "Overall conformal"), alpha = 0.1) +
-        # geom_rect(data = tidy_predictions, aes(xmin = ci_conformal_e_lower, xmax = ci_conformal_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic conformal", fill = "Epistemic conformal"), alpha = 0.1) +
-        facet_wrap(~ parameter, scales = "free") +
-        scale_colour_manual(name = "Uncertainty", values = cols) +
-        scale_fill_manual(name = "Uncertainty", values = cols) +
-        xlab("Value") + ylab("Count") +
-        ggtitle(type) +
-        theme_bw() +
-        theme(legend.position = "right")
-
-      p
 
     }
   )
