@@ -41,7 +41,6 @@ library(torch)
 #' @import dplyr
 #' @import tibble
 #' @import R6Class
-#' @import keras3
 #' @import RColorBrewer
 #'
 #' @return an `abcnn` object
@@ -394,12 +393,11 @@ abcnn = R6::R6Class("abcnn",
         # dl = self$dataloader()
 
         # The range of noise to add to perturbed inputs in adversarial training
-        # if (!is.null(self$epsilon_adversarial)) {
-        #   epsilon = self$epsilon_adversarial * 2 * sd(self$sumstat_adj)
-        # } else {
-        #   epsilon = NULL
-        # }
-        epsilon = NULL
+        if (!is.null(self$epsilon_adversarial) & self$epsilon_adversarial != 0 & !is.na(self$epsilon_adversarial)) {
+          epsilon = self$epsilon_adversarial * 2 * sd(self$sumstat_adj)
+        } else {
+          epsilon = NULL
+        }
 
         # Fit
         # Redefine model with epsilon based on training data
@@ -413,7 +411,7 @@ abcnn = R6::R6Class("abcnn",
                        num_output_dim = self$output_dim,
                        num_hidden_layers = self$num_hidden_layers,
                        num_hidden_dim = self$num_hidden_dim,
-                       epsilon = NULL,
+                       epsilon = epsilon,
                        clamp = self$variance_clamping) %>%
           luz::fit(dl$train,
                    epochs = self$epochs,
@@ -951,13 +949,25 @@ abcnn = R6::R6Class("abcnn",
       # quantile * sqrt(variance heuristic)
       df_epistemic = epistemic_uncertainty
       for (j in ncol(df_epistemic)) {
-        df_epistemic[,j] = self$epistemic_conformal_quantile[,j] * df_epistemic[,j]
+        df_epistemic[,j] = self$epistemic_conformal_quantile[,j] * self$epistemic_uncertainty[,j]
       }
 
       df_overall = overall_uncertainty
       for (j in ncol(df_overall)) {
-        df_overall[,j] = self$overall_conformal_quantile[,j] * df_overall[,j]
+        df_overall[,j] = self$overall_conformal_quantile[,j] * self$overall_uncertainty[,j]
       }
+
+      # Scale back
+      df_overall = scaler(df_overall,
+                          self$target_summary,
+                          method = self$scale_target,
+                          type = "backward")
+
+      df_epistemic = scaler(df_epistemic,
+                            self$target_summary,
+                            method = self$scale_target,
+                            type = "backward")
+
 
       # Tidy data
       pred_mean = tidyr::gather(predictive_mean,

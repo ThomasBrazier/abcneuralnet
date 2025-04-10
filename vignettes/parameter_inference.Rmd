@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 devtools::load_all()
 library(ggplot2)
 library(torch)
-library(keras3)
+# library(keras3)
 ```
 
 
@@ -39,15 +39,16 @@ gen_data_1d = function(n) {
   w = 2
   b = 8
   Y = matrix(X %*% w + b + sigma * rnorm(n))
-  list(X, Y)
+  list(X = X, Y = Y)
 }
 
-c(X, Y) %<-% gen_data_1d(n_train + n_obs)
+XY = gen_data_1d(n_train + n_obs)
 
-c(X_train, Y_train) %<-% list(X[1:n_train], Y[1:n_train])
-c(X_obs, Y_obs) %<-% list(X[(n_train + 1):(n_train + n_obs)], 
-                          Y[(n_train + 1):(n_train + n_obs)])
+X_train = XY$X[1:n_train]
+Y_train = XY$Y[1:n_train]
 
+X_obs = XY$X[(n_train + 1):(n_train + n_obs)]
+Y_obs = XY$Y[(n_train + 1):(n_train + n_obs)]
 
 # Predict Y when X is observed
 theta = data.frame(y1 = Y_train)
