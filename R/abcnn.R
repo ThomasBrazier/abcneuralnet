@@ -83,7 +83,7 @@ abcnn = R6::R6Class("abcnn",
     dr=NA,
     num_val=100,
     num_networks=5,
-    epsilon_adversarial=NULL,
+    epsilon_adversarial=0,
     device="cpu",
     input_dim = NA,
     output_dim = NA,
@@ -151,7 +151,7 @@ abcnn = R6::R6Class("abcnn",
                           prior_length_scale=1e-4,
                           num_val=100,
                           num_networks=5,
-                          epsilon_adversarial=NULL,
+                          epsilon_adversarial=0,
                           device="cpu",
                           ncores = 1) {
       #-----------------------------------
@@ -393,10 +393,10 @@ abcnn = R6::R6Class("abcnn",
         # dl = self$dataloader()
 
         # The range of noise to add to perturbed inputs in adversarial training
-        if (!is.null(self$epsilon_adversarial) & self$epsilon_adversarial != 0 & !is.na(self$epsilon_adversarial)) {
-          epsilon = self$epsilon_adversarial * 2 * sd(self$sumstat_adj)
+        if (is.null(self$epsilon_adversarial) | is.na(self$epsilon_adversarial)) {
+          epsilon = 0
         } else {
-          epsilon = NULL
+          epsilon = self$epsilon_adversarial * 2 * sd(self$sumstat_adj)
         }
 
         # Fit

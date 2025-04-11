@@ -106,7 +106,7 @@ nn_ensemble = nn_module(
                         num_output_dim = 1,
                         num_hidden_dim = 128,
                         num_hidden_layers = 3,
-                        epsilon = NULL,
+                        epsilon = 0,
                         clamp = c(1e-6, 1e6)) {
     # print("Init")
     self$num_models = num_models
@@ -200,7 +200,7 @@ nn_ensemble = nn_module(
       optimizer = self$optimizers[[opt_name]]
 
       # Forward pass and loss - Combine two losses if adversarial
-      if (!is.null(self$epsilon) & ctx$training) {
+      if (self$epsilon > 0 & ctx$training) {
         # Adversarial
         # Loss without perturbation to get the gradient sign
         input$requires_grad = TRUE
