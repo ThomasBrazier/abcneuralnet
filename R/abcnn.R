@@ -393,10 +393,14 @@ abcnn = R6::R6Class("abcnn",
         # dl = self$dataloader()
 
         # The range of noise to add to perturbed inputs in adversarial training
-        if (is.null(self$epsilon_adversarial) | is.na(self$epsilon_adversarial)) {
+        if (is.null(self$epsilon_adversarial)) {
           epsilon = 0
         } else {
-          epsilon = self$epsilon_adversarial * 2 * sd(self$sumstat_adj)
+          if (is.na(self$epsilon_adversarial)) {
+            epsilon = 0
+          } else {
+            epsilon = self$epsilon_adversarial
+          }
         }
 
         # Fit
@@ -851,8 +855,12 @@ abcnn = R6::R6Class("abcnn",
 
     # Estimate a calibrated credible interval with Conformal Prediction
     conformal_prediction = function() {
-      if (self$verbose) {cat("Performing conformal prediction\n")}
+      if (self$verbose) {cat("Performing conformal prediction\n\n")}
+      
+      # see https://forgemia.inra.fr/mistea/codes_articles/abcdconformal/-/blob/main/R/GaussianFields/Comparaison_ABCD_conv2d_conformal.Rmd?ref_type=heads
       # Monte Carlo Dropout prediction on the calibration set
+      # Copy Conformal dataset
+      # which has already been adjusted/scaled, same as training and validation sets
       calibration_set = self$calibration_sumstat
       calibration_truth = self$calibration_theta
       n_cal = nrow(calibration_set)
@@ -860,12 +868,16 @@ abcnn = R6::R6Class("abcnn",
       # Copy the `abcnn` object and make predictions on the calibration set
       abcnn_conformal = self$clone(deep = TRUE)
       abcnn_conformal$n_conformal = 0 # avoid recursivity
+      # Replace observed by conformal calibration set
       abcnn_conformal$observed_adj = calibration_set
 
       # Computation of the conformal quantile on the calibration set
       abcnn_conformal$predict()
 
       # Compute the calibration score sj using the score function
+      # see https://forgemia.inra.fr/mistea/codes_articles/abcdconformal/-/blob/main/R/LoktaVolterra/Lokta_Volterra_last-one.Rmd?ref_type=heads
+      # j = seq(1, n_cal)
+      
       # a) Epistemic uncertainty
       scores_epistemic = matrix(nrow = nrow(calibration_truth), ncol = ncol(calibration_truth))
 
@@ -873,9 +885,10 @@ abcnn = R6::R6Class("abcnn",
         true = as.matrix(calibration_truth[i,,drop=F])
         pred = as.matrix(abcnn_conformal$predictive_mean[i,,drop=F])
         uncertainty = as.matrix(abcnn_conformal$epistemic_uncertainty[i,,drop=F])
-        # uncertainty = uncertainty^2 # Transform sd into variance
-        scores_epistemic[i,] = sqrt((true - pred) * uncertainty^(-1) * (true - pred)) # formula (9) of the paper
-        # scores[i] <- sqrt(t(true - pred) %*% solve(uncertainty) %*% (true-pred))  # formula (9) of the paper
+        # uncertainty = uncertainty^2 # Uncertainty is already sqrt transformed
+        scores_epistemic[i,] = abs(true - pred)/uncertainty # Simpler calculation, one score per sample and output dim
+        # scores_epistemic[i,] = sqrt((true - pred) * uncertainty^(-1) * (true - pred)) # formula (9) of the paper
+        # scores_epistemic[i,] = sqrt(t(true - pred) %*% solve(uncertainty) %*% (true-pred))  # formula (9) of the paper
       }
 
       # b) Overall uncertainty
@@ -885,19 +898,26 @@ abcnn = R6::R6Class("abcnn",
         true = as.matrix(calibration_truth[i,,drop=F])
         pred = as.matrix(abcnn_conformal$predictive_mean[i,,drop=F])
         uncertainty = as.matrix(abcnn_conformal$overall_uncertainty[i,,drop=F])
-        # uncertainty = uncertainty^2 # Transform sd into variance
-        scores_overall[i,] = sqrt((true - pred) * uncertainty^(-1) * (true - pred)) # formula (9) of the paper
-        # scores[i] <- sqrt(t(true - pred) %*% solve(uncertainty) %*% (true-pred))  # formula (9) of the paper
+        # uncertainty = uncertainty^2 # Uncertainty is already sqrt transformed
+        scores_overall[i,] = abs(true - pred)/uncertainty # Simpler calculation, one score per sample and output dim
+        # scores_overall[i,] = sqrt((true - pred) * uncertainty^(-1) * (true - pred)) # formula (9) of the paper
+        # scores_overall[i,] = sqrt(t(true - pred) %*% solve(uncertainty) %*% (true-pred))  # formula (9) of the paper
       }
 
+      # Compute the conformal quantile
+      alpha = 1 - self$credible_interval_p
+      # q_level = ceiling((n_cal + 1)*(1 - alpha))/n_cal
+      # qhat = sort(scores_epistemic)[q_level*n_cal]
+      # quantile(scores_epistemic, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE)
+      
       # For the new data sample x, approximation of Eπ[θ | x] and confidence set for θ :
-      alpha = self$credible_interval_p
-
-      epistemic_conformal_quantile = apply(scores_epistemic, 2, function(x) quantile(x, 1 - ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
+      # apply(scores_epistemic, 2, function(x) sort(x[q_level * n_cal]))
+      
+      epistemic_conformal_quantile = apply(scores_epistemic, 2, function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
       epistemic_conformal_quantile = as.data.frame(t(epistemic_conformal_quantile))
       colnames(epistemic_conformal_quantile) = abcnn_conformal$theta_names
 
-      overall_conformal_quantile = apply(scores_overall, 2, function(x) quantile(x, 1 - ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
+      overall_conformal_quantile = apply(scores_overall, 2, function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
       overall_conformal_quantile = as.data.frame(t(overall_conformal_quantile))
       colnames(overall_conformal_quantile) = abcnn_conformal$theta_names
 
@@ -1162,56 +1182,6 @@ abcnn = R6::R6Class("abcnn",
       if (is.null(self$fitted)) {
         warning("The model has not been fitted.")
       } else {
-        # If same number of parameters x and y, infer pairwise relationship between each x and y (i.e. x1 ~ y1, x2 ~ y2...)
-        # Otherwise order x axis by index
-        df_predicted = self$predictions()
-
-        if (paired) {
-          x_pos = as.numeric(unlist(self$observed))
-        } else {
-          x_pos = df_predicted$sample
-        }
-
-        if (type == "uncertainty") {
-          df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_uncertainty
-          df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_uncertainty
-
-          df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
-          df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
-
-          df_predicted$mean = df_predicted$predictive_mean
-        }
-
-        if (type == "conformal") {
-          df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
-          df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
-
-          df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
-          df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
-
-          df_predicted$mean = df_predicted$predictive_mean
-        }
-
-        if (type == "posterior quantile") {
-          df_predicted$ci_overall_upper = df_predicted$posterior_upper_ci
-          df_predicted$ci_overall_lower = df_predicted$posterior_lower_ci
-
-          df_predicted$ci_e_upper = as.numeric(NA)
-          df_predicted$ci_e_lower = as.numeric(NA)
-
-          df_predicted$mean = df_predicted$posterior_median
-        }
-
-        df_predicted$x = x_pos
-
-
-        ggplot(data = df_predicted, aes(x = x)) +
-          geom_line(aes(x = x, y = mean), color = "black") +
-          facet_wrap(~ parameter, scales = "free") +
-          geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
-          geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
-          xlab("Observed") + ylab("Predicted") +
-          theme_bw()
         tidy_predictions = self$predictions()
         pal = RColorBrewer::brewer.pal(8, "Dark2")
         cols = c("Epistemic"=pal[3],"Overall"=pal[2])

@@ -15,38 +15,42 @@ log1pexp = function(x, threshold = 10) {
 # type is "forward" when scaling inputs or targets
 # and "backward" when back-transforming targets at prediction time
 scaler = function(x, sum_stats, method = "minmax", type = "forward") {
-
-  if (type == "forward") {
-    if (method == "minmax") {
-      x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$min[i]) / (sum_stats$max[i] - sum_stats$min[i])}))
-      return(x_scaled)
-    }
-    if (method == "normalization") {
-      x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$mean[i]) / (sum_stats$sd[i])}))
-      return(x_scaled)
-    }
-    if (method == "robustscaler") {
-      x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$quantile_25[i]) / (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])}))
-      return(x_scaled)
-    }
-  }
-  if (type == "backward") {
-    if (method == "minmax") {
-      x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$max[i] - sum_stats$min[i])) + sum_stats$min[i]}))
-      return(x_scaled)
-    }
-    if (method == "robustscaler") {
-      x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])) + sum_stats$quantile_25[i]}))
-      return(x_scaled)
-    }
-    if (method == "normalization") {
-      x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$sd[i])) + sum_stats$mean[i]}))
-      return(x_scaled)
-    }
-  }
-
+  
   if (method == "none") {
     # Do nothing
     return(x)
   }
+  else {
+    if (type == "forward") {
+      if (method == "minmax") {
+        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$min[i]) / (sum_stats$max[i] - sum_stats$min[i])}))
+        return(x_scaled)
+      }
+      if (method == "normalization") {
+        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$mean[i]) / (sum_stats$sd[i])}))
+        return(x_scaled)
+      }
+      if (method == "robustscaler") {
+        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$quantile_25[i]) / (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])}))
+        return(x_scaled)
+      }
+    }
+    if (type == "backward") {
+      if (method == "minmax") {
+        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$max[i] - sum_stats$min[i])) + sum_stats$min[i]}))
+        return(x_scaled)
+      }
+      if (method == "robustscaler") {
+        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])) + sum_stats$quantile_25[i]}))
+        return(x_scaled)
+      }
+      if (method == "normalization") {
+        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$sd[i])) + sum_stats$mean[i]}))
+        return(x_scaled)
+      }
+    }
+  }
+  
+
+
 }
