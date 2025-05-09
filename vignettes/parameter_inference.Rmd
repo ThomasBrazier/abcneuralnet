@@ -93,12 +93,7 @@ The model is trained by calling `abc$fit()`.
 
 ```{r, echo = T}
 # Use the fit() method to train the neural network
-start_time = proc.time()
 abc$fit()
-end_time = proc.time()
-
-(train_time = end_time[3] - start_time[3])
-(train_cpu_time = end_time[1] - start_time[1])
 ```
 
 Note that sometimes the heteroscedastic loss value can be negative, but it does not impact the training procedure.
