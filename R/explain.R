@@ -1,7 +1,7 @@
 library(innsight)
 library(plotly)
 
-#' An `explain` object for feature importance and feature selection
+#' An `explain` object for feature attribution
 #' A R6 class object
 #'
 #' See `https://bips-hb.github.io/innsight/articles/innsight.html` for details.
@@ -174,6 +174,17 @@ explain = R6::R6Class("explain",
                         # Plot a aggregated plot of all given data points in argument 'data'
                         # Interactive plots can also be created for both methods
                         innsight::plot_global(result, as_plotly = as_plotly)
+                      },
+
+                      #' Alias for `plot_global` for tabular and signal data
+                      #'
+                      #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
+                      #'
+                      boxplot = function(as_plotly = FALSE) {
+                        result = self$result
+                        # Plot a aggregated plot of all given data points in argument 'data'
+                        # Interactive plots can also be created for both methods
+                        innsight::boxplot(result, as_plotly = as_plotly)
                       }
                     )
 )
