@@ -1,5 +1,10 @@
-#' ABCNN `explain` object
+library(innsight)
+library(plotly)
+
+#' An `explain` object for feature importance and feature selection
 #' A R6 class object
+#'
+#' See `https://bips-hb.github.io/innsight/articles/innsight.html` for details.
 #'
 #' @param abcnn An `abcnn` object
 #' @param method A feature attribution method, as named in the `ìnnsight` R package
@@ -7,7 +12,7 @@
 #' deepshap, shap, lime
 #'
 #'
-#' @slot converter Stores the `innsigth::converter` object
+#' @slot converter Stores the `innsight::converter` object
 #'
 #' @import torch
 #' @import luz
@@ -25,6 +30,7 @@ explain = R6::R6Class("explain",
                       x = NULL,
                       method = NULL,
                       converter = NULL,
+                      result = NULL,
 
                       initialize = function(x,
                                             method = "cw") {
@@ -66,8 +72,8 @@ explain = R6::R6Class("explain",
                           model_sequential = model_one$mlp
                         }
 
-                        model_input_dim = dim(x$sumstats.train)[2]
-                        converter = innsigth::convert(model_sequential, input_dim = model_input_dim)
+                        model_input_dim = dim(x$sumstat)[2]
+                        converter = innsight::convert(model_sequential, input_dim = model_input_dim)
 
                         self$converter = converter
 
@@ -94,7 +100,12 @@ explain = R6::R6Class("explain",
                       #' @param data_ref (array, data.frame or torch_tensor)
                       #' The dataset to which the method is to be applied. These must have the same format as the input data of the passed model and has to be either matrix, an array, a data.frame or a torch_tensor.
                       #' Note: For the model-agnostic methods, only models with a single input and output layer is allowed!
-                      run = function(data, data_ref) {
+                      #' @param method The method to run, change the method specified in `new()`
+                      #'
+                      run = function(data, data_ref, method = NULL) {
+                        # change the method if specified as argument
+                        if (!is.null(method)) {self$method = method}
+
                         # Methods: cw (default), grad, smoothgrad, intgrad, expgrad, lrp, deeplift,
                         # deepshap, shap, lime
                         if (self$method == "cw") {
@@ -135,26 +146,44 @@ explain = R6::R6Class("explain",
 
                       #' Get the results of the Feature Attribution method
                       #'
-                      get_result = function() {
-                        innsigth::get_result(result)
+                      #' @param type the results can be returned as an array, data.frame, or torch_tensor
+                      #'
+                      get_result = function(type = "array") {
+                        innsight::get_result(self$result, type = type)
                       },
 
                       #' Plot the results of the Feature Attribution method
+                      #' for single data points
                       #'
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
                       #'
                       plot = function(as_plotly = FALSE) {
-                        # Get the results as an array
-                        res = self$get_result(result)
+                        result = self$result
                         # Plot individual results
-                        innsigth::plot(result)
-
-                        # Plot a aggregated plot of all given data points in argument 'data'
-                        innsigth::plot_global(result)
-                        innsigth::boxplot(result) # alias of `plot_global` for tabular and signal data
                         # Interactive plots can also be created for both methods
-                        innsigth::plot(result, as_plotly = TRUE)
+                        innsight::plot(result, as_plotly = as_plotly)
+                      },
+
+                      #' Plot the results of the Feature Attribution method
+                      #' for the global dataset
+                      #'
+                      #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
+                      #'
+                      plot_global = function(as_plotly = FALSE) {
+                        result = self$result
+                        # Plot a aggregated plot of all given data points in argument 'data'
+                        # Interactive plots can also be created for both methods
+                        innsight::plot_global(result, as_plotly = as_plotly)
                       }
                     )
 )
 
+
+# exp = explain$new(abc)
+#
+# exp$run(data = sumstats, method = "deeplift")
+#
+# exp$get_result()
+#
+# exp$plot()
+# exp$plot_global()
