@@ -1,7 +1,7 @@
 library(torch)
 
 nn_concrete_dropout = torch::nn_module(
-  classname = "ConcreteDropout",
+  classname = "nn_concrete_dropout",
   # the initialize function tuns whenever we instantiate the model
   initialize = function(weight_regularizer=1e-6,
                         dropout_regularizer=1e-5,
@@ -70,7 +70,7 @@ nn_concrete_dropout = torch::nn_module(
 
 
 nn_concrete_linear = nn_module(
-  "ConcreteLinearLayer",
+  "nn_concrete_linear",
   initialize = function(n_dim_in,
                         n_dim_out,
                         weight_regularizer=1e-6,
