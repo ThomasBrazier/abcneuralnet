@@ -803,12 +803,12 @@ ggplot(theta.train, aes(x = theta1, y = theta2)) +
 ```{r}
 tabnetabc = abcnn$new(theta.train,
             sumstats.train,
-            sumstats.test[1:10,],
+            sumstats.test[1:1000,],
             method = 'tabnet-abc',
             scale_input = "normalization",
             scale_target = "none",
-            epochs = 10,
-            batch_size = 600,
+            epochs = 30,
+            batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_method = "loclinear")
@@ -840,7 +840,18 @@ tabnetabc$plot_posterior(5, type = "posterior quantile")
 ```
 
 
+```{r}
+df = tabnetabc$predictions() %>%
+  filter(parameter == "theta1")
 
+df$true.theta = theta.test[1:1000,"theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), colour = "lightgrey", alpha = 0.5) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_bw()
+```
 
 
 
