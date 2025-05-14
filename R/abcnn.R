@@ -73,6 +73,7 @@ abcnn = R6::R6Class("abcnn",
     variance_clamping=TRUE,
     loss=NULL,
     tol=NULL,
+    abc_method=NULL,
     num_posterior_samples=1000,
     kernel='rbf',
     sampling='importance',
@@ -143,6 +144,7 @@ abcnn = R6::R6Class("abcnn",
                           variance_clamping=c(-1e15, 1e15),
                           loss=nn_mse_loss(),
                           tol=NULL,
+                          abc_method="loclinear",
                           num_posterior_samples=1000,
                           kernel='rbf',
                           sampling='importance',
@@ -201,6 +203,7 @@ abcnn = R6::R6Class("abcnn",
       self$optimizer=optimizer
       self$loss=loss
       self$tol=tol
+      self$abc_method=abc_method
       self$num_posterior_samples=num_posterior_samples
       self$kernel=kernel
       self$sampling=sampling
@@ -299,6 +302,9 @@ abcnn = R6::R6Class("abcnn",
       # INIT MODELS
       #-----------------------------------
       if (is.null(model)) {
+        if (self$method == "tabnet-abc") {
+          self$n_conformal = 0
+        }
         if (self$method == "monte carlo dropout") {
           self$model = mc_dropout_model %>%
             luz::setup(optimizer = self$optimizer,
@@ -357,6 +363,24 @@ abcnn = R6::R6Class("abcnn",
 
       # Load data
       dl = self$dataloader()
+
+      if (self$method == "tabnet-abc") {
+        theta = dl$theta_adj
+        sumstat = dl$sumstat_adj
+
+        config = tabnet_config(optimizer = self$optimizer,
+                               batch_size = self$batch_size,
+                               verbose = self$verbose,
+                               drop_last = TRUE,
+                               early_stopping_patience = self$patience)
+
+        self$fitted = tabnet_fit(sumstat,
+                                 theta,
+                                 epochs = self$epochs,
+                                 valid_split = self$validation_split,
+                                 learn_rate = self$learning_rate,
+                                 config = config)
+      }
 
       if (self$method == 'monte carlo dropout') {
         # Load data
@@ -427,15 +451,15 @@ abcnn = R6::R6Class("abcnn",
 
       # Evaluation
       # Plot training
-      plot(self$fitted)
+      # plot(self$fitted)
 
       # Monitor loss and metrics
-      metrics = get_metrics(self$fitted)
-      print(metrics)
+      # metrics = get_metrics(self$fitted)
+      # print(metrics)
 
       # TODO luz::evaluate currently not working with Deep Ensemble
       # fitted returns n values named value.x instead of a single value
-      if (self$method != "deep ensemble") {
+      if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
         print("Evaluation")
         self$evaluation = self$fitted %>% luz::evaluate(data = dl$test)
         self$eval_metrics = get_metrics(self$evaluation)
@@ -454,6 +478,97 @@ abcnn = R6::R6Class("abcnn",
       if (is.null(self$fitted)) {
         warning("The model has not been fitted. NAs returned.")
       } else {
+
+        if (self$method == "tabnet-abc") {
+          # Predict theta with Tabnet and use it as summary statistics
+          tabnet_train = predict(self$fitted, self$sumstat_adj)
+
+          tabnet_observed = predict(self$fitted, self$observed_adj)
+
+          new_sumstats_train = cbind(tabnet_train, self$sumstat_adj)
+          new_sumstats_observed = cbind(tabnet_observed, self$observed_adj)
+
+          self$num_posterior_samples = nrow(new_sumstats_train) * self$tol
+          nsamples = nrow(self$observed_adj)
+          ndim = ncol(self$theta_adj)
+          mc_samples = array(0, dim = c(self$num_posterior_samples, nsamples, ndim))
+
+          pb = txtProgressBar(min = 1, max = nrow(self$observed_adj), style = 3)
+          for (i in 1:nrow(self$observed_adj)) {
+            setTxtProgressBar(pb, i)
+
+            suppressWarnings({abc_res = abc::abc(new_sumstats_observed[i,],
+                               self$theta_adj,
+                               new_sumstats_train,
+                               tol = self$tol,
+                               method = self$abc_method)})
+
+            if (self$abc_method == "rejection") {
+              mc_samples[,i,] = abc_res$unadj.values
+            } else {
+              mc_samples[,i,] = abc_res$adj.values
+            }
+
+          }
+          close(pb)
+
+          self$posterior_samples = mc_samples
+
+          # average over the MC samples
+          # If more than one parameter to estimate
+          # TODO Generalize to any number of output dim
+          means = mc_samples[, , 1:self$output_dim, drop = F]
+
+          if (self$output_dim > 1) {
+            # Lines are observations
+            # Columns are parameters
+            predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
+
+            posterior_median = apply(means, 3, function(x) apply(x, 2, median))
+            posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
+            posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
+
+            epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
+          } else {
+            predictive_mean = apply(means, 2, mean)
+
+            posterior_median = apply(means, 2, median)
+            posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
+            posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
+
+            epistemic_uncertainty = apply(means, 2, var)
+          }
+
+          predictive_mean = as.data.frame(array(predictive_mean, dim = c(nsamples, ndim)))
+          colnames(predictive_mean) = colnames(self$theta)
+          self$predictive_mean = predictive_mean
+
+          epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(nsamples, ndim)))
+          colnames(epistemic_uncertainty) = colnames(self$theta)
+          self$epistemic_uncertainty = epistemic_uncertainty
+
+          aleatoric_uncertainty = as.data.frame(array(NA, dim = c(nsamples, ndim)))
+          colnames(aleatoric_uncertainty) = colnames(self$theta)
+          self$aleatoric_uncertainty = aleatoric_uncertainty
+
+          self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
+
+          posterior_median = as.data.frame(array(posterior_median, dim = c(nsamples, ndim)))
+          colnames(posterior_median) = colnames(self$theta)
+
+          posterior_lower_ci = as.data.frame(array(posterior_lower_ci, dim = c(nsamples, ndim)))
+          colnames(posterior_lower_ci) = colnames(self$theta)
+
+          posterior_upper_ci = as.data.frame(array(posterior_upper_ci, dim = c(nsamples, ndim)))
+          colnames(posterior_upper_ci) = colnames(self$theta)
+
+          self$quantile_posterior = list(mean = predictive_mean,
+                                         median = posterior_median,
+                                         posterior_lower_ci = posterior_lower_ci,
+                                         posterior_upper_ci = posterior_upper_ci)
+
+        }
+
         if (self$method == 'monte carlo dropout') {
 
           # Set model to evaluation mode
@@ -687,14 +802,16 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------
       # ABC sampling before the neural network
       # ABC sampling before scaling
-      if (!is.null(self$tol)) {
-        abc = self$abc_sampling()
-        theta = as.matrix(abc$theta)
-        sumstat = as.matrix(abc$sumstat)
-      } else {
-        theta = as.matrix(self$theta)
-        sumstat = as.matrix(self$sumstat)
-      }
+      # if (!is.null(self$tol)) {
+      #   abc = self$abc_sampling()
+      #   theta = as.matrix(abc$theta)
+      #   sumstat = as.matrix(abc$sumstat)
+      # } else {
+      #   theta = as.matrix(self$theta)
+      #   sumstat = as.matrix(self$sumstat)
+      # }
+      theta = as.matrix(self$theta)
+      sumstat = as.matrix(self$sumstat)
 
       n_total = nrow(sumstat)
 
@@ -801,6 +918,9 @@ abcnn = R6::R6Class("abcnn",
       test_ds = dataset_subset(ds, test_idx)
       test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
+      if (self$method == 'tabnet-abc') {
+        return(list(sumstat_adj = scaled_input, theta_adj = scaled_target))
+      }
 
       if (self$method == 'monte carlo dropout' | self$method == 'concrete dropout') {
         # Data loader (MC dropout and Concrete dropout)
@@ -823,40 +943,40 @@ abcnn = R6::R6Class("abcnn",
     },
 
     # ABC sampling of the simulations closest to the observed summary statistics
-    abc_sampling = function() {
-      if (self$verbose) {cat("ABC sampling with kernel", self$kernel, "and tolerance", self$tol,"\n")}
-      # Apply kernel weighting to subset the simulations closest to observed
-      # Select the theta values that best match the observed data
-      # Improved Kernel sampling
-      x1 = self$sumstat
-      x2 = self$observed
-
-      kernel_values = density_kernel(x1,
-                                     x2,
-                                     kernel = self$kernel,
-                                     bandwidth = self$bandwidth,
-                                     length_scale = self$length_scale,
-                                     ncores = self$ncores)
-
-      # Normalize the kernel values to form a proper weighting
-      self$kernel_values = kernel_values/sum(kernel_values)
-      # Sampling
-      # Select sumstats and priors (parameters) in the given sampled region
-      idx = abc_sampling(self$kernel_values,
-                         method = self$sampling,
-                         theta = self$theta,
-                         tol = self$tol)
-
-      theta = as.matrix(self$theta[idx,])
-      sumstat = as.matrix(self$sumstat[idx,])
-
-      return(list(theta = theta, sumstat = sumstat))
-    },
+    # abc_sampling = function() {
+    #   if (self$verbose) {cat("ABC sampling with kernel", self$kernel, "and tolerance", self$tol,"\n")}
+    #   # Apply kernel weighting to subset the simulations closest to observed
+    #   # Select the theta values that best match the observed data
+    #   # Improved Kernel sampling
+    #   x1 = self$sumstat
+    #   x2 = self$observed
+    #
+    #   kernel_values = density_kernel(x1,
+    #                                  x2,
+    #                                  kernel = self$kernel,
+    #                                  bandwidth = self$bandwidth,
+    #                                  length_scale = self$length_scale,
+    #                                  ncores = self$ncores)
+    #
+    #   # Normalize the kernel values to form a proper weighting
+    #   self$kernel_values = kernel_values/sum(kernel_values)
+    #   # Sampling
+    #   # Select sumstats and priors (parameters) in the given sampled region
+    #   idx = abc_sampling(self$kernel_values,
+    #                      method = self$sampling,
+    #                      theta = self$theta,
+    #                      tol = self$tol)
+    #
+    #   theta = as.matrix(self$theta[idx,])
+    #   sumstat = as.matrix(self$sumstat[idx,])
+    #
+    #   return(list(theta = theta, sumstat = sumstat))
+    # },
 
     # Estimate a calibrated credible interval with Conformal Prediction
     conformal_prediction = function() {
       if (self$verbose) {cat("Performing conformal prediction\n\n")}
-      
+
       # see https://forgemia.inra.fr/mistea/codes_articles/abcdconformal/-/blob/main/R/GaussianFields/Comparaison_ABCD_conv2d_conformal.Rmd?ref_type=heads
       # Monte Carlo Dropout prediction on the calibration set
       # Copy Conformal dataset
@@ -877,7 +997,7 @@ abcnn = R6::R6Class("abcnn",
       # Compute the calibration score sj using the score function
       # see https://forgemia.inra.fr/mistea/codes_articles/abcdconformal/-/blob/main/R/LoktaVolterra/Lokta_Volterra_last-one.Rmd?ref_type=heads
       # j = seq(1, n_cal)
-      
+
       # a) Epistemic uncertainty
       scores_epistemic = matrix(nrow = nrow(calibration_truth), ncol = ncol(calibration_truth))
 
@@ -909,10 +1029,10 @@ abcnn = R6::R6Class("abcnn",
       # q_level = ceiling((n_cal + 1)*(1 - alpha))/n_cal
       # qhat = sort(scores_epistemic)[q_level*n_cal]
       # quantile(scores_epistemic, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE)
-      
+
       # For the new data sample x, approximation of Eπ[θ | x] and confidence set for θ :
       # apply(scores_epistemic, 2, function(x) sort(x[q_level * n_cal]))
-      
+
       epistemic_conformal_quantile = apply(scores_epistemic, 2, function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
       epistemic_conformal_quantile = as.data.frame(t(epistemic_conformal_quantile))
       colnames(epistemic_conformal_quantile) = abcnn_conformal$theta_names
@@ -950,7 +1070,7 @@ abcnn = R6::R6Class("abcnn",
                                                method = self$scale_target,
                                                type = "backward")
 
-      if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
+      if (self$method == "monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
         posterior_median = scaler(self$quantile_posterior$median,
                                     self$target_summary,
                                     method = self$scale_target,
@@ -968,12 +1088,12 @@ abcnn = R6::R6Class("abcnn",
       # Conformal predictions
       # quantile * sqrt(variance heuristic)
       df_epistemic = epistemic_uncertainty
-      for (j in ncol(df_epistemic)) {
+      for (j in 1:ncol(df_epistemic)) {
         df_epistemic[,j] = self$epistemic_conformal_quantile[,j] * self$epistemic_uncertainty[,j]
       }
 
       df_overall = overall_uncertainty
-      for (j in ncol(df_overall)) {
+      for (j in 1:ncol(df_overall)) {
         df_overall[,j] = self$overall_conformal_quantile[,j] * self$overall_uncertainty[,j]
       }
 
@@ -1026,7 +1146,7 @@ abcnn = R6::R6Class("abcnn",
                                 "epistemic_conformal_credible_interval",
                                 "overall_conformal_credible_interval")
 
-      if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
+      if (self$method == "monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
         predictions$posterior_median = tidyr::gather(posterior_median,
                                 key = "variable")[,2]
         predictions$posterior_lower_ci = tidyr::gather(posterior_lower_ci,
@@ -1066,45 +1186,53 @@ abcnn = R6::R6Class("abcnn",
       if (is.null(self$fitted)) {
         warning("The model has not been fitted.")
       } else {
-        if (self$method != "deep ensemble") {
-          train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
-          valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
-          eval = ifelse(self$method != "deep ensemble", self$eval_metrics$value, NA)
 
-          if (discard_first) {
-            train_metric[1] = NA
-          }
-
-          train_eval = data.frame(Epoch = rep(1:length(train_metric), self$output_dim),
-                                  Metric = c(train_metric, valid_metric),
-                                  Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
-
-          ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
-            geom_point() +
-            geom_line() +
-            xlab("Epoch") + ylab("Loss") +
-            geom_hline(yintercept = eval) +
-            theme_bw()
+        if (self$method == "tabnet-abc") {
+          autoplot(self$fitted)
         } else {
-          train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
-          valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+          if (self$method != "deep ensemble") {
+            train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
+            valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+            eval = ifelse(self$method == "monte carlo dropout" | self$method == "concrete dropout",
+                          self$eval_metrics$value,
+                          NA)
 
-          if (discard_first) {
-            train_metric[1] = NA
+            if (discard_first) {
+              train_metric[1] = NA
+            }
+
+            train_eval = data.frame(Epoch = rep(1:length(train_metric), self$output_dim),
+                                    Metric = c(train_metric, valid_metric),
+                                    Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+            ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+              geom_point() +
+              geom_line() +
+              xlab("Epoch") + ylab("Loss") +
+              geom_hline(yintercept = eval) +
+              theme_bw()
+          } else {
+            train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
+            valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
+
+            if (discard_first) {
+              train_metric[1] = NA
+            }
+
+            train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/self$num_networks), each = self$num_networks), self$output_dim),
+                                    Model = rep(1:self$num_networks, (length(train_metric)/self$num_networks)),
+                                    Metric = c(train_metric, valid_metric),
+                                    Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+            ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+              geom_point() +
+              geom_line() +
+              xlab("Epoch") + ylab("Loss") +
+              facet_wrap(~ Model) +
+              theme_bw()
           }
-
-          train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/self$num_networks), each = self$num_networks), self$output_dim),
-                                  Model = rep(1:self$num_networks, (length(train_metric)/self$num_networks)),
-                                  Metric = c(train_metric, valid_metric),
-                                  Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
-
-          ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
-            geom_point() +
-            geom_line() +
-            xlab("Epoch") + ylab("Loss") +
-            facet_wrap(~ Model) +
-            theme_bw()
         }
+
       }
 
 
@@ -1222,7 +1350,7 @@ abcnn = R6::R6Class("abcnn",
           p = ggplot()
         }
 
-        if (self$method %in% c("monte carlo dropout", "concrete dropout")) {
+        if (self$method %in% c("tabnet-abc", "monte carlo dropout", "concrete dropout")) {
           posteriors = self$posterior_samples[,sample,]
           posteriors = as.data.frame(posteriors)
           posteriors = posteriors[,1:self$output_dim, drop = FALSE]
