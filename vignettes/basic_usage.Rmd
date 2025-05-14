@@ -65,7 +65,7 @@ We use a Concrete Dropout regression model described in [ref]. See https://blogs
 abc = abcnn$new(theta,
             sumstats,
             observed,
-            method = 'concrete dropout',
+            method = 'monte carlo dropout',
             scale_input = "none",
             scale_target = "none",
             num_hidden_layers = 3,

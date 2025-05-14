@@ -39,6 +39,15 @@ explain = R6::R6Class("explain",
                         # Convert the abccn object passed as input
 
                         if (x$method == "monte carlo dropout") {
+                          model = abcneural$fitted$model
+                          model_mc = model$mc_dropout
+
+                          model_sequential = nn_sequential(model_mc[[1]])
+
+                          for (i in 2:abc$num_hidden_layers) {
+                            mod = model_mc[[(i -1) * 3 + 1]]
+                            model_sequential$add_module(name = i - 1, module = mod)
+                          }
 
                         }
 
@@ -190,6 +199,7 @@ explain = R6::R6Class("explain",
 )
 
 
+# CODE TO TEST THE FUNCTION
 # exp = explain$new(abc)
 #
 # exp$run(data = sumstats, method = "deeplift")
