@@ -1,5 +1,7 @@
 library(ggplot2)
 library(torch)
+library(tabnet)
+library(innsight)
 # library(keras3)
 
 #' Create an `abcnn` R6 class object
@@ -75,10 +77,6 @@ abcnn = R6::R6Class("abcnn",
     tol=NULL,
     abc_method=NULL,
     num_posterior_samples=1000,
-    kernel='rbf',
-    sampling='importance',
-    length_scale=1.0,
-    bandwidth=1.0,
     prior_length_scale=1e-4,
     wr=NA,
     dr=NA,
@@ -146,15 +144,10 @@ abcnn = R6::R6Class("abcnn",
                           tol=NULL,
                           abc_method="loclinear",
                           num_posterior_samples=1000,
-                          kernel='rbf',
-                          sampling='importance',
-                          length_scale=1.0,
-                          bandwidth="max",
                           prior_length_scale=1e-4,
                           num_val=100,
                           num_networks=5,
                           epsilon_adversarial=0,
-                          device="cpu",
                           ncores = 1) {
       #-----------------------------------
       # CHECK INPUTS
@@ -205,10 +198,6 @@ abcnn = R6::R6Class("abcnn",
       self$tol=tol
       self$abc_method=abc_method
       self$num_posterior_samples=num_posterior_samples
-      self$kernel=kernel
-      self$sampling=sampling
-      self$length_scale=length_scale
-      self$bandwidth=bandwidth
       self$l2_weight_decay
       self$epsilon_adversarial = epsilon_adversarial
       self$credible_interval_p = credible_interval_p
