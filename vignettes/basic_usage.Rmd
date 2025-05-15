@@ -786,6 +786,9 @@ theta.train = as.data.frame(dataset$y.train)
 # To test
 sumstats.test = dataset$x.test
 theta.test = dataset$y.test
+
+# The exact value to find
+theta.exact = dataset$y.exact
 ```
 
 
@@ -844,7 +847,7 @@ tabnetabc$plot_posterior(5, type = "posterior quantile")
 df = tabnetabc$predictions() %>%
   filter(parameter == "theta1")
 
-df$true.theta = theta.test[1:1000,"theta1"]
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), colour = "lightgrey", alpha = 0.5) +
@@ -854,5 +857,16 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 ```
 
 
+```{r}
+df = tabnetabc$predictions() %>%
+  filter(parameter == "theta2")
 
+df$true.theta = theta.exact[1:1000,"mean.theta2"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), colour = "lightgrey", alpha = 0.5) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_bw()
+```
 
