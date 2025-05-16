@@ -853,7 +853,7 @@ df = tabnetabc$predictions() %>%
 df$true.theta = theta.exact[1:1000,"mean.theta1"]
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), colour = "lightgrey", alpha = 0.5) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), fill = "lightgrey", alpha = 0.5) +
   geom_point() +
   geom_smooth(method = "lm") +
   theme_bw()

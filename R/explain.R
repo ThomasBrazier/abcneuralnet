@@ -39,7 +39,7 @@ explain = R6::R6Class("explain",
                         # Convert the abccn object passed as input
 
                         if (x$method == "monte carlo dropout") {
-                          model = abcneural$fitted$model
+                          model = x$fitted$model
                           model_mc = model$mc_dropout
 
                           model_sequential = nn_sequential(model_mc[[1]])
@@ -81,6 +81,9 @@ explain = R6::R6Class("explain",
                           model_sequential = model_one$mlp
                         }
 
+                        # move tensors to a common device on cpu
+                        # Avoid errors when training on CUDA
+                        model_sequential$to(device = 'cpu')
                         model_input_dim = dim(x$sumstat)[2]
                         converter = innsight::convert(model_sequential, input_dim = model_input_dim)
 
