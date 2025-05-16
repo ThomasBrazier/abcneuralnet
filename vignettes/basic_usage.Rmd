@@ -449,6 +449,9 @@ abc_ensemble$predict()
 ```{r, echo=T}
 abc_ensemble$plot_predicted(paired = TRUE, type = "conformal") +
   geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
+
+abc_ensemble$plot_predicted(paired = TRUE, type = "uncertainty") +
+  geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
 ```
 
 
