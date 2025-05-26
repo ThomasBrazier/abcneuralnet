@@ -814,7 +814,7 @@ tabnetabc = abcnn$new(theta.train,
             scale_input = "normalization",
             scale_target = "none",
             epochs = 30,
-            batch_size = 128,
+            batch_size = 32,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_method = "loclinear")
@@ -869,7 +869,18 @@ df$true.theta = theta.exact[1:1000,"mean.theta2"]
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), colour = "lightgrey", alpha = 0.5) +
   geom_point() +
-  geom_smooth(method = "lm") +
+  geom_smooth(method = "lm", se = F) +
   theme_bw()
 ```
 
+
+
+```{r, echo = T}
+exp = explain$new(tabnetabc)
+
+exp$run(data = sumstats.test)
+
+exp$plot()
+
+exp$plot(type = "steps")
+```

@@ -471,7 +471,6 @@ abcnn = R6::R6Class("abcnn",
         if (self$method == "tabnet-abc") {
           # Predict theta with Tabnet and use it as summary statistics
           tabnet_train = predict(self$fitted, self$sumstat_adj)
-
           tabnet_observed = predict(self$fitted, self$observed_adj)
 
           new_sumstats_train = cbind(tabnet_train, self$sumstat_adj)
