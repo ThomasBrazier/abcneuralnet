@@ -21,6 +21,7 @@ library(plotly)
 #' @import plotly
 #' @import R6Class
 #' @import RColorBrewer
+#' @import janitor
 #'
 #' @return an `explain` object
 #' @export
@@ -31,11 +32,18 @@ explain = R6::R6Class("explain",
                       method = NULL,
                       converter = NULL,
                       result = NULL,
+                      variables = NULL,
+                      parameters = NULL,
+                      ensemble_num_model = NULL,
 
                       initialize = function(x,
-                                            method = "cw") {
+                                            method = "cw",
+                                            ensemble_num_model = 1) {
                         self$method = method
                         self$x = x
+                        self$variables = colnames(janitor::clean_names(x$sumstat))
+                        self$parameters = colnames(janitor::clean_names(x$theta))
+                        self$ensemble_num_model = ensemble_num_model
 
                         # Tabnet-ABC has its own set of methods
                         if (x$method == "tabnet-abc") {
@@ -48,11 +56,13 @@ explain = R6::R6Class("explain",
 
                             model_sequential = nn_sequential(model_mc[[1]])
 
-                            for (i in 2:abc$num_hidden_layers) {
+                            for (i in 2:x$num_hidden_layers) {
                               mod = model_mc[[(i -1) * 3 + 1]]
                               model_sequential$add_module(name = i - 1, module = mod)
                             }
-
+                            
+                            mod = x$fitted$model$mc_dropout$output
+                            model_sequential$add_module(name = "output_mu", module = mod)
                           }
 
                           if (x$method == "concrete dropout") {
@@ -70,26 +80,31 @@ explain = R6::R6Class("explain",
                               mod = model_concrete[[i]]$linear
                               model_sequential$add_module(name = i - 1, module = mod)
                             }
+                            
+                            mod = x$fitted$model$linear_mu
+                            model_sequential$add_module(name = "output_mu", module = mod)
 
-                            # model_sequential = nn_sequential(model_concrete$conc_drop1$linear,
-                            #                                  model_concrete$conc_drop2$linear,
-                            #                                  model_concrete$conc_drop3$linear)
                           }
 
                           if (x$method == "deep ensemble") {
                             # FOR A DEEP ENSEMBLE MODEL
                             model = x$fitted$model
                             # Extract one model
-                            model_one = model$model_list[[1]]
+                            single_model = model$model_list[[self$ensemble_num_model]]
                             # Extract nn_sequential
-                            model_sequential = model_one$mlp
+                            model_sequential = single_model$mlp
+                            
+                            model_sequential$add_module(name = "output_mu", module = single_model$mu)
                           }
 
                           # move tensors to a common device on cpu
                           # Avoid errors when training on CUDA
                           model_sequential$to(device = 'cpu')
                           model_input_dim = dim(x$sumstat)[2]
-                          converter = innsight::convert(model_sequential, input_dim = model_input_dim)
+                          converter = innsight::convert(model_sequential,
+                                                        input_dim = model_input_dim,
+                                                        input_names = self$variables,
+                                                        output_names = self$parameters)
 
                           self$converter = converter
 
@@ -101,7 +116,7 @@ explain = R6::R6Class("explain",
 
                       # Print the converter
                       print = function() {
-                        if (x$method == "tabnet-abc") {
+                        if (self$x$method == "tabnet-abc") {
                           warning("No converter for the Tabnet-ABC method.")
                         } else {
                           self$converter$print()
@@ -123,17 +138,21 @@ explain = R6::R6Class("explain",
                       #' Note: For the model-agnostic methods, only models with a single input and output layer is allowed!
                       #' @param method The method to run, change the method specified in `new()`
                       #'
-                      run = function(data, data_ref, method = NULL) {
+                      run = function(data,
+                                     data_ref = NULL,
+                                     method = NULL) {
                         # TODO Scale the new input data to the same scale as training data
                         data = scaler(data,
                                       self$x$target_summary,
                                       method = self$x$scale_target,
                                       type = "forward")
 
-                        data_ref = scaler(data_ref,
-                                          sel$xf$target_summary,
-                                          method = self$x$scale_target,
-                                          type = "forward")
+                        if (!is.null(data_ref)) {
+                          data_ref = scaler(data_ref,
+                                            sel$xf$target_summary,
+                                            method = self$x$scale_target,
+                                            type = "forward")
+                        }
 
                         if (self$x$method == "tabnet-abc") {
                           sumstat = as.matrix(data)
