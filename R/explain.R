@@ -50,7 +50,7 @@ explain = R6::R6Class("explain",
                         self$ensemble_num_model = ensemble_num_model
                         self$scale_target = x$scale_target
                         self$target_summary = x$target_summary
-
+#
                         # Tabnet-ABC has its own set of methods
                         if (self$model_method == "tabnet-abc") {
                           print("Note that Tabnet-ABC has its own set of explainability methods.")
