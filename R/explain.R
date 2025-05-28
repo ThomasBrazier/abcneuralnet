@@ -32,25 +32,31 @@ explain = R6::R6Class("explain",
                       method = NULL,
                       converter = NULL,
                       result = NULL,
+                      model_method = NULL,
                       variables = NULL,
                       parameters = NULL,
                       ensemble_num_model = NULL,
+                      scale_target = NULL,
+                      target_summary = NULL,
 
                       initialize = function(x,
                                             method = "cw",
                                             ensemble_num_model = 1) {
                         self$method = method
-                        self$x = x
+                        if (x$method == "tabnet-abc") {self$x = x}
+                        self$model_method = x$method
                         self$variables = colnames(janitor::clean_names(x$sumstat))
                         self$parameters = colnames(janitor::clean_names(x$theta))
                         self$ensemble_num_model = ensemble_num_model
+                        self$scale_target = x$scale_target
+                        self$target_summary = x$target_summary
 
                         # Tabnet-ABC has its own set of methods
-                        if (x$method == "tabnet-abc") {
+                        if (self$model_method == "tabnet-abc") {
                           print("Note that Tabnet-ABC has its own set of explainability methods.")
                         } else {
                           # Convert the abccn object passed as input
-                          if (x$method == "monte carlo dropout") {
+                          if (self$model_method == "monte carlo dropout") {
                             model = x$fitted$model
                             model_mc = model$mc_dropout
 
@@ -60,12 +66,12 @@ explain = R6::R6Class("explain",
                               mod = model_mc[[(i -1) * 3 + 1]]
                               model_sequential$add_module(name = i - 1, module = mod)
                             }
-                            
+
                             mod = x$fitted$model$mc_dropout$output
                             model_sequential$add_module(name = "output_mu", module = mod)
                           }
 
-                          if (x$method == "concrete dropout") {
+                          if (self$model_method == "concrete dropout") {
                             # FOR A CONCRETE MODEL
                             model = x$fitted$model
                             # model$modules
@@ -80,20 +86,20 @@ explain = R6::R6Class("explain",
                               mod = model_concrete[[i]]$linear
                               model_sequential$add_module(name = i - 1, module = mod)
                             }
-                            
+
                             mod = x$fitted$model$linear_mu
                             model_sequential$add_module(name = "output_mu", module = mod)
 
                           }
 
-                          if (x$method == "deep ensemble") {
+                          if (self$model_method == "deep ensemble") {
                             # FOR A DEEP ENSEMBLE MODEL
                             model = x$fitted$model
                             # Extract one model
                             single_model = model$model_list[[self$ensemble_num_model]]
                             # Extract nn_sequential
                             model_sequential = single_model$mlp
-                            
+
                             model_sequential$add_module(name = "output_mu", module = single_model$mu)
                           }
 
@@ -116,7 +122,7 @@ explain = R6::R6Class("explain",
 
                       # Print the converter
                       print = function() {
-                        if (self$x$method == "tabnet-abc") {
+                        if (self$model_method == "tabnet-abc") {
                           warning("No converter for the Tabnet-ABC method.")
                         } else {
                           self$converter$print()
@@ -143,18 +149,18 @@ explain = R6::R6Class("explain",
                                      method = NULL) {
                         # TODO Scale the new input data to the same scale as training data
                         data = scaler(data,
-                                      self$x$target_summary,
-                                      method = self$x$scale_target,
+                                      self$target_summary,
+                                      method = self$scale_target,
                                       type = "forward")
 
                         if (!is.null(data_ref)) {
                           data_ref = scaler(data_ref,
-                                            sel$xf$target_summary,
-                                            method = self$x$scale_target,
+                                            self$target_summary,
+                                            method = self$scale_target,
                                             type = "forward")
                         }
 
-                        if (self$x$method == "tabnet-abc") {
+                        if (self$model_method == "tabnet-abc") {
                           sumstat = as.matrix(data)
                           colnames(sumstat) = colnames(self$x$sumstat_adj)
                           result = tabnet_explain(self$x$fitted, sumstat)
@@ -207,7 +213,7 @@ explain = R6::R6Class("explain",
                       #' @param type the results can be returned as an array, data.frame, or torch_tensor
                       #'
                       get_result = function(type = "array") {
-                        if (self$x$method == "tabnet-abc") {
+                        if (self$model_method == "tabnet-abc") {
                           self$x$fitted$fit$importances
                         } else {
                           innsight::get_result(self$result, type = type)
@@ -223,7 +229,7 @@ explain = R6::R6Class("explain",
                       plot = function(as_plotly = FALSE,
                                       type = "mask_agg") {
                         result = self$result
-                        if (self$x$method == "tabnet-abc") {
+                        if (self$model_method == "tabnet-abc") {
                           autoplot(result, type = type)
                         } else {
                           # Plot individual results
@@ -238,7 +244,7 @@ explain = R6::R6Class("explain",
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
                       #'
                       plot_global = function(as_plotly = FALSE) {
-                        if (self$x$method == "tabnet-abc") {
+                        if (self$model_method == "tabnet-abc") {
                           warning("'plot_global' not applicable to Tabnet-ABC.")
                         } else {
                           result = self$result
@@ -253,7 +259,7 @@ explain = R6::R6Class("explain",
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
                       #'
                       boxplot = function(as_plotly = FALSE) {
-                        if (self$x$method == "tabnet-abc") {
+                        if (self$model_method == "tabnet-abc") {
                           warning("'boxplot' not applicable to Tabnet-ABC.")
                         } else {
                           result = self$result

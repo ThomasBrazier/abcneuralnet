@@ -2,7 +2,7 @@ library(ggplot2)
 library(torch)
 library(tabnet)
 library(innsight)
-# library(keras3)
+library(abc)
 
 #' Create an `abcnn` R6 class object
 #'
@@ -44,6 +44,8 @@ library(innsight)
 #' @import tibble
 #' @import R6Class
 #' @import RColorBrewer
+#' @import tabnet
+#' @import abc
 #'
 #' @return an `abcnn` object
 #' @export
