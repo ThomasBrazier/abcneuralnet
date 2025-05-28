@@ -9,32 +9,121 @@ library(abc)
 #' @param observed a vector of summary statistics computed on the data
 #' @param theta a vector, matrix or data frame of the simulated theta_parameter values
 #' @param sumstat a vector, matrix or data frame of the simulated summary statistics
-#' @param method either `monte carlo dropout`, `concrete dropout` or `ensemble`, See details
-#' @param scale whether to scale summary statistics before training
-#' @param num_hidden_layers the number of hidden layers in the Neural Network
-#' @param num_hidden_dim the dimension of hidden layers (i.e. number of neurons) in each layer of the Neural Network
-#' @param model the type of Neural Network to use if you want a custom model. See `details`
-#' @param dropout the dropout rate for `MC dropout`, i.e. the proportion of neurons dropped (must be between 0.1 and 0.5)
-#' @param validation_split the proportion of samples retained for validation
-#' @param test_split the proportion of samples retained for evaluation
-#' @param batch_size the batch size
+#' @param method either `monte carlo dropout`, `concrete dropout`, `tabnet-abc` or `deep ensemble`, See details
+#' @param scale_input the method to scale summary statistics before training (`none` (default), `minmax` or `robustscaler`)
+#' @param scale_target the method to scale the parameter to estimate before training (`none` (default), `minmax` or `robustscaler`)
+#' @param num_hidden_layers the number of hidden layers in the Neural Network (default = 3)
+#' @param num_hidden_dim the dimension of hidden layers (i.e. number of neurons) in each layer of the Neural Network (default=128)
+#' @param validation_split the proportion of samples retained for validation in `luz
+#' @param test_split the proportion of samples retained for evaluation in `luz
+#' @param dropout the dropout rate for `monte carlo dropout`, i.e. the proportion of neurons dropped in each layer (must be between 0.1 and 0.5)
+#' @param batch_size the mini-batch size
 #' @param learning_rate the learning rate
 #' @param epochs the number of epochs
-#' @param early_stopping boolean, whether to use early stopping or not
+#' @param early_stopping logical, whether to use early stopping or not
 #' @param patience the patience (number of iterations) before early stopping
-#' @param optimizer
-#' @param loss
-#' @param test_metrics
-#' @param tol the tolerance rate in ABC sampling, i.e. the proportion of simulated theta retained to approximate the posterior. Set NULL if you want to keep all simulations for training
-#' @param num_posterior_samples the number of Approximate posterior samples to predict with the `monte carlo dropout` method
+#' @param optimizer a "torch_optimizer_generator", the optimizer to use in `luz` (default=optim_adam)
+#' @param loss a custom loss function passed to the ``monte carlo dropout` method (default=nn_mse_loss())
+#' @param l2_weight_decay the L2 weigth decay value for L2 regularization
+#' @param tol the tolerance rate in `abc` for the `tabnet-abc` method (`tolerance`). The required proportion of points accepted nearest the target values.
+#' @param abc_method a character string indicating the type of ABC algorithm to be applied. Possible values are "rejection", "loclinear", "neuralnet" and "ridge".
+#' @param num_posterior_samples the number of posterior samples to predict with the `concrete dropout` and `monte carlo dropout` methods
+#' @param credible_interval_p the alpha value for the quantile credible interval (default=0.95, with alpha/2 and 1 - alpha/2 quantiles)
+#' @param num_conformal the number of training samples retained for Conformal Prediction (default=1,000)
 #' @param kernel the kernel function, either `rbf` or `epanechnikov`
 #' @param sampling the ABC sampling function, either `rejection` or `importance`
 #' @param length_scale the length scale parameter of the `rbf` kernel
 #' @param bandwidth the bandwidth hyperparameter for the kernel smoothing function, either a numeric value or set to "max" if the bandwidth must be estimated as the maximum distance value
-#' @param prior_length_scale the prior length scale hyperparameter for the concrete dropout method
-#' @param num_val the number of duplicate observed sample to provide for each iteration of `concrete dropout` approximate posterior prediction
+#' @param prior_length_scale the prior length scale hyperparameter for the `concrete dropout` method
 #' @param num_net the number of iterations in the `regression adjustment` approach
-#' @param epsilon_adversarial The multiplying factor for perturbed inputs in adversarial training (Deep Ensemble). Set NULL to disable adverarial training (default) or 0.01 is a good value to start with.
+#' @param epsilon_adversarial the multiplying factor for perturbed inputs in adversarial training in the `deep ensemble` method (EXPERIMENTAL). The perturbation is a random noise in the range [-beta, beta], with beta = epsilon_adversarial * variance. Set NULL to disable adversarial training (default). Otherwise 0.01 is a good value to start with.
+#' @param variance_clamping clamp all elements in the network weigths in the range [ min, max ]. See `torch_clamp()`.
+#' @param verbose logical, whether to print messages and progress bars
+#' @param ncores integer, the number of cores in parallel operations
+#'
+#'
+#' @slot theta = NULL,
+#' @slot sumstat = NULL,
+#' @slot observed = NULL,
+#' @slot model=NULL,
+#' @slot method='concrete dropout',
+#' @slot scale_input=NULL,
+#' @slot scale_target=NULL,
+#' @slot num_hidden_layers=NA,
+#' @slot num_hidden_dim=NA,
+#' @slot validation_split=NA,
+#' @slot num_conformal=NA,
+#' @slot credible_interval_p = NA,
+#' @slot test_split=NA,
+#' @slot dropout=NA,
+#' @slot batch_size=NA,
+#' @slot epochs=NA,
+#' @slot early_stopping=FALSE,
+#' @slot callbacks=NULL,
+#' @slot verbose=NULL,
+#' @slot patience=4,
+#' @slot optimizer=NULL,
+#' @slot learning_rate=0.001,
+#' @slot l2_weight_decay=1e-5,
+#' @slot variance_clamping=TRUE,
+#' @slot loss=NULL,
+#' @slot tol=NULL,
+#' @slot abc_method=NULL,
+#' @slot num_posterior_samples=1000,
+#' @slot prior_length_scale=1e-4,
+#' @slot wr=NA,
+#' @slot dr=NA,
+#' @slot num_networks=5,
+#' @slot epsilon_adversarial=0,
+#' @slot device="cpu",
+#' @slot input_dim = NA,
+#' @slot output_dim = NA,
+#' @slot n_train = NA,
+#' @slot sumstat_names = NA,
+#' @slot output_names = NA,
+#' @slot theta_names = NA,
+#' @slot n_obs = NA,
+#' @slot prior_lower = NA,
+#' @slot prior_upper = NA,
+#' @slot fitted = NULL,
+#' @slot evaluation=NULL,
+#' @slot eval_metrics=NA,
+#' @slot posterior_samples = NA,
+#' @slot quantile_posterior = NA,
+#' @slot predictive_mean = NA,
+#' @slot aleatoric_uncertainty = NA,
+#' @slot epistemic_uncertainty = NA,
+#' @slot overall_uncertainty = NA,
+#' @slot epistemic_conformal_quantile = NA,
+#' @slot overall_conformal_quantile = NA,
+#' @slot dropout_rates = NA,
+#' @slot input_summary = NA,
+#' @slot target_summary = NA,
+#' @slot scalers_input = NA,
+#' @slot scalers_target = NA,
+#' @slot sumstat_adj = NA,
+#' @slot observed_adj = NA,
+#' @slot theta_adj = NA,
+#' @slot calibration_theta = NA,
+#' @slot calibration_sumstat = NA,
+#' @slot kernel_values = NA,
+#' @slot ncores = NA
+#'
+#'
+#' @description
+#' A short description...
+#'
+#'
+#' @details
+#'
+#'
+#'
+#' @examples
+#' # example code
+#'
+#'
+#'
+#' @returns A `R6class::abcnn` object
 #'
 #' @import torch
 #' @import luz
@@ -49,6 +138,7 @@ library(abc)
 #'
 #' @return an `abcnn` object
 #' @export
+#'
 abcnn = R6::R6Class("abcnn",
   public = list(
     theta = NULL,
@@ -61,7 +151,7 @@ abcnn = R6::R6Class("abcnn",
     num_hidden_layers=NA,
     num_hidden_dim=NA,
     validation_split=NA,
-    n_conformal=NA,
+    num_conformal=NA,
     credible_interval_p = NA,
     test_split=NA,
     dropout=NA,
@@ -82,7 +172,6 @@ abcnn = R6::R6Class("abcnn",
     prior_length_scale=1e-4,
     wr=NA,
     dr=NA,
-    num_val=100,
     num_networks=5,
     epsilon_adversarial=0,
     device="cpu",
@@ -129,7 +218,7 @@ abcnn = R6::R6Class("abcnn",
                           num_hidden_layers=3,
                           num_hidden_dim=128,
                           validation_split=0.1,
-                          n_conformal=1000,
+                          num_conformal=1000,
                           credible_interval_p = 0.95,
                           test_split=0.1,
                           dropout=0.5,
@@ -147,13 +236,12 @@ abcnn = R6::R6Class("abcnn",
                           abc_method="loclinear",
                           num_posterior_samples=1000,
                           prior_length_scale=1e-4,
-                          num_val=100,
                           num_networks=5,
                           epsilon_adversarial=0,
                           ncores = 1) {
-      #-----------------------------------
+      #-----------------------------------#
       # CHECK INPUTS
-      #-----------------------------------
+      #-----------------------------------#
       # Input data validation
       if(missing(observed)) stop("'observed' is missing")
       if(missing(theta)) stop("'theta' is missing")
@@ -179,9 +267,9 @@ abcnn = R6::R6Class("abcnn",
       # TODO Message to user: num params, num observation, training/test/validation sizes
       # TODO Print dimensions and model
 
-      #-----------------------------------
+      #-----------------------------------#
       # INIT ATTRIBUTES
-      #-----------------------------------
+      #-----------------------------------#
       self$method=method
       self$scale_input=scale_input
       self$scale_target=scale_target
@@ -204,7 +292,7 @@ abcnn = R6::R6Class("abcnn",
       self$epsilon_adversarial = epsilon_adversarial
       self$credible_interval_p = credible_interval_p
       self$variance_clamping = variance_clamping
-      self$n_conformal = n_conformal
+      self$num_conformal = num_conformal
       self$verbose = verbose
       self$ncores = ncores
 
@@ -268,9 +356,9 @@ abcnn = R6::R6Class("abcnn",
 
       self$dropout_rates = NA # The dropout rates hyperparameter estimated by concrete dropout
 
-      #-----------------------------------
+      #-----------------------------------#
       # CALLBACKS
-      #-----------------------------------
+      #-----------------------------------#
       self$patience = patience
       if (early_stopping) {
         early_stopping_callback = luz_callback_early_stopping(patience = self$patience)
@@ -279,9 +367,9 @@ abcnn = R6::R6Class("abcnn",
         self$callbacks = list()
       }
 
-      #-----------------------------------
+      #-----------------------------------#
       # PRE-PROCESSING
-      #-----------------------------------
+      #-----------------------------------#
       # Set 64-bit default dtype for torch_exp computation
       # torch_set_default_dtype(torch_float64())
 
@@ -289,12 +377,12 @@ abcnn = R6::R6Class("abcnn",
       self$prior_lower = apply(as.matrix(self$theta), 1, min)
       self$prior_upper = apply(as.matrix(self$theta), 1, max)
 
-      #-----------------------------------
+      #-----------------------------------#
       # INIT MODELS
-      #-----------------------------------
+      #-----------------------------------#
       if (is.null(model)) {
         if (self$method == "tabnet-abc") {
-          self$n_conformal = 0
+          self$num_conformal = 0
         }
         if (self$method == "monte carlo dropout") {
           self$model = mc_dropout_model %>%
@@ -777,7 +865,7 @@ abcnn = R6::R6Class("abcnn",
         }
 
         # Conformal prediction
-        if (self$n_conformal > 0) {
+        if (self$num_conformal > 0) {
           self$conformal_prediction()
         }
       }
@@ -787,9 +875,9 @@ abcnn = R6::R6Class("abcnn",
     # Prepare the torch dataloader from sumstat/theta (input/target)
     # Return a dataloader object
     dataloader = function() {
-      #-----------------------------------
+      #-----------------------------------#
       # SAMPLING
-      #-----------------------------------
+      #-----------------------------------#
       # ABC sampling before the neural network
       # ABC sampling before scaling
       # if (!is.null(self$tol)) {
@@ -808,8 +896,8 @@ abcnn = R6::R6Class("abcnn",
       # Randomly sample indexes
       n_val = round(n_total * self$validation_split, digits=0)
       n_test = round(n_total * self$test_split, digits=0)
-      n_train = n_total - n_val - n_test - self$n_conformal
-      n_conformal = self$n_conformal
+      n_train = n_total - n_val - n_test - self$num_conformal
+      num_conformal = self$num_conformal
 
       self$n_train = n_train
 
@@ -818,9 +906,9 @@ abcnn = R6::R6Class("abcnn",
       valid_idx = random_idx[(n_train + 1):(n_train + n_val)]
       test_idx = random_idx[(n_train + n_val + 1):(n_train + n_val + n_test)]
 
-      #-----------------------------------
+      #-----------------------------------#
       # PRE-PROCESSING DATA
-      #-----------------------------------
+      #-----------------------------------#
       # Scale summary statistics (optional)
       # Scale on training set just before training (hence scaling will be adjusted to each training pass)
       # De-scale only in self$predictions() method (all computations are done in the scaled space)
@@ -888,15 +976,15 @@ abcnn = R6::R6Class("abcnn",
       self$observed_adj = scaled_observed
       self$theta_adj = scaled_target
 
-      if (n_conformal > 0) {
-        conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + n_conformal)]
+      if (num_conformal > 0) {
+        conformal_idx = random_idx[(n_train + n_val + n_test + 1):(n_train + n_val + n_test + num_conformal)]
         self$calibration_theta = self$theta_adj[conformal_idx,,drop=F]
         self$calibration_sumstat = self$sumstat_adj[conformal_idx,,drop=F]
       }
 
-      #-----------------------------------
+      #-----------------------------------#
       # MAKE TENSOR DATASET
-      #-----------------------------------
+      #-----------------------------------#
       sumstat_tensor = torch_tensor(as.matrix(self$sumstat_adj), dtype = torch_float())
       theta_tensor = torch_tensor(as.matrix(self$theta_adj), dtype = torch_float())
 
@@ -977,7 +1065,7 @@ abcnn = R6::R6Class("abcnn",
 
       # Copy the `abcnn` object and make predictions on the calibration set
       abcnn_conformal = self$clone(deep = TRUE)
-      abcnn_conformal$n_conformal = 0 # avoid recursivity
+      abcnn_conformal$num_conformal = 0 # avoid recursivity
       # Replace observed by conformal calibration set
       abcnn_conformal$observed_adj = calibration_set
 
@@ -1158,7 +1246,7 @@ abcnn = R6::R6Class("abcnn",
       cat("ABC parameter inference with the method:", self$method, "\n")
 
       cat("The number of samples is", nrow(self$theta), "for the training set (simulations) and", nrow(self$observed), "observations for predictions.\n")
-      cat("The validation split during training is", self$validation_split, ", the test split after training is", self$test_split, ", and", self$n_conformal, "simulations retained for conformal prediction.\n")
+      cat("The validation split during training is", self$validation_split, ", the test split after training is", self$test_split, ", and", self$num_conformal, "simulations retained for conformal prediction.\n")
       # CUDA is installed?
       cat("\n")
       cat("Is CUDA available? ")

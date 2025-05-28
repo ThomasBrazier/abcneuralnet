@@ -10,9 +10,18 @@ library(plotly)
 #' @param method A feature attribution method, as named in the `ìnnsight` R package
 #' including cw (default), grad, smoothgrad, intgrad, expgrad, lrp, deeplift,
 #' deepshap, shap, lime. No method required for tabnet-ABC.
+#' @param ensemble_num_model index of the model when the network is a deep ensemble (default = 1)
 #'
 #'
 #' @slot converter Stores the `innsight::converter` object
+#'
+#' @slot result stores results of the `explain$run()` method.
+#' @slot model_method method of the trained neural network (e.g. "concrete dropout")
+#' @slot variables names of the variables (summary statistics)
+#' @slot parameters names of the parameter to infer
+#' @slot ensemble_num_model index of the model when the network is a deep ensemble
+#' @slot scale_input the `abcnn$scale_input` slot from the `abcnn` input object
+#' @slot input_summary the `abcnn$input_summary` slot from the `abcnn` input object
 #'
 #' @import torch
 #' @import luz
@@ -36,8 +45,8 @@ explain = R6::R6Class("explain",
                       variables = NULL,
                       parameters = NULL,
                       ensemble_num_model = NULL,
-                      scale_target = NULL,
-                      target_summary = NULL,
+                      scale_input = NULL,
+                      input_summary = NULL,
 
                       initialize = function(x,
                                             method = "cw",
@@ -48,9 +57,9 @@ explain = R6::R6Class("explain",
                         self$variables = colnames(janitor::clean_names(x$sumstat))
                         self$parameters = colnames(janitor::clean_names(x$theta))
                         self$ensemble_num_model = ensemble_num_model
-                        self$scale_target = x$scale_target
-                        self$target_summary = x$target_summary
-#
+                        self$scale_input = x$scale_input
+                        self$input_summary = x$input_summary
+
                         # Tabnet-ABC has its own set of methods
                         if (self$model_method == "tabnet-abc") {
                           print("Note that Tabnet-ABC has its own set of explainability methods.")
@@ -129,7 +138,7 @@ explain = R6::R6Class("explain",
                         }
                       },
 
-                      #' Train the neural network
+                      #' Apply the `method` to the passed `data` to be explained
                       #'
                       #' The method is run on a `data` object (see `innsight` manual)
                       #' @param data (array, data.frame, torch_tensor or list)
@@ -142,21 +151,21 @@ explain = R6::R6Class("explain",
                       #' @param data_ref (array, data.frame or torch_tensor)
                       #' The dataset to which the method is to be applied. These must have the same format as the input data of the passed model and has to be either matrix, an array, a data.frame or a torch_tensor.
                       #' Note: For the model-agnostic methods, only models with a single input and output layer is allowed!
-                      #' @param method The method to run, change the method specified in `new()`
+                      #' @param method The method to run. Change the method specified in `new()`
                       #'
                       run = function(data,
                                      data_ref = NULL,
                                      method = NULL) {
                         # TODO Scale the new input data to the same scale as training data
                         data = scaler(data,
-                                      self$target_summary,
-                                      method = self$scale_target,
+                                      self$input_summary,
+                                      method = self$scale_input,
                                       type = "forward")
 
                         if (!is.null(data_ref)) {
                           data_ref = scaler(data_ref,
-                                            self$target_summary,
-                                            method = self$scale_target,
+                                            self$input_summary,
+                                            method = self$scale_input,
                                             type = "forward")
                         }
 
@@ -210,7 +219,11 @@ explain = R6::R6Class("explain",
 
                       #' Get the results of the Feature Attribution method
                       #'
-                      #' @param type the results can be returned as an array, data.frame, or torch_tensor
+                      #' @param type the results can be returned as an `array`, `data.frame`, or `torch_tensor`
+                      #'
+                      #' @details
+                      #' Note that when the `abcnn` model is `tabnet-abc`, `get_result()` returns importances weigths of the fitted model.
+                      #'
                       #'
                       get_result = function(type = "array") {
                         if (self$model_method == "tabnet-abc") {
@@ -224,13 +237,15 @@ explain = R6::R6Class("explain",
                       #' for single data points
                       #'
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
-                      #' @param type a character value. Passed to the Tabnet autoplot method. Either "mask_agg" the default, for a single heatmap of aggregated mask importance per predictor along the dataset, or "steps" for one heatmap at each mask step.
+                      #' @param type a character value. Passed to the Tabnet autoplot method. Either `mask_agg` the default, for a single heatmap of aggregated mask importance per predictor along the dataset, or `steps` for one heatmap at each mask step.
+                      #'
+                      #' @details
+                      #' Note that when the `abcnn` model is `tabnet-abc`, `plot()` returns the `autoplot()` function on the results of the `tabnet` model.
                       #'
                       plot = function(as_plotly = FALSE,
                                       type = "mask_agg") {
-                        result = self$result
                         if (self$model_method == "tabnet-abc") {
-                          autoplot(result, type = type)
+                          autoplot(self$result, type = type)
                         } else {
                           # Plot individual results
                           # Interactive plots can also be created for both methods
@@ -271,15 +286,3 @@ explain = R6::R6Class("explain",
                     )
 )
 
-
-# CODE TO TEST THE FUNCTION
-# exp = explain$new(abc)
-# exp = explain$new(tabnetabc)
-#
-#
-# exp$run(data = sumstats, method = "deeplift")
-#
-# exp$get_result()
-#
-# exp$plot()
-# exp$plot_global()
