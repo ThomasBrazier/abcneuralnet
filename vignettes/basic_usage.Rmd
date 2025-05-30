@@ -237,11 +237,12 @@ Alternatively you can use the `plot_predicted()` method.
 
 ```{r, echo = T}
 # predicted (+ C.I.) ~ observed
-abc$plot_predicted(paired = TRUE, type = "uncertainty")
+abc$plot_predicted(uncertainty_type = "uncertainty")
+abc$plot_predicted(uncertainty_type = "uncertainty", plot_type = "errorbar")
 
-abc$plot_predicted(paired = TRUE, type = "conformal")
+abc$plot_predicted(uncertainty_type = "conformal")
 
-abc$plot_predicted(paired = TRUE, type = "posterior quantile")
+abc$plot_predicted(uncertainty_type = "posterior quantile")
 ```
 
 
@@ -447,10 +448,10 @@ abc_ensemble$predict()
 
 
 ```{r, echo=T}
-abc_ensemble$plot_predicted(paired = TRUE, type = "conformal") +
+abc_ensemble$plot_predicted(uncertainty_type = "conformal") +
   geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
 
-abc_ensemble$plot_predicted(paired = TRUE, type = "uncertainty") +
+abc_ensemble$plot_predicted(uncertainty_type = "uncertainty") +
   geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
 ```
 
@@ -533,7 +534,7 @@ abc_ensemble$predict()
 
 
 ````{r, echo = T}
-abc_ensemble$plot_predicted(paired = TRUE, type = "conformal")
+abc_ensemble$plot_predicted(uncertainty_type = "conformal")
 ```
 
 
@@ -837,7 +838,7 @@ tabnetabc$predict()
 
 
 ```{r}
-tabnetabc$plot_predicted(type = "posterior quantile")
+tabnetabc$plot_predicted(uncertainty_type = "posterior quantile", plot_type = "errorbar")
 ```
 
 

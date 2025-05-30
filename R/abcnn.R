@@ -1317,8 +1317,11 @@ abcnn = R6::R6Class("abcnn",
     },
 
     # Plot predicted values (predicted ~ observed)
-    plot_predicted = function(paired = FALSE,
-                              type = "conformal") {
+    plot_predicted = function(uncertainty_type = "conformal",
+                              plot_type = "line") {
+
+      pal = RColorBrewer::brewer.pal(8, "Dark2")
+      cols = c("Epistemic" = pal[3],"Overall" = pal[2])
 
       if (is.null(self$fitted)) {
         warning("The model has not been fitted.")
@@ -1327,13 +1330,16 @@ abcnn = R6::R6Class("abcnn",
         # Otherwise order x axis by index
         df_predicted = self$predictions()
 
+        # Paired when the input and output dim are the same
+        # hence output dim can be plotted as a function of input
+        paired = (self$input_dim == self$output_dim)
         if (paired) {
           x_pos = as.numeric(unlist(self$observed))
         } else {
           x_pos = df_predicted$sample
         }
 
-        if (type == "uncertainty") {
+        if (uncertainty_type == "uncertainty") {
           df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_uncertainty
           df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_uncertainty
 
@@ -1343,7 +1349,7 @@ abcnn = R6::R6Class("abcnn",
           df_predicted$mean = df_predicted$predictive_mean
         }
 
-        if (type == "conformal") {
+        if (uncertainty_type == "conformal") {
           df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
           df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
 
@@ -1353,7 +1359,7 @@ abcnn = R6::R6Class("abcnn",
           df_predicted$mean = df_predicted$predictive_mean
         }
 
-        if (type == "posterior quantile") {
+        if (uncertainty_type == "posterior quantile") {
           df_predicted$ci_overall_upper = df_predicted$posterior_upper_ci
           df_predicted$ci_overall_lower = df_predicted$posterior_lower_ci
 
@@ -1365,14 +1371,28 @@ abcnn = R6::R6Class("abcnn",
 
         df_predicted$x = x_pos
 
+        if (plot_type == "line") {
+          ggplot(data = df_predicted, aes(x = x)) +
+            geom_line(aes(x = x, y = mean), color = "black") +
+            facet_wrap(~ parameter, scales = "free") +
+            geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, fill = "Overall"), alpha = 0.3) +
+            geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, fill = "Epistemic"), alpha = 0.3) +
+            xlab("Observed") + ylab("Predicted") +
+            scale_fill_manual(name = "Uncertainty", values = cols) +
+            theme_bw()
+        } else {
+          if (plot_type == "errorbar") {
+            ggplot(data = df_predicted, aes(x = x)) +
+              facet_wrap(~ parameter, scales = "free") +
+              geom_errorbar(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.5) +
+              geom_errorbar(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.5) +
+              geom_point(aes(x = x, y = mean), color = "black") +
+              xlab("Observed") + ylab("Predicted") +
+              scale_colour_manual(name = "Uncertainty", values = cols) +
+              theme_bw()
+          }
+        }
 
-        ggplot(data = df_predicted, aes(x = x)) +
-          geom_line(aes(x = x, y = mean), color = "black") +
-          facet_wrap(~ parameter, scales = "free") +
-          geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "black") +
-          geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "black") +
-          xlab("Observed") + ylab("Predicted") +
-          theme_bw()
       }
 
     },
@@ -1390,7 +1410,7 @@ abcnn = R6::R6Class("abcnn",
       } else {
         tidy_predictions = self$predictions()
         pal = RColorBrewer::brewer.pal(8, "Dark2")
-        cols = c("Epistemic"=pal[3],"Overall"=pal[2])
+        cols = c("Epistemic" = pal[3],"Overall" = pal[2])
 
         if (type == "uncertainty") {
           tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_uncertainty
