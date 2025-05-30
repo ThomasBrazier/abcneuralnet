@@ -1,5 +1,5 @@
 # The base model for Deep Ensemble, a stack of linear layers
-single_model = nn_module(
+single_model = torch::nn_module(
   "Model",
   initialize = function(num_input_dim = 1,
                         num_output_dim = 1,
@@ -10,18 +10,18 @@ single_model = nn_module(
     self$num_hidden_layers = num_hidden_layers
     self$num_hidden_dim = num_hidden_dim
 
-    self$mlp = nn_sequential(nn_linear(num_input_dim, num_hidden_dim),
-                             nn_leaky_relu())
+    self$mlp = torch::nn_sequential(torch::nn_linear(num_input_dim, num_hidden_dim),
+                                    torch::nn_leaky_relu())
 
     for (i in 2:num_hidden_layers) {
-      self$mlp$add_module(paste0("hidden_layer", i), nn_linear(num_hidden_dim,
+      self$mlp$add_module(paste0("hidden_layer", i), torch::nn_linear(num_hidden_dim,
                                                                     num_hidden_dim))
       # self$mlp$add_module(paste0("batch_norm", i), nn_batch_norm1d(num_hidden_dim))
-      self$mlp$add_module(paste0("relu", i), nn_leaky_relu())
+      self$mlp$add_module(paste0("relu", i), torch::nn_leaky_relu())
     }
 
-    self$mu = nn_linear(num_hidden_dim, num_output_dim)
-    self$sigma = nn_linear(num_hidden_dim, num_output_dim)
+    self$mu = torch::nn_linear(num_hidden_dim, num_output_dim)
+    self$sigma = torch::nn_linear(num_hidden_dim, num_output_dim)
 
     self$clamp = clamp
 
@@ -32,23 +32,23 @@ single_model = nn_module(
     mu = self$mu(x1)
 
     sig = self$sigma(x1)
-    sig = torch_clamp(sig, min = self$clamp[1], max = self$clamp[2])  # For numerical stability
+    sig = torch::torch_clamp(sig, min = self$clamp[1], max = self$clamp[2])  # For numerical stability
 
     # return a concatenated tensor
-    torch_stack(list(mu, sig), dim = 1)
+    torch::torch_stack(list(mu, sig), dim = 1)
   }
 )
 
 
 # Custom dataset retunring an array of n = num_models input and target
-ensemble_dataset = dataset(
+ensemble_dataset = torch::dataset(
 
   name = "ensemble_dataset",
 
   initialize = function(x, y, num_models, randomize = TRUE) {
     # x and y are inputs and targets to shuffle independently
-    x_array = torch_empty(num_models, x$shape[1], x$shape[2])
-    y_array = torch_empty(num_models, y$shape[1], y$shape[2])
+    x_array = torch::torch_empty(num_models, x$shape[1], x$shape[2])
+    y_array = torch::torch_empty(num_models, y$shape[1], y$shape[2])
 
     for (i in 1:num_models) {
       if (randomize) {
@@ -94,7 +94,7 @@ ensemble_dataset = dataset(
 
 
 
-nn_ensemble = nn_module(
+nn_ensemble = torch::nn_module(
   classname = "DeepEnsemble",
 
   # Initialize function called whenever we instantiate the model
@@ -121,11 +121,11 @@ nn_ensemble = nn_module(
                                                         num_hidden_layers = num_hidden_layers,
                                                         clamp = clamp))
     names(model_list) = seq(1, self$num_models)
-    self$model_list = nn_module_list(model_list)
+    self$model_list = torch::nn_module_list(model_list)
     # self$model_list = model()
 
     # Initialize optimizers
-    opt_list = lapply(self$model_list, function(m) optim_adam(m$parameters,
+    opt_list = lapply(self$model_list, function(m) torch::optim_adam(m$parameters,
                                                               lr = self$learning_rate,
                                                               weight_decay = self$weight_decay))
     names(opt_list) = seq(1, self$num_models)
@@ -144,7 +144,7 @@ nn_ensemble = nn_module(
     # print("forward")
     # Collect predictions from each model
     predictions = lapply(fitted$model$model_list, function(model) model(x_sample))
-    predictions = torch_stack(predictions, dim = 4)  # Stack predictions along a new dimension
+    predictions = torch::torch_stack(predictions, dim = 4)  # Stack predictions along a new dimension
 
     # Compute the mean and variance of predictions
     # dim (2 i.e. mu + var, num samples, num parameters, num networks)
@@ -152,10 +152,10 @@ nn_ensemble = nn_module(
     sigma = predictions[2,,,]
     # mean_prediction = torch_mean(predictions[1,,,], dim = 3)  # Mean of means
     # variance_prediction = torch_mean(predictions[2,,,], dim = 3)  # Mean of variances
-    mean_prediction = torch_mean(mu, dim = 3)  # Mean of means across networks
-    variance_prediction = torch_sqrt(torch_mean(sigma, dim = 3) +
-                                       torch_mean(torch_square(mu), dim = 3) -
-                                       torch_square(mean_prediction))
+    mean_prediction = torch::torch_mean(mu, dim = 3)  # Mean of means across networks
+    variance_prediction = torch::torch_sqrt(torch::torch_mean(sigma, dim = 3) +
+                                              torch::torch_mean(torch::torch_square(mu), dim = 3) -
+                                              torch::torch_square(mean_prediction))
 
 
     # TODO Correct variance using ensemble variance formula
@@ -216,7 +216,7 @@ nn_ensemble = nn_module(
         # print(loss_for_adv)
 
         # Gradient for Gaussian NLL loss
-        grad = autograd_grad(loss_for_adv, input, retain_graph = FALSE)[[1]]
+        grad = torch::autograd_grad(loss_for_adv, input, retain_graph = FALSE)[[1]]
 
         batch_x = input$detach()
         batch_y = target$detach()
@@ -277,7 +277,7 @@ nn_ensemble = nn_module(
     # sig_train_pos = torch_logsumexp(sig_train, 1, keepdim = TRUE) + 1e-6
     sig_train_pos = log1pexp(sig_train) + 1e-6
 
-    loss = torch_mean(0.5 * torch_log(sig_train_pos) + 0.5 * (torch_square(target - mu_train)/sig_train_pos)) + 1
+    loss = torch::torch_mean(0.5 * torch::torch_log(sig_train_pos) + 0.5 * (torch::torch_square(target - mu_train)/sig_train_pos)) + 1
 
     if (is.nan(loss$item())) {
       print(mu_train)
@@ -304,7 +304,7 @@ nn_ensemble = nn_module(
     # var_pos = torch_logsumexp(var, 1, keepdim = TRUE) + 1e-6
     var_pos = log1pexp(var) + 1e-6
 
-    loss = torch_mean(0.5 * torch_log(var_pos) + 0.5 * (torch_square(target - input)/var_pos)) + 1
+    loss = torch::torch_mean(0.5 * torch::torch_log(var_pos) + 0.5 * (torch::torch_square(target - input)/var_pos)) + 1
 
     if (is.nan(loss$item())) {
       print(input)

@@ -2,7 +2,7 @@ log1pexp = function(x, threshold = 10) {
   # more stable version of log(1 + exp(x))
   #  Notice that log(1 + exp(x)) is approximately equal to x when x is large enough.
   # https://stackoverflow.com/questions/60903821/how-to-prevent-inf-while-working-with-exponential
-  torch_where(x < threshold, torch_log1p(torch_exp(x)) + 1e-6, x)
+  torch::torch_where(x < threshold, torch::torch_log1p(torch::torch_exp(x)) + 1e-6, x)
 }
 
 
@@ -15,7 +15,7 @@ log1pexp = function(x, threshold = 10) {
 # type is "forward" when scaling inputs or targets
 # and "backward" when back-transforming targets at prediction time
 scaler = function(x, sum_stats, method = "minmax", type = "forward") {
-  
+
   if (method == "none") {
     # Do nothing
     return(x)
@@ -50,7 +50,4 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
       }
     }
   }
-  
-
-
 }

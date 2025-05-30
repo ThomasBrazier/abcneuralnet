@@ -69,7 +69,7 @@ explain = R6::R6Class("explain",
                             model = x$fitted$model
                             model_mc = model$mc_dropout
 
-                            model_sequential = nn_sequential(model_mc[[1]])
+                            model_sequential = torch::nn_sequential(model_mc[[1]])
 
                             for (i in 2:x$num_hidden_layers) {
                               mod = model_mc[[(i -1) * 3 + 1]]
@@ -89,7 +89,7 @@ explain = R6::R6Class("explain",
                             model_concrete = model_concrete$concrete_dropout
                             # model_concrete
 
-                            model_sequential = nn_sequential(model_concrete[[1]]$linear)
+                            model_sequential = torch::nn_sequential(model_concrete[[1]]$linear)
 
                             for (i in 2:x$num_hidden_layers) {
                               mod = model_concrete[[i]]$linear
@@ -172,7 +172,7 @@ explain = R6::R6Class("explain",
                         if (self$model_method == "tabnet-abc") {
                           sumstat = as.matrix(data)
                           colnames(sumstat) = colnames(self$x$sumstat_adj)
-                          result = tabnet_explain(self$x$fitted, sumstat)
+                          result = tabnet::tabnet_explain(self$x$fitted, sumstat)
                         } else {
                           # change the method if specified as argument
                           if (!is.null(method)) {self$method = method}

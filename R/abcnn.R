@@ -1,8 +1,8 @@
-library(ggplot2)
-library(torch)
-library(tabnet)
-library(innsight)
-library(abc)
+# library(ggplot2)
+# library(torch)
+# library(tabnet)
+# library(innsight)
+# library(abc)
 
 #' Create an `abcnn` R6 class object
 #'
@@ -252,7 +252,7 @@ abcnn = R6::R6Class("abcnn",
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
 
       # Device. Use CUDA if available
-      self$device = torch_device(if (cuda_is_available()) {"cuda"} else {"cpu"})
+      self$device = torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})
       # "When fitting, luz will use the fastest possible accelerator;
       # if a CUDA-capable GPU is available it will be used, otherwise we fall back to the CPU.
       # It also automatically moves data, optimizers,
@@ -361,7 +361,7 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------#
       self$patience = patience
       if (early_stopping) {
-        early_stopping_callback = luz_callback_early_stopping(patience = self$patience)
+        early_stopping_callback = luz::luz_callback_early_stopping(patience = self$patience)
         self$callbacks = list(early_stopping_callback)
       } else {
         self$callbacks = list()
@@ -447,13 +447,13 @@ abcnn = R6::R6Class("abcnn",
         theta = dl$theta_adj
         sumstat = dl$sumstat_adj
 
-        config = tabnet_config(optimizer = self$optimizer,
+        config = tabnet::tabnet_config(optimizer = self$optimizer,
                                batch_size = self$batch_size,
                                verbose = self$verbose,
                                drop_last = TRUE,
                                early_stopping_patience = self$patience)
 
-        self$fitted = tabnet_fit(sumstat,
+        self$fitted = tabnet::tabnet_fit(sumstat,
                                  theta,
                                  epochs = self$epochs,
                                  valid_split = self$validation_split,
@@ -550,7 +550,7 @@ abcnn = R6::R6Class("abcnn",
     # Predict parameters from a vector/array of observed summary statistics
     predict = function() {
 
-      observed = torch_tensor(as.matrix(self$observed_adj), device = self$device)
+      observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
 
       if (self$verbose) {print("Making predictions")}
 
@@ -797,7 +797,7 @@ abcnn = R6::R6Class("abcnn",
           # Store dropout rates inferred
           params = self$fitted$model$named_parameters()
           p_logit = params[grepl("p_logit", names(params))]
-          p = lapply(p_logit, function(x) torch_sigmoid(x))
+          p = lapply(p_logit, function(x) torch::torch_sigmoid(x))
           p = unlist(lapply(p, function(x) as.numeric(x)))
           self$dropout_rates = p
         }
@@ -808,8 +808,8 @@ abcnn = R6::R6Class("abcnn",
           # Infer epistemic + aleatoric uncertainty
           # output for ensemble network
           n_obs = nrow(self$observed_adj)
-          out_mu_sample  = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
-          out_sig_sample = torch_zeros(c(n_obs, self$output_dim, self$num_networks))
+          out_mu_sample  = torch::torch_zeros(c(n_obs, self$output_dim, self$num_networks))
+          out_sig_sample = torch::torch_zeros(c(n_obs, self$output_dim, self$num_networks))
 
           for (i in 1:self$num_networks) {
             pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
@@ -837,17 +837,17 @@ abcnn = R6::R6Class("abcnn",
           # print("Compute predictive mean")
 
           # Mean prediction across networks
-          out_mu_sample_final  = torch_mean(out_mu_sample, dim = 3)
+          out_mu_sample_final  = torch::torch_mean(out_mu_sample, dim = 3)
           predictive_mean = as.data.frame(array(as.numeric(out_mu_sample_final), dim = c(observed$shape[1], self$output_dim)))
           colnames(predictive_mean) = colnames(self$theta)
 
-          out_sig_sample_final = torch_sqrt(torch_mean(out_sig_sample, dim = 3) +
-                                              torch_mean(torch_square(out_mu_sample), dim = 3) -
-                                              torch_square(out_mu_sample_final))
+          out_sig_sample_final = torch::torch_sqrt(torch::torch_mean(out_sig_sample, dim = 3) +
+                                                     torch::torch_mean(torch_square(out_mu_sample), dim = 3) -
+                                                     torch::torch_square(out_mu_sample_final))
 
-          out_sig_sample_aleatoric = torch_sqrt(torch_mean(out_sig_sample, dim = 3))
-          out_sig_sample_epistemic = torch_sqrt(torch_mean(torch_square(out_mu_sample), dim = 3) -
-                                                  torch_square(out_mu_sample_final))
+          out_sig_sample_aleatoric = torch::torch_sqrt(torch::torch_mean(out_sig_sample, dim = 3))
+          out_sig_sample_epistemic = torch::torch_sqrt(torch::torch_mean(torch::torch_square(out_mu_sample), dim = 3) -
+                                                         torch::torch_square(out_mu_sample_final))
 
           epistemic_uncertainty = as.data.frame(array(as.numeric(out_sig_sample_epistemic), dim = c(observed$shape[1], self$output_dim)))
           colnames(epistemic_uncertainty) = colnames(self$theta)
@@ -940,21 +940,6 @@ abcnn = R6::R6Class("abcnn",
                                  mean = target_mean,
                                  sd = target_sd)
 
-      # TESTING
-      # scaled_input = scaler(self$sumstat[train_idx,,drop=F],
-      #                       self$input_summary,
-      #                       method = self$scale_input,
-      #                       type = "forward")
-      #
-      # summary(scaled_input)
-      #
-      # descaled_input = scaler(scaled_input,
-      #                       self$input_summary,
-      #                       method = self$scale_input,
-      #                       type = "backward")
-      # summary(descaled_input)
-      # summary(self$sumstat[train_idx,,drop=F])
-
       # Scale with summary statistics learned on training set only
       scaled_input = scaler(self$sumstat,
                             self$input_summary,
@@ -985,16 +970,16 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------#
       # MAKE TENSOR DATASET
       #-----------------------------------#
-      sumstat_tensor = torch_tensor(as.matrix(self$sumstat_adj), dtype = torch_float())
-      theta_tensor = torch_tensor(as.matrix(self$theta_adj), dtype = torch_float())
+      sumstat_tensor = torch::torch_tensor(as.matrix(self$sumstat_adj), dtype = torch::torch_float())
+      theta_tensor = torch::torch_tensor(as.matrix(self$theta_adj), dtype = torch::torch_float())
 
-      ds = tensor_dataset(sumstat_tensor, theta_tensor)
+      ds = torch::tensor_dataset(sumstat_tensor, theta_tensor)
 
-      valid_ds = dataset_subset(ds, valid_idx)
-      valid_dl = dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+      valid_ds = torch::dataset_subset(ds, valid_idx)
+      valid_dl = torch::dataloader(valid_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
-      test_ds = dataset_subset(ds, test_idx)
-      test_dl = dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+      test_ds = torch::dataset_subset(ds, test_idx)
+      test_dl = torch::dataloader(test_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
       if (self$method == 'tabnet-abc') {
         return(list(sumstat_adj = scaled_input, theta_adj = scaled_target))
@@ -1002,8 +987,8 @@ abcnn = R6::R6Class("abcnn",
 
       if (self$method == 'monte carlo dropout' | self$method == 'concrete dropout') {
         # Data loader (MC dropout and Concrete dropout)
-        train_ds = dataset_subset(ds, train_idx)
-        train_dl = dataloader(train_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+        train_ds = torch::dataset_subset(ds, train_idx)
+        train_dl = torch::dataloader(train_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
         return(list(train = train_dl, valid = valid_dl, test = test_dl))
       }
@@ -1013,7 +998,7 @@ abcnn = R6::R6Class("abcnn",
         train_x = sumstat_tensor[train_idx,]
         train_y = theta_tensor[train_idx,]
         train_ds_list = ensemble_dataset(train_x, train_y, self$num_networks, randomize = TRUE)
-        train_dl_list = train_ds_list %>% dataloader(batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
+        train_dl_list = train_ds_list %>% torch::dataloader(batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
 
         return(list(train = train_dl_list, valid = valid_dl, test = test_dl))
       }
@@ -1250,7 +1235,7 @@ abcnn = R6::R6Class("abcnn",
       # CUDA is installed?
       cat("\n")
       cat("Is CUDA available? ")
-      print(cuda_is_available())
+      print(torch::cuda_is_available())
       cat("\n")
 
       cat("Device is: ")
@@ -1283,7 +1268,7 @@ abcnn = R6::R6Class("abcnn",
                                     Metric = c(train_metric, valid_metric),
                                     Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
 
-            ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+            ggplot2::ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
               geom_point() +
               geom_line() +
               xlab("Epoch") + ylab("Loss") +
@@ -1302,7 +1287,7 @@ abcnn = R6::R6Class("abcnn",
                                     Metric = c(train_metric, valid_metric),
                                     Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
 
-            ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+            ggplot2::ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
               geom_point() +
               geom_line() +
               xlab("Epoch") + ylab("Loss") +
@@ -1372,7 +1357,7 @@ abcnn = R6::R6Class("abcnn",
         df_predicted$x = x_pos
 
         if (plot_type == "line") {
-          ggplot(data = df_predicted, aes(x = x)) +
+          ggplot2::ggplot(data = df_predicted, aes(x = x)) +
             geom_line(aes(x = x, y = mean), color = "black") +
             facet_wrap(~ parameter, scales = "free") +
             geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, fill = "Overall"), alpha = 0.3) +
@@ -1382,7 +1367,7 @@ abcnn = R6::R6Class("abcnn",
             theme_bw()
         } else {
           if (plot_type == "errorbar") {
-            ggplot(data = df_predicted, aes(x = x)) +
+            ggplot2::ggplot(data = df_predicted, aes(x = x)) +
               facet_wrap(~ parameter, scales = "free") +
               geom_errorbar(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.5) +
               geom_errorbar(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.5) +
@@ -1443,9 +1428,9 @@ abcnn = R6::R6Class("abcnn",
                                    prior = as.numeric(unlist(self$theta)))
 
           p = ggplot() +
-            geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1)
+            ggplot2::geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1)
         } else {
-          p = ggplot()
+          p = ggplot2::ggplot()
         }
 
         if (self$method %in% c("tabnet-abc", "monte carlo dropout", "concrete dropout")) {
@@ -1466,7 +1451,7 @@ abcnn = R6::R6Class("abcnn",
 
           tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
 
-          p = p + geom_histogram(data = tidy_df, aes(x = prediction))
+          p = p + ggplot2::geom_histogram(data = tidy_df, aes(x = prediction))
         }
 
         p = p +
@@ -1508,7 +1493,7 @@ save_abcnn = function(object, prefix = "") {
   # torch_save(object$model, paste0(prefix, "_torch.Rds"))
 
   # Save the luz fitted object
-  luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
+  luz::luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
 
   # Save the abcnn object
   # Remove torch module and luz fitted to avoid serialization issues
@@ -1523,11 +1508,10 @@ save_abcnn = function(object, prefix = "") {
 load_abcnn = function(prefix = "") {
   object = readRDS(paste0(prefix, "_abcnn.Rds"))
 
-  object$fitted = luz_load(paste0(prefix, "_luz.Rds"))
+  object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
   object$model = object$fitted$model
 
   return(object)
-
 }
 
 
