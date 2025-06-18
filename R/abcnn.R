@@ -510,7 +510,7 @@ abcnn = R6::R6Class("abcnn",
         # Redefine model with epsilon based on training data
         self$fitted = nn_ensemble %>%
           luz::setup() %>%
-          set_hparams (model = single_model,
+          luz::set_hparams (model = single_model,
                        learning_rate = self$learning_rate,
                        weight_decay = self$l2_weight_decay,
                        num_models = self$num_networks,
@@ -1089,9 +1089,11 @@ abcnn = R6::R6Class("abcnn",
 
       # Compute the conformal quantile
       alpha = 1 - self$credible_interval_p
-      # q_level = ceiling((n_cal + 1)*(1 - alpha))/n_cal
-      # qhat = sort(scores_epistemic)[q_level*n_cal]
-      # quantile(scores_epistemic, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE)
+
+      q_level = ceiling((n_cal + 1)*(1 - alpha))/n_cal
+      qhat = sort(scores_epistemic)[q_level*n_cal]
+      # # It is the same as above
+      quantile(scores_epistemic, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE)
 
       # For the new data sample x, approximation of Eπ[θ | x] and confidence set for θ :
       # apply(scores_epistemic, 2, function(x) sort(x[q_level * n_cal]))
