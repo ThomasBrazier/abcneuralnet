@@ -388,12 +388,12 @@ abcnn = R6::R6Class("abcnn",
           self$model = mc_dropout_model %>%
             luz::setup(optimizer = self$optimizer,
                        loss = self$loss) %>%
-            set_hparams(num_input_dim = self$input_dim,
+            luz::set_hparams(num_input_dim = self$input_dim,
                         num_hidden_dim = self$num_hidden_dim,
                         num_output_dim = self$output_dim,
                         num_hidden_layers = self$num_hidden_layers,
                         dropout_hidden = self$dropout) %>%
-            set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
+            luz::set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
         }
         if (self$method == "concrete dropout") {
           # TODO Make utility functions for wr and dr
@@ -404,20 +404,20 @@ abcnn = R6::R6Class("abcnn",
 
           self$model = concrete_model %>%
             luz::setup(optimizer = self$optimizer) %>%
-            set_hparams(num_input_dim = self$input_dim,
+            luz::set_hparams(num_input_dim = self$input_dim,
                         num_hidden_dim = self$num_hidden_dim,
                         num_output_dim = self$output_dim,
                         num_hidden_layers = self$num_hidden_layers,
                         weight_regularizer = self$wr,
                         dropout_regularizer = self$dr,
                         clamp = self$variance_clamping) %>%
-            set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
+            luz::set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
         }
         if (self$method == "deep ensemble") {
 
           self$model = nn_ensemble %>%
             luz::setup() %>%
-            set_hparams (model = single_model,
+            luz::set_hparams (model = single_model,
                          learning_rate = self$learning_rate,
                          weight_decay = self$l2_weight_decay,
                          num_models = self$num_networks,
@@ -541,7 +541,7 @@ abcnn = R6::R6Class("abcnn",
       if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
         print("Evaluation")
         self$evaluation = self$fitted %>% luz::evaluate(data = dl$test)
-        self$eval_metrics = get_metrics(self$evaluation)
+        self$eval_metrics = luz::get_metrics(self$evaluation)
         print(self$eval_metrics)
         print(self$evaluation)
       }
@@ -1069,7 +1069,7 @@ abcnn = R6::R6Class("abcnn",
         pred = as.matrix(abcnn_conformal$predictive_mean[i,,drop=F])
         uncertainty = as.matrix(abcnn_conformal$epistemic_uncertainty[i,,drop=F])
         # uncertainty = uncertainty^2 # Uncertainty is already sqrt transformed
-        scores_epistemic[i,] = abs(true - pred)/uncertainty # Simpler calculation, one score per sample and output dim
+        scores_epistemic[i,] = abs(true - pred) / uncertainty # Simpler calculation, one score per sample and output dim
         # scores_epistemic[i,] = sqrt((true - pred) * uncertainty^(-1) * (true - pred)) # formula (9) of the paper
         # scores_epistemic[i,] = sqrt(t(true - pred) %*% solve(uncertainty) %*% (true-pred))  # formula (9) of the paper
       }
@@ -1241,7 +1241,6 @@ abcnn = R6::R6Class("abcnn",
       cat("Device is: ")
       print(self$device)
       cat("\n")
-
     },
 
     # Plot the training curves (training/validation)
@@ -1302,7 +1301,7 @@ abcnn = R6::R6Class("abcnn",
     },
 
     # Plot predicted values (predicted ~ observed)
-    plot_predicted = function(uncertainty_type = "conformal",
+    plot_prediction = function(uncertainty_type = "conformal",
                               plot_type = "line") {
 
       pal = RColorBrewer::brewer.pal(8, "Dark2")

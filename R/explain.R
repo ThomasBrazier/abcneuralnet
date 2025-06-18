@@ -249,7 +249,8 @@ explain = R6::R6Class("explain",
                         } else {
                           # Plot individual results
                           # Interactive plots can also be created for both methods
-                          innsight::plot(result, as_plotly = as_plotly)
+                          result = self$get_result()
+                          plot(self$result, as_plotly = as_plotly)
                         }
                       },
 

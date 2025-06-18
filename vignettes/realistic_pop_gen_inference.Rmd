@@ -131,9 +131,9 @@ abc_popgen$predict()
 
 
 ```{r, echo = T}
-abc_popgen$plot_predicted(type = "uncertainty")
-abc_popgen$plot_predicted(type = "conformal")
-abc_popgen$plot_predicted(type = "posterior quantile")
+abc_popgen$plot_prediction(type = "uncertainty")
+abc_popgen$plot_prediction(type = "conformal")
+abc_popgen$plot_prediction(type = "posterior quantile")
 ```
 
 
@@ -202,7 +202,7 @@ abc_popgen$plot_training()
 ```{r, echo = T}
 abc_popgen$predict()
 
-abc_popgen$plot_predicted()
+abc_popgen$plot_prediction()
 ```
 
 
