@@ -1,3 +1,70 @@
+#' Save the `abcnn` object and the serialized luz fitted model
+#'
+#' @param object an `abcnn` object with a `luz` fitted model
+#' @param prefix character, the prefix with path of the saved .Rds object
+#'
+#' @import bundle
+#' @import torch
+#' @import luz
+#'
+#' @export
+#'
+save_abcnn = function(object, prefix = "") {
+  # Save the torch module used as model
+  # torch_save(object$model, paste0(prefix, "_torch.Rds"))
+
+  # Save the luz fitted object
+  luz::luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
+  # bun = bundle::bundle(object$fitted)
+  # saveRDS(bun, paste0(prefix, "_bundle.Rds"))
+
+  mod = bundle::bundle(object$model)
+  saveRDS(mod, paste0(prefix, "_model.Rds"))
+
+  # Save the abcnn object
+  # Remove torch module and luz fitted to avoid serialization issues
+  # object$model = NULL
+  # object$fitted = NULL
+
+  # export = list(object = object,
+  #               metrics = object$fitted$records$metrics)
+
+  saveRDS(object, paste0(prefix, "_abcnn.Rds"))
+}
+
+
+#' Load an `abcnn` object and the serialized luz fitted model
+#'
+#' @param prefix character, the prefix with path of the saved .Rds object
+#'
+#' @import bundle
+#' @import torch
+#' @import luz
+#'
+#' @export
+#' object and internal torch model
+load_abcnn = function(prefix = "") {
+  object = readRDS(paste0(prefix, "_abcnn.Rds"))
+
+  # object = import$object
+
+  # object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
+  # bun = readRDS(paste0(prefix, "_bundle.Rds"))
+  # object$fitted = bundle::unbundle(bun)
+  object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
+
+  # object$fitted$records$metrics = import$metrics
+
+  mod = readRDS(paste0(prefix, "_model.Rds"))
+  object$model = bundle::unbundle(mod)
+
+  object$device = torch::torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})
+
+  return(object)
+}
+
+
+
 log1pexp = function(x, threshold = 10) {
   # more stable version of log(1 + exp(x))
   #  Notice that log(1 + exp(x)) is approximately equal to x when x is large enough.

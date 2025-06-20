@@ -5,3 +5,4 @@ envs/
 inst/extdata/*.Rds
 inst/extdata/*.csv
 inst/extdata/toy_example/
+tests/data

@@ -148,16 +148,6 @@ abc$plot_training()
 
 
 
-Save the `abccn` object with the fitted model.
-
-
-```{r, echo = T}
-# save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
-# 
-# abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
-```
-
-
 
 
 
@@ -171,6 +161,19 @@ After the model is trained, parameter estimates can be predicted with `abc$predi
 ```{r, echo = T}
 abc$predict()
 ```
+
+
+
+Save the `abccn` object with the fitted model and predictions.
+
+
+```{r, echo = T}
+save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
+
+abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
+```
+
+
 
 
 Model predictions.

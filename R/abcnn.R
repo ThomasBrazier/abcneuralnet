@@ -1,9 +1,3 @@
-# library(ggplot2)
-# library(torch)
-# library(tabnet)
-# library(innsight)
-# library(abc)
-
 #' Create an `abcnn` R6 class object
 #'
 #' @param observed a vector of summary statistics computed on the data
@@ -1485,34 +1479,5 @@ abcnn = R6::R6Class("abcnn",
 )
 
 
-
-
-
-# Save the abcnn object and internal torch model
-save_abcnn = function(object, prefix = "") {
-  # Save the torch module used as model
-  # torch_save(object$model, paste0(prefix, "_torch.Rds"))
-
-  # Save the luz fitted object
-  luz::luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
-
-  # Save the abcnn object
-  # Remove torch module and luz fitted to avoid serialization issues
-  # object$model = NULL
-  # object$fitted = NULL
-
-  saveRDS(object, paste0(prefix, "_abcnn.Rds"))
-}
-
-
-# Load an abcnn object and internal torch model
-load_abcnn = function(prefix = "") {
-  object = readRDS(paste0(prefix, "_abcnn.Rds"))
-
-  object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
-  object$model = object$fitted$model
-
-  return(object)
-}
 
 
