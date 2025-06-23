@@ -1421,9 +1421,11 @@ abcnn = R6::R6Class("abcnn",
         if (prior) {
           tidy_priors = data.frame(param = rep(colnames(self$theta), each = nrow(self$theta)),
                                    prior = as.numeric(unlist(self$theta)))
+          colnames(tidy_priors)[1] = "parameter"
 
           p = ggplot() +
-            ggplot2::geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1)
+            ggplot2::geom_histogram(data = tidy_priors, aes(x = prior), color = "darkgrey", fill = "grey", alpha = 0.1) +
+            facet_wrap(~ parameter)
         } else {
           p = ggplot2::ggplot()
         }
@@ -1445,12 +1447,14 @@ abcnn = R6::R6Class("abcnn",
           # output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(theta), x, sep = "_")))
 
           tidy_df = posteriors %>% tidyr::gather(param, prediction, any_of(colnames(self$theta)))
+          colnames(tidy_df)[2] = "parameter"
 
-          p = p + ggplot2::geom_histogram(data = tidy_df, aes(x = prediction))
+          p = p + ggplot2::geom_histogram(data = tidy_df, aes(x = prediction)) +
+            facet_wrap(~ parameter)
         }
 
         p = p +
-          geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "Epistemic")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "black", size = 1.3)) +
           geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1) +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +

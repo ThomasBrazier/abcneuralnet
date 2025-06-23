@@ -292,7 +292,7 @@ abc$predictive_mean$y1[735]
 
 
 
-## Deep Ensemble prediction
+## Deep Ensemble
 
 
 ### A more complex relationship (sinus and cosinus functions)
@@ -396,94 +396,11 @@ ggpubr::ggarrange(p1, p2, ncol = 2)
 
 
 
-### Fit a Deep Ensemble network
+### Fit a Deep Ensemble network with two output parameters
+
+
 
 Train five networks with the Deep Ensemble algorithm and adversarial training.
-
-Try with a single parameter to estimate first.
-
-
-```{r, echo = T}
-# Predict Y when X is observed
-theta = data.frame(y = train_y$y1)
-sumstats = data.frame(x = train_x$x1)
-observed = data.frame(x = observed_x$x1)
-
-abc_ensemble = abcnn$new(theta,
-            sumstats,
-            observed,
-            method = 'deep ensemble',
-            scale_input = "none",
-            scale_target = "none",
-            num_networks = 5,
-            epochs = 30,
-            num_hidden_layers = 3,
-            num_hidden_dim = 512,
-            batch_size = 32,
-            epsilon_adversarial = NULL)
-```
-
-```{r, echo = T}
-abc_ensemble$fit()
-```
-
-
-
-```{r, echo = T}
-# save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
-# 
-# abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
-```
-
-
-
-
-```{r, echo = T}
-abc_ensemble$plot_training()
-```
-
-
-
-
-````{r, echo = T}
-abc_ensemble$predict()
-```
-
-
-```{r, echo=T}
-abc_ensemble$plot_prediction(uncertainty_type = "conformal") +
-  geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
-
-abc_ensemble$plot_prediction(uncertainty_type = "uncertainty") +
-  geom_point(data = df_train, aes(x = x1, y = y1), color = "blue", alpha = 0.01)
-```
-
-
-
-For Deep Ensemble, there are no posterior samples to plot with the `plot_posterior` method as in Monte Carlo dropout or Concrete Dropout. But it is still interesting to check a single prediction with its uncertainty within or without training distribution.
-
-```{r, echo = T}
-# Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
-# which(abc$observed < -4 & abc$observed > -5)
-abc_ensemble$plot_posterior(sample = 155, prior = TRUE) +
-  geom_vline(aes(xintercept = observed_y$y1[155]), color = "red")
-
-# Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
-# which(abc$observed < 5 & abc$observed > 4)
-abc_ensemble$plot_posterior(sample = 800, prior = TRUE) +
-  geom_vline(aes(xintercept = observed_y$y1[800]), color = "red")
-
-# Print a sample with -1 < x1 < 1 (out of training distribution)
-# which(abc$observed < 1 & abc$observed > -1)
-abc_ensemble$plot_posterior(sample = 520, prior = TRUE) +
-  geom_vline(aes(xintercept = observed_y$y1[520]), color = "red")
-```
-
-
-
-## Multi parameter inference
-
-And for two parameters jointly estimated?
 
 
 
@@ -537,6 +454,7 @@ abc_ensemble$predict()
 
 
 ````{r, echo = T}
+abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
 abc_ensemble$plot_prediction(uncertainty_type = "conformal")
 ```
 
