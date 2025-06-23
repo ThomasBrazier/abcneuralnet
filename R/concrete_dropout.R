@@ -67,7 +67,7 @@ nn_concrete_dropout = torch::nn_module(
     random_tensor = 1 - drop_prob
     retain_prob = 1 - self$p
 
-    x = torch_mul(x, random_tensor) / retain_prob
+    x = torch::torch_mul(x, random_tensor) / retain_prob
 
     return(x)
   }

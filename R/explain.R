@@ -8,8 +8,8 @@ library(plotly)
 #'
 #' @param abcnn An `abcnn` object
 #' @param method A feature attribution method, as named in the `ìnnsight` R package
-#' including cw (default), grad, smoothgrad, intgrad, expgrad, lrp, deeplift,
-#' deepshap, shap, lime. No method required for tabnet-ABC.
+#' including 'cw' (default), 'grad', 'smoothgrad', 'intgrad', 'expgrad', 'lrp', 'deeplift',
+#' 'deepshap', 'shap', 'lime.' No method required for tabnet-ABC.
 #' @param ensemble_num_model index of the model when the network is a deep ensemble (default = 1)
 #'
 #'
@@ -250,7 +250,8 @@ explain = R6::R6Class("explain",
                           # Plot individual results
                           # Interactive plots can also be created for both methods
                           result = self$get_result()
-                          plot(self$result, as_plotly = as_plotly)
+                          plot(self$result, as_plotly = as_plotly) +
+                            theme_bw()
                         }
                       },
 
@@ -266,7 +267,8 @@ explain = R6::R6Class("explain",
                           result = self$result
                           # Plot a aggregated plot of all given data points in argument 'data'
                           # Interactive plots can also be created for both methods
-                          innsight::plot_global(result, as_plotly = as_plotly)
+                          innsight::plot_global(result, as_plotly = as_plotly) +
+                            theme_bw()
                         }
                       },
 

@@ -221,11 +221,11 @@ abcnn = R6::R6Class("abcnn",
                           early_stopping=FALSE,
                           verbose=TRUE,
                           patience=4,
-                          optimizer=optim_adam,
+                          optimizer=torch::optim_adam,
                           learning_rate=0.001,
                           l2_weight_decay=1e-5,
                           variance_clamping=c(-1e15, 1e15),
-                          loss=nn_mse_loss(),
+                          loss=torch::nn_mse_loss(),
                           tol=NULL,
                           abc_method="loclinear",
                           num_posterior_samples=1000,
@@ -246,7 +246,7 @@ abcnn = R6::R6Class("abcnn",
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
 
       # Device. Use CUDA if available
-      self$device = torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})
+      self$device = torch::torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})
       # "When fitting, luz will use the fastest possible accelerator;
       # if a CUDA-capable GPU is available it will be used, otherwise we fall back to the CPU.
       # It also automatically moves data, optimizers,
@@ -1454,7 +1454,7 @@ abcnn = R6::R6Class("abcnn",
         }
 
         p = p +
-          geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "black", size = 1.3)) +
+          geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "black")) +
           geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1) +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +

@@ -242,10 +242,7 @@ Alternatively you can use the `plot_prediction()` method.
 # predicted (+ C.I.) ~ observed
 abc$plot_prediction(uncertainty_type = "uncertainty")
 abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
-
 abc$plot_prediction(uncertainty_type = "conformal")
-
-abc$plot_prediction(uncertainty_type = "posterior quantile")
 ```
 
 
@@ -289,6 +286,22 @@ abc$plot_posterior(sample = 735, prior = TRUE, type = "uncertainty") +
 Y_obs[735]
 abc$predictive_mean$y1[735]
 ```
+
+### Explain methods
+
+
+
+```{r}
+expl = explain$new(abc, method = "deeplift")
+
+expl$run()
+
+# Use the method on the test data
+expl$plot(observed)
+
+expl$plot_global()
+```
+
 
 
 
