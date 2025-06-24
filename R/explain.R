@@ -243,14 +243,22 @@ explain = R6::R6Class("explain",
                       #' Note that when the `abcnn` model is `tabnet-abc`, `plot()` returns the `autoplot()` function on the results of the `tabnet` model.
                       #'
                       plot = function(as_plotly = FALSE,
-                                      type = "mask_agg") {
+                                      type = "mask_agg",
+                                      output_label = NULL) {
                         if (self$model_method == "tabnet-abc") {
                           autoplot(self$result, type = type)
                         } else {
+                          if (is.null(output_label)) {
+                            output_label = self$parameters
+                          } else {
+                            output_label = output_label
+                          }
                           # Plot individual results
                           # Interactive plots can also be created for both methods
                           result = self$get_result()
-                          plot(self$result, as_plotly = as_plotly) +
+                          plot(self$result,
+                               output_label = output_label,
+                               as_plotly = as_plotly) +
                             theme_bw()
                         }
                       },
@@ -260,14 +268,23 @@ explain = R6::R6Class("explain",
                       #'
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
                       #'
-                      plot_global = function(as_plotly = FALSE) {
+                      plot_global = function(as_plotly = FALSE, output_label = NULL) {
                         if (self$model_method == "tabnet-abc") {
                           warning("'plot_global' not applicable to Tabnet-ABC.")
                         } else {
+
+                          if (is.null(output_label)) {
+                            output_label = self$parameters
+                          } else {
+                            output_label = output_label
+                          }
+
                           result = self$result
                           # Plot a aggregated plot of all given data points in argument 'data'
                           # Interactive plots can also be created for both methods
-                          innsight::plot_global(result, as_plotly = as_plotly) +
+                          innsight::plot_global(result,
+                                                output_label = output_label,
+                                                as_plotly = as_plotly) +
                             theme_bw()
                         }
                       },
