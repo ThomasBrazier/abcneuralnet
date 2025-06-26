@@ -1,16 +1,28 @@
-library(innsight)
-library(plotly)
-
 #' An `explain` object for feature attribution
 #' A R6 class object
 #'
-#' See `https://bips-hb.github.io/innsight/articles/innsight.html` for details.
+#' @description
+#'
+#' This module function allows the used to apply a diverse set of explainability methods on a fitted `abcnn` neural network
+#' and a given observed dataset, in order to compute the weight of each summary statistic on predictions.
+#' Summary statistics with the higher weight (or importance) are those contributing the most to the prediction.
+#'
+#' This feature importance method is useful to perform feature selection (removing summary statistics that don't explain well the output)
+#' and to interpret properly the output of the model.
+#'
 #'
 #' @param abcnn An `abcnn` object
 #' @param method A feature attribution method, as named in the `ìnnsight` R package
 #' including 'cw' (default), 'grad', 'smoothgrad', 'intgrad', 'expgrad', 'lrp', 'deeplift',
 #' 'deepshap', 'shap', 'lime.' No method required for tabnet-ABC.
 #' @param ensemble_num_model index of the model when the network is a deep ensemble (default = 1)
+#'
+#'
+#' @details
+#'
+#' All the methods used in explain are implemented in the `innsight` R package, that is part of the R torch ecosystem.
+#'
+#' See `https://bips-hb.github.io/innsight/` for details.
 #'
 #'
 #' @slot converter Stores the `innsight::converter` object
@@ -28,7 +40,7 @@ library(plotly)
 #' @import ggplot2
 #' @import innsight
 #' @import plotly
-#' @import R6Class
+#' @import R6
 #' @import RColorBrewer
 #' @import janitor
 #'
@@ -238,6 +250,7 @@ explain = R6::R6Class("explain",
                       #'
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
                       #' @param type a character value. Passed to the Tabnet autoplot method. Either `mask_agg` the default, for a single heatmap of aggregated mask importance per predictor along the dataset, or `steps` for one heatmap at each mask step.
+                      #' @param output_label character, the names of the variables to plot (if NULL, all variables are plotted)
                       #'
                       #' @details
                       #' Note that when the `abcnn` model is `tabnet-abc`, `plot()` returns the `autoplot()` function on the results of the `tabnet` model.
@@ -263,10 +276,10 @@ explain = R6::R6Class("explain",
                         }
                       },
 
-                      #' Plot the results of the Feature Attribution method
-                      #' for the global dataset
+                      #' Plot the results of the Feature Attribution method for the global dataset
                       #'
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
+                      #' @param output_label character, the names of the variables to plot (if NULL, all variables are plotted)
                       #'
                       plot_global = function(as_plotly = FALSE, output_label = NULL) {
                         if (self$model_method == "tabnet-abc") {

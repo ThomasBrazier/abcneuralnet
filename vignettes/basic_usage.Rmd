@@ -257,14 +257,14 @@ Try to compare a prediction within the training data with a prediction out of pr
 ```{r, echo = T}
 # Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
 # which(abc$observed$X1 < 2 & abc$observed > -2)
-abc$plot_posterior(sample = 501, prior = TRUE, type = "conformal") +
+abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "conformal") +
   geom_vline(xintercept = Y_obs[501], color = "red", size = 1.5)
 Y_obs[501]
 abc$predictive_mean$y1[501]
 
 # Print a sample out of distribution
 # which(abc$observed$X1 > 7)
-abc$plot_posterior(sample = 735, prior = TRUE, type = "conformal") +
+abc$plot_posterior(sample = 735, prior = TRUE, uncertainty_type = "conformal") +
   geom_vline(xintercept = Y_obs[735], color = "red", size = 1.5)
 Y_obs[735]
 abc$predictive_mean$y1[735]
@@ -274,14 +274,14 @@ abc$predictive_mean$y1[735]
 ```{r, echo = T}
 # Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
 # which(abc$observed$X1 < 2 & abc$observed > -2)
-abc$plot_posterior(sample = 501, prior = TRUE, type = "uncertainty") +
+abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "uncertainty") +
   geom_vline(xintercept = Y_obs[501], color = "red", size = 1.5)
 Y_obs[501]
 abc$predictive_mean$y1[501]
 
 # Print a sample out of distribution
 # which(abc$observed$X1 > 7)
-abc$plot_posterior(sample = 735, prior = TRUE, type = "uncertainty") +
+abc$plot_posterior(sample = 735, prior = TRUE, uncertainty_type = "uncertainty") +
   geom_vline(xintercept = Y_obs[735], color = "red", size = 1.5)
 Y_obs[735]
 abc$predictive_mean$y1[735]
@@ -294,10 +294,10 @@ abc$predictive_mean$y1[735]
 ```{r}
 expl = explain$new(abc, method = "deeplift")
 
-expl$run()
+expl$run(observed)
 
 # Use the method on the test data
-expl$plot(observed)
+expl$plot()
 
 expl$plot_global()
 ```
@@ -461,12 +461,13 @@ abc_ensemble$plot_training()
 
 
 
-````{r, echo = T}
+```{r, echo = T}
 abc_ensemble$predict()
 ```
 
 
-````{r, echo = T}
+
+```{r, echo = T}
 abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
 abc_ensemble$plot_prediction(uncertainty_type = "conformal")
 ```
@@ -760,7 +761,7 @@ tabnetabc$summary()
 
 
 
-````{r}
+```{r}
 tabnetabc$fit()
 
 tabnetabc$plot_training()
@@ -777,7 +778,7 @@ tabnetabc$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "
 
 
 ```{r}
-tabnetabc$plot_posterior(5, type = "posterior quantile")
+tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
 ```
 
 

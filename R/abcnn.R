@@ -3,7 +3,7 @@
 #' @param observed a vector of summary statistics computed on the data
 #' @param theta a vector, matrix or data frame of the simulated theta_parameter values
 #' @param sumstat a vector, matrix or data frame of the simulated summary statistics
-#' @param method either `monte carlo dropout`, `concrete dropout`, `tabnet-abc` or `deep ensemble`, See details
+#' @param method either `monte carlo dropout`, `concrete dropout`, `tabnet-abc` or `deep ensemble`, See `details`
 #' @param scale_input the method to scale summary statistics before training (`none` (default), `minmax` or `robustscaler`)
 #' @param scale_target the method to scale the parameter to estimate before training (`none` (default), `minmax` or `robustscaler`)
 #' @param num_hidden_layers the number of hidden layers in the Neural Network (default = 3)
@@ -36,88 +36,164 @@
 #' @param ncores integer, the number of cores in parallel operations
 #'
 #'
-#' @slot theta = NULL,
-#' @slot sumstat = NULL,
-#' @slot observed = NULL,
-#' @slot model=NULL,
-#' @slot method='concrete dropout',
-#' @slot scale_input=NULL,
-#' @slot scale_target=NULL,
-#' @slot num_hidden_layers=NA,
-#' @slot num_hidden_dim=NA,
-#' @slot validation_split=NA,
-#' @slot num_conformal=NA,
-#' @slot credible_interval_p = NA,
-#' @slot test_split=NA,
-#' @slot dropout=NA,
-#' @slot batch_size=NA,
-#' @slot epochs=NA,
-#' @slot early_stopping=FALSE,
-#' @slot callbacks=NULL,
-#' @slot verbose=NULL,
-#' @slot patience=4,
-#' @slot optimizer=NULL,
-#' @slot learning_rate=0.001,
-#' @slot l2_weight_decay=1e-5,
-#' @slot variance_clamping=TRUE,
-#' @slot loss=NULL,
-#' @slot tol=NULL,
-#' @slot abc_method=NULL,
-#' @slot num_posterior_samples=1000,
-#' @slot prior_length_scale=1e-4,
-#' @slot wr=NA,
-#' @slot dr=NA,
-#' @slot num_networks=5,
-#' @slot epsilon_adversarial=0,
-#' @slot device="cpu",
-#' @slot input_dim = NA,
-#' @slot output_dim = NA,
-#' @slot n_train = NA,
-#' @slot sumstat_names = NA,
-#' @slot output_names = NA,
-#' @slot theta_names = NA,
-#' @slot n_obs = NA,
-#' @slot prior_lower = NA,
-#' @slot prior_upper = NA,
-#' @slot fitted = NULL,
-#' @slot evaluation=NULL,
-#' @slot eval_metrics=NA,
-#' @slot posterior_samples = NA,
-#' @slot quantile_posterior = NA,
-#' @slot predictive_mean = NA,
-#' @slot aleatoric_uncertainty = NA,
-#' @slot epistemic_uncertainty = NA,
-#' @slot overall_uncertainty = NA,
-#' @slot epistemic_conformal_quantile = NA,
-#' @slot overall_conformal_quantile = NA,
-#' @slot dropout_rates = NA,
-#' @slot input_summary = NA,
-#' @slot target_summary = NA,
-#' @slot scalers_input = NA,
-#' @slot scalers_target = NA,
-#' @slot sumstat_adj = NA,
-#' @slot observed_adj = NA,
-#' @slot theta_adj = NA,
-#' @slot calibration_theta = NA,
-#' @slot calibration_sumstat = NA,
-#' @slot kernel_values = NA,
-#' @slot ncores = NA
-#'
-#'
 #' @description
-#' A short description...
+#'
+#' `abcnn` constructs a `R6` class object for parameter inference with ABC and neural networks.
+#' It implements four different method mixing ABC and neural networks implemented in R `torch`.
+#'
+#'
+#' The `initialize` function (`abcnn$new()`) takes as arguments three data frames of training summary statistics,
+#' training theta values and observed summary statistics. Public slots can be accessed and modified.
+#' A new `abcnn` object is created with `abcnn$new()`.
+#'
 #'
 #'
 #' @details
 #'
+#' Four methods are available for parameter inference. The two core methods are `concrete dropout`,
+#' an implementation of Gal et al. (2017), and `deep ensemble`, an implementation
+#' of Lakshminarayanan et al. (2017), that allow to estimate both the aleatoric and epistemic uncertainty
+#' for each sample. `monte carlo dropout` is an implementation of Gal and Ghahramani (2016),
+#' that provides a simpler model that is easier to train, despite its limitations (the dropout rate must be arbitrary chosen).
 #'
+#'
+#' A fourth method is `tabnet-abc`. This is a new method, combining regular ABC inference with the `abc` R package,
+#' and a Tabnet neural network, as in Arik et al. (2021) and implemented in the `tabnet` R package.
+#' This is the same idea than in Åkesson et al. (2021) or Jiang et al. (2017), except than te MLP/CNN used to estimate summary statistics
+#' is replaced by a `tabnet` model specifically designed to handle tabular data and feature selection through
+#' an attention map on features. The `tabnet` neural network is trained to predict summary statistics from the observed summary statistics.
+#' Then these predictions are used as a supplementary set of summary statistics and regular ABC inference is performed on it.
+#' Explain methods are specific the `tabnet-abc` model.
+#'
+#'
+#' In addition, the credible interval is calibrated with conformal prediction, as in Baragatti et al. (2024).
+#' As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`,
+#' `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method).
+#'
+#'
+#' The neural networks are implemented with the `torch` R package and support CUDA devices for training.
+#' The `luz` package is used as a higher level API for training and predictions with `torch`.
+#' The device (`CUDA` or `cpu`) is automatically detected by `luz`.
+#'
+#'
+#' The `abcnn` object has public methods to perform each inference step and visualizations.
+#'
+#' * `new()` to create a new `abcnn` object
+#' * `fit()` to fit a neural network
+#' * `predict()` to compute conformal predictions from the fitted model
+#' * `summary()` to print a summary of the `abcnn` object
+#' * `predictions()` to print predictions
+#' * `plot_training()` to plot the training curves
+#' * `plot_prediction()` to plot all predictions with their credible intervals
+#' * `plot_posterior()` to plot the prior and posterior distributions, with the mean and credible intervals, of a single sample
+#'
+#'
+#' The hyperparameters of the neural network can be configured in the `new()` method
+#' or modified directly in the corresponding public `slot`.
+#'
+#' @references
+#' \insertRef{baragatti2024approximate}
+#' \insertRef{gal2016}
+#' \insertRef{gal2017concrete}
+#' \insertRef{lakshminarayanan2017simple}
+#' \insertRef{arik2021tabnet}
+#' \insertRef{tabnet}
+#' \insertRef{aakesson2021convolutional}
+#' \insertRef{jiang2017learning}
 #'
 #' @examples
-#' # example code
+#' \dontrun{
+#' # Load test data
+#' df = readRDS("inst/extdata/test_data.Rds")
+#'
+#' theta = df$train_y
+#' sumstats = df$train_x
+#' observed = df$observed_y
+#'
+#' # Create an `abcnn` object
+#' abc = abcnn$new(theta,
+#'                 sumstats,
+#'                 observed,
+#'                 method = "concrete dropout",
+#'                 scale_input = "none",
+#'                 scale_target = "none",
+#'                 num_hidden_layers = 3,
+#'                 num_hidden_dim = 128,
+#'                 epochs = 30,
+#'                 batch_size = 32)
+#'  abc$fit()
+#'
+#'  abc$predict()
+#'  }
 #'
 #'
 #'
-#' @returns A `R6class::abcnn` object
+#' @slot theta parameters of the pseudo-observed samples (i.e. simulations)
+#' @slot sumstat summary statistics of the pseudo-observed samples (i.e. simulations)
+#' @slot observed summary statistics of the observed samples
+#' @slot model the `luz` model
+#' @slot method the ABC-NN method used
+#' @slot scale_input the scaling method for summary statistics
+#' @slot scale_target the scaling method for targets (i.e. theta)
+#' @slot num_hidden_layers number of hidden layers in the neural network
+#' @slot num_hidden_dim number of hidden dimensions (neurons) in each hidden layer
+#' @slot validation_split proportion of samples retained for validation at the end of training
+#' @slot num_conformal number of samples retained for conformal prediction
+#' @slot credible_interval_p significance level for the credible interval, between 0 and 1
+#' @slot test_split proportion of samples retained for test at each training iteration
+#' @slot dropout dropout rate
+#' @slot batch_size  batch size
+#' @slot epochs number of epochs for training
+#' @slot early_stopping whether to do early stopping
+#' @slot patience patience hyperparameter for early stopping. See `luz::luz_callback_early_stopping()`
+#' @slot callbacks custom callbacks
+#' @slot verbose whether to print messages
+#' @slot optimizer `torch` optimizer nn module
+#' @slot learning_rate learning rate
+#' @slot l2_weight_decay L2 weigth decay (regularization)
+#' @slot variance_clamping (min, max) values for variance clamping during training
+#' @slot loss `torch` nn loss function
+#' @slot tol tolerance rate for `abc` functions (only for `tabnet-abc`)
+#' @slot abc_method ABC sampling method in `abc` function (only for `tabnet-abc`)
+#' @slot num_posterior_samples number of samples to generate for the posterior distribution
+#' @slot prior_length_scale prior length scale hyperparameter value
+#' @slot wr `concrete dropout` regularization term for weights
+#' @slot dr `concrete dropout` regularization term for dropout
+#' @slot num_networks number of networks in `deep ensemble`
+#' @slot epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble`
+#' @slot device `luz`/`torch` device for tensors
+#' @slot input_dim number of input dimensions of the neural network
+#' @slot output_dim number of output dimensions of the neural network
+#' @slot n_train number of training samples
+#' @slot sumstat_names names of summary statistics
+#' @slot output_names output names
+#' @slot theta_names names of theta to estimate
+#' @slot n_obs number of observed samples
+#' @slot prior_lower lower boundary of priors (for figures)
+#' @slot prior_upper upper boundary of priors (for figures)
+#' @slot fitted the fitted `luz` model
+#' @slot evaluation the evaluation metric
+#' @slot eval_metrics `torch` nn metrics for evaluation
+#' @slot posterior_samples array of posterior samples
+#' @slot quantile_posterior quantiles computed on the posterior samples, given the `credible_interval_p`
+#' @slot predictive_mean values predicted by the model for each observed sample
+#' @slot aleatoric_uncertainty aleatoric uncertainty for each observed sample
+#' @slot epistemic_uncertainty epistemic uncertainty for each observed sample
+#' @slot overall_uncertainty overall uncertainty for each observed sample (epistemic + aleatoric)
+#' @slot epistemic_conformal_quantile the quantile factor to get the conformalized credible interval for epistemic uncertainty
+#' @slot overall_conformal_quantile the quantile factor to get the conformalized credible interval for overall uncertainty
+#' @slot dropout_rates the dropout rate hyperparameter estimated by concrete dropout
+#' @slot input_summary statistics computed on input data (for scaling)
+#' @slot target_summary statistics computed on target data (for scaling)
+#' @slot sumstat_adj adjusted training summary statistics after scaling
+#' @slot observed_adj adjusted observed summary statistics after scaling
+#' @slot theta_adj adjusted training theta after scaling
+#' @slot calibration_theta adjusted theta for conformal prediction after scaling (calibration set)
+#' @slot calibration_sumstat adjusted summary statistics for conformal prediction after scaling (calibration set)
+#' @slot ncores number of cores for parallelized steps
+#'
+#'
+#' @return A `R6::abcnn` object
 #'
 #' @import torch
 #' @import luz
@@ -125,12 +201,17 @@
 #' @import tidyr
 #' @import dplyr
 #' @import tibble
-#' @import R6Class
+#' @import R6
 #' @import RColorBrewer
 #' @import tabnet
 #' @import abc
 #'
-#' @return an `abcnn` object
+#' @importFrom Rdpack reprompt
+#'
+#' @return an `abcnn` object that can be used to fit(), predict() and plot predictions
+#'
+#' @seealso [R6::R6()]
+#'
 #' @export
 #'
 abcnn = R6::R6Class("abcnn",
@@ -192,14 +273,11 @@ abcnn = R6::R6Class("abcnn",
     dropout_rates = NA,
     input_summary = NA,
     target_summary = NA,
-    scalers_input = NA,
-    scalers_target = NA,
     sumstat_adj = NA,
     observed_adj = NA,
     theta_adj = NA,
     calibration_theta = NA,
     calibration_sumstat = NA,
-    kernel_values = NA,
     ncores = NA,
 
     initialize = function(theta,
@@ -429,7 +507,10 @@ abcnn = R6::R6Class("abcnn",
       # END ON INIT
     },
 
-    # Train the neural network
+    #' Train the neural network
+    #'
+    #' The neural network is trained with `luz` and `torch`
+    #'
     fit = function() {
 
       if (self$verbose) {self$summary()}
@@ -541,8 +622,23 @@ abcnn = R6::R6Class("abcnn",
       }
     },
 
-    # Predict parameters from a vector/array of observed summary statistics
-    predict = function() {
+    #' Predict parameters from a vector/array of observed summary statistics
+    #'
+    #' Predict theta for the observed summary statistics.
+    #' Conformal prediction is also performed at this step on an independent calibration set.
+    #'
+    #' @param data a new set of data to predict
+    #'
+    predict = function(data = NULL) {
+
+      if (!is.null(data)) {
+        # Replace data with the new set
+        self$observed = data
+        self$observed_adj = scaler(self$observed,
+                                   self$input_summary,
+                                   method = self$scale_input,
+                                   type = "forward")
+      }
 
       observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
 
@@ -866,8 +962,10 @@ abcnn = R6::R6Class("abcnn",
 
     },
 
-    # Prepare the torch dataloader from sumstat/theta (input/target)
-    # Return a dataloader object
+    #' Prepare the torch dataloader from sumstat/theta (input/target)
+    #'
+    #' Build and return a dataloader object
+    #'
     dataloader = function() {
       #-----------------------------------#
       # SAMPLING
@@ -1030,7 +1128,8 @@ abcnn = R6::R6Class("abcnn",
     #   return(list(theta = theta, sumstat = sumstat))
     # },
 
-    # Estimate a calibrated credible interval with Conformal Prediction
+    #' Estimate a calibrated credible interval with Conformal Prediction
+    #'
     conformal_prediction = function() {
       if (self$verbose) {cat("Performing conformal prediction\n\n")}
 
@@ -1107,7 +1206,8 @@ abcnn = R6::R6Class("abcnn",
       rm(abcnn_conformal)
     },
 
-    # Returns a tidy tibble with predictions and C.I.
+    #' Returns a tidy tibble with predictions and credible intervals
+    #'
     predictions = function() {
       # Back-transform predictions to original scale
       if (self$verbose) {cat("Back-transform scaled parameters with method:", self$scale_target,"\n")}
@@ -1221,7 +1321,8 @@ abcnn = R6::R6Class("abcnn",
       return(predictions)
     },
 
-    # Print a summary of the abcnn object
+    #' Print a summary of the `abcnn` object
+    #'
     summary = function() {
       # TODO Print number of samples and basic information on methods
       cat("ABC parameter inference with the method:", self$method, "\n")
@@ -1239,7 +1340,8 @@ abcnn = R6::R6Class("abcnn",
       cat("\n")
     },
 
-    # Plot the training curves (training/validation)
+    #' Plot the training curves (training/validation)
+    #'
     plot_training = function(discard_first = FALSE) {
       if (is.null(self$fitted)) {
         warning("The model has not been fitted.")
@@ -1296,7 +1398,13 @@ abcnn = R6::R6Class("abcnn",
 
     },
 
-    # Plot predicted values (predicted ~ observed)
+    #' Plot predicted values and their credible intervals
+    #'
+    #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
+    #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
+    #' computed on the distribution of posteriors.
+    #' @param plot_type The type of plot, whether a `line` or `errorbar` around points
+    #'
     plot_prediction = function(uncertainty_type = "conformal",
                               plot_type = "line") {
 
@@ -1377,10 +1485,17 @@ abcnn = R6::R6Class("abcnn",
 
     },
 
-    # Plot the distributions of estimates and predictions
+    #' Plot the distributions of estimates and predictions
+    #'
+    #' @sample Index of the sample to plot
+    #' @param prior logical, whether to plot the prior underneath the posterior and prediction
+    #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
+    #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
+    #' computed on the distribution of posteriors.
+    #'
     plot_posterior = function(sample = 1,
                               prior = TRUE,
-                              type = "conformal") {
+                              uncertainty_type = "conformal") {
       # Dim 1 is number of MC samples (predictions)
       # Dim 2 is number of observations
       # Dim 3 is parameters (mu + sigma)

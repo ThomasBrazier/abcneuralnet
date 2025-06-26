@@ -17,236 +17,239 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(abcneuralnet)
 ```
-## Combine ABC and Bayesian Neural Networks to estimate population genetics parameters
 
-Simulations with `msprime`.
 
-Reference table (simulations summary stats) and priors.
 
+<!-- ## Combine ABC and Bayesian Neural Networks to estimate population genetics parameters -->
 
-```{r, echo = T}
-# Import the reference table and other data
-sumstats = read.table("../inst/extdata/reference_table.csv",
-                             sep = "\t", header = T, row.names = NULL)
-# sumstats = read.table("../inst/extdata/reference_table_full.csv",
-#                              sep = ",", header = T, row.names = NULL)
-ncol(sumstats)
-colnames(sumstats)
+<!-- Simulations with `msprime`. -->
 
+<!-- Reference table (simulations summary stats) and priors. -->
 
-row.names(sumstats) = sumstats$sample
-sumstats = sumstats[,-1]
-colnames(sumstats)[1]
 
-theta_sim = read.table("../inst/extdata/theta_simulations.csv",
-                    sep = "\t", header = T, fill = TRUE)
-# theta_sim = read.table("../inst/extdata/theta_simulations_full.csv",
-#                     sep = "\t", header = T, fill = TRUE)
-head(theta_sim)
-row.names(theta_sim) = theta_sim$sample
-theta_sim = theta_sim[,-1]
-colnames(theta_sim)[1]
+<!-- ```{r, echo = T} -->
+<!-- # Import the reference table and other data -->
+<!-- sumstats = read.table("../inst/extdata/reference_table.csv", -->
+<!--                              sep = "\t", header = T, row.names = NULL) -->
+<!-- # sumstats = read.table("../inst/extdata/reference_table_full.csv", -->
+<!-- #                              sep = ",", header = T, row.names = NULL) -->
+<!-- ncol(sumstats) -->
+<!-- colnames(sumstats) -->
 
-# Check consistency between priors and reference table
-nrow(sumstats) == nrow(theta_sim)
-sum(row.names(sumstats) == row.names(theta_sim)) == nrow(theta_sim)
 
+<!-- row.names(sumstats) = sumstats$sample -->
+<!-- sumstats = sumstats[,-1] -->
+<!-- colnames(sumstats)[1] -->
 
-# Split datasets
-# Two parameters, t1 and t2
-idx_training = c(1:(nrow(sumstats) - 1000))
-idx_observed = c((nrow(sumstats) - 999):nrow(sumstats))
+<!-- theta_sim = read.table("../inst/extdata/theta_simulations.csv", -->
+<!--                     sep = "\t", header = T, fill = TRUE) -->
+<!-- # theta_sim = read.table("../inst/extdata/theta_simulations_full.csv", -->
+<!-- #                     sep = "\t", header = T, fill = TRUE) -->
+<!-- head(theta_sim) -->
+<!-- row.names(theta_sim) = theta_sim$sample -->
+<!-- theta_sim = theta_sim[,-1] -->
+<!-- colnames(theta_sim)[1] -->
 
-theta_training = theta_sim[idx_training,c("t1", "t2")]
-theta_observed = theta_sim[idx_observed,c("t1", "t2")]
+<!-- # Check consistency between priors and reference table -->
+<!-- nrow(sumstats) == nrow(theta_sim) -->
+<!-- sum(row.names(sumstats) == row.names(theta_sim)) == nrow(theta_sim) -->
 
-sumstats_training = sumstats[idx_training,]
-sumstats_observed = sumstats[idx_observed,]
 
-# colnames(theta_training)
-sum(row.names(sumstats_training) == row.names(theta_training)) == nrow(theta_training)
-```
+<!-- # Split datasets -->
+<!-- # Two parameters, t1 and t2 -->
+<!-- idx_training = c(1:(nrow(sumstats) - 1000)) -->
+<!-- idx_observed = c((nrow(sumstats) - 999):nrow(sumstats)) -->
 
+<!-- theta_training = theta_sim[idx_training,c("t1", "t2")] -->
+<!-- theta_observed = theta_sim[idx_observed,c("t1", "t2")] -->
 
-Describe the data.
+<!-- sumstats_training = sumstats[idx_training,] -->
+<!-- sumstats_observed = sumstats[idx_observed,] -->
 
-```{r, echo = F}
-res = cor(sumstats_training)
+<!-- # colnames(theta_training) -->
+<!-- sum(row.names(sumstats_training) == row.names(theta_training)) == nrow(theta_training) -->
+<!-- ``` -->
 
-# library(Hmisc)
-# res2 = rcorr(as.matrix(sumstats_training))
-# res2$r
 
-library(corrplot)
-corrplot(res, type = "upper", order = "hclust",
-         tl.col = "black", tl.srt = 45)
+<!-- Describe the data. -->
 
-# col = colorRampPalette(c("blue", "white", "red"))(20)
-# heatmap(x = res, col = col, symm = TRUE)
-```
+<!-- ```{r, echo = F} -->
+<!-- res = cor(sumstats_training) -->
 
+<!-- # library(Hmisc) -->
+<!-- # res2 = rcorr(as.matrix(sumstats_training)) -->
+<!-- # res2$r -->
 
-Test one sample with `abc`.
+<!-- library(corrplot) -->
+<!-- corrplot(res, type = "upper", order = "hclust", -->
+<!--          tl.col = "black", tl.srt = 45) -->
 
-```{r, echo = T}
-library(abc)
-res = abc(sumstats_observed[1,], theta_training["t2"], sumstats_training, tol = 0.01, method = "loclinear")
+<!-- # col = colorRampPalette(c("blue", "white", "red"))(20) -->
+<!-- # heatmap(x = res, col = col, symm = TRUE) -->
+<!-- ``` -->
 
-summary(res)
-plot(res, param = theta_training["t2"])
-hist(res)
-```
 
+<!-- Test one sample with `abc`. -->
 
-Train with full data.
+<!-- ```{r, echo = T} -->
+<!-- library(abc) -->
+<!-- res = abc(sumstats_observed[1,], theta_training["t2"], sumstats_training, tol = 0.01, method = "loclinear") -->
 
+<!-- summary(res) -->
+<!-- plot(res, param = theta_training["t2"]) -->
+<!-- hist(res) -->
+<!-- ``` -->
 
-```{r, echo = T}
-abc_popgen = abcnn$new(theta_training,
-            sumstats_training,
-            sumstats_observed,
-            method = 'concrete dropout',
-            num_hidden_layers = 3,
-            num_hidden_dim = 1024,
-            epochs = 20,
-            early_stopping = FALSE,
-            scale = TRUE)
 
-abc_popgen$fit()
-```
+<!-- Train with full data. -->
 
 
-```{r, echo = T}
-abc_popgen$plot_training()
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen = abcnn$new(theta_training, -->
+<!--             sumstats_training, -->
+<!--             sumstats_observed, -->
+<!--             method = 'concrete dropout', -->
+<!--             num_hidden_layers = 3, -->
+<!--             num_hidden_dim = 1024, -->
+<!--             epochs = 20, -->
+<!--             early_stopping = FALSE, -->
+<!--             scale = TRUE) -->
 
-# With Concrete dropout, the first training loss can be huge compared to subsequent steps
-# Remove it from the plot to better see training curves
-abc_popgen$plot_training(discard_first = TRUE)
-```
+<!-- abc_popgen$fit() -->
+<!-- ``` -->
 
 
-```{r, echo = T}
-abc_popgen$predict()
-```
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen$plot_training() -->
 
+<!-- # With Concrete dropout, the first training loss can be huge compared to subsequent steps -->
+<!-- # Remove it from the plot to better see training curves -->
+<!-- abc_popgen$plot_training(discard_first = TRUE) -->
+<!-- ``` -->
 
-```{r, echo = T}
-abc_popgen$plot_prediction(type = "uncertainty")
-abc_popgen$plot_prediction(type = "conformal")
-abc_popgen$plot_prediction(type = "posterior quantile")
-```
 
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen$predict() -->
+<!-- ``` -->
 
-```{r, echo = T}
-save_abcnn(abc_popgen, prefix = "../inst/extdata/abc_popgen")
 
-abc_popgen = load_abcnn(prefix = "../inst/extdata/abc_popgen")
-```
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen$plot_prediction(type = "uncertainty") -->
+<!-- abc_popgen$plot_prediction(type = "conformal") -->
+<!-- abc_popgen$plot_prediction(type = "posterior quantile") -->
+<!-- ``` -->
 
 
+<!-- ```{r, echo = T} -->
+<!-- save_abcnn(abc_popgen, prefix = "../inst/extdata/abc_popgen") -->
 
-```{r, echo = T}
-abc_popgen$plot_posterior(100)
+<!-- abc_popgen = load_abcnn(prefix = "../inst/extdata/abc_popgen") -->
+<!-- ``` -->
 
-abc_popgen$predictive_mean[100,]
-theta_observed[100,]
 
-# Plot the best estimate (lower C.I)
-idx = which.min(abc_popgen$epistemic_uncertainty[,2])
-idx
-true_theta = data.frame(Parameter = colnames(theta_observed),
-                        Value = unlist(c(theta_observed[idx,])))
-true_theta
 
-abc_popgen$plot_posterior(idx) +
-  geom_vline(data = true_theta, aes(xintercept = Value), color = "red")
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen$plot_posterior(100) -->
 
-# Plot the worst estimate (larger C.I.)
-idx = which.max(abc_popgen$epistemic_uncertainty[,2])
-idx
-true_theta = data.frame(Parameter = colnames(theta_observed),
-                        Value = unlist(c(theta_observed[idx,])))
-true_theta
+<!-- abc_popgen$predictive_mean[100,] -->
+<!-- theta_observed[100,] -->
 
-abc_popgen$plot_posterior(idx) +
-  geom_vline(data = true_theta, aes(xintercept = Value), color = "red")
-```
+<!-- # Plot the best estimate (lower C.I) -->
+<!-- idx = which.min(abc_popgen$epistemic_uncertainty[,2]) -->
+<!-- idx -->
+<!-- true_theta = data.frame(Parameter = colnames(theta_observed), -->
+<!--                         Value = unlist(c(theta_observed[idx,]))) -->
+<!-- true_theta -->
 
+<!-- abc_popgen$plot_posterior(idx) + -->
+<!--   geom_vline(data = true_theta, aes(xintercept = Value), color = "red") -->
 
+<!-- # Plot the worst estimate (larger C.I.) -->
+<!-- idx = which.max(abc_popgen$epistemic_uncertainty[,2]) -->
+<!-- idx -->
+<!-- true_theta = data.frame(Parameter = colnames(theta_observed), -->
+<!--                         Value = unlist(c(theta_observed[idx,]))) -->
+<!-- true_theta -->
 
+<!-- abc_popgen$plot_posterior(idx) + -->
+<!--   geom_vline(data = true_theta, aes(xintercept = Value), color = "red") -->
+<!-- ``` -->
 
-Train with a Deep Ensemble.
 
 
 
-```{r, echo = T}
-abc_popgen = abcnn$new(theta_training,
-            sumstats_training,
-            sumstats_observed,
-            method = 'deep ensemble',
-            scale = TRUE,
-            learning_rate = 0.0001,
-            num_hidden_layers = 3,
-            num_hidden_dim = 512,
-            batch_size = 390,
-            epochs = 30,
-            epsilon_adversarial = 0.01)
+<!-- Train with a Deep Ensemble. -->
 
 
-abc_popgen$fit()
 
-abc_popgen$plot_training()
-```
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen = abcnn$new(theta_training, -->
+<!--             sumstats_training, -->
+<!--             sumstats_observed, -->
+<!--             method = 'deep ensemble', -->
+<!--             scale = TRUE, -->
+<!--             learning_rate = 0.0001, -->
+<!--             num_hidden_layers = 3, -->
+<!--             num_hidden_dim = 512, -->
+<!--             batch_size = 390, -->
+<!--             epochs = 30, -->
+<!--             epsilon_adversarial = 0.01) -->
 
 
-```{r, echo = T}
-abc_popgen$predict()
+<!-- abc_popgen$fit() -->
 
-abc_popgen$plot_prediction()
-```
+<!-- abc_popgen$plot_training() -->
+<!-- ``` -->
 
 
-```{r, echo = T}
-# save_abcnn(abc_popgen, prefix = "../inst/extdata/abc_popgen_ensemble")
-# TODO Error external pointer not found
-# abc_popgen = load_abcnn(prefix = "../inst/extdata/abc_popgen_ensemble")
-```
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen$predict() -->
 
+<!-- abc_popgen$plot_prediction() -->
+<!-- ``` -->
 
 
-```{r, echo = T}
-abc_popgen$plot_posterior(100)
+<!-- ```{r, echo = T} -->
+<!-- # save_abcnn(abc_popgen, prefix = "../inst/extdata/abc_popgen_ensemble") -->
+<!-- # TODO Error external pointer not found -->
+<!-- # abc_popgen = load_abcnn(prefix = "../inst/extdata/abc_popgen_ensemble") -->
+<!-- ``` -->
 
-abc_popgen$predictive_mean[1:10,]
-theta_observed[1:10,]
 
-idx = 100
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[idx,])))
 
-abc_popgen$plot_posterior(idx) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+<!-- ```{r, echo = T} -->
+<!-- abc_popgen$plot_posterior(100) -->
 
+<!-- abc_popgen$predictive_mean[1:10,] -->
+<!-- theta_observed[1:10,] -->
 
-# Plot the best estimate (lower C.I)
-idx = which.min(as.numeric(abc_popgen$epistemic_uncertainty[,1]))
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[idx,])))
+<!-- idx = 100 -->
+<!-- true_theta = data.frame(param = colnames(theta_observed), -->
+<!--                         value = unlist(c(theta_observed[idx,]))) -->
 
-abc_popgen$plot_posterior(idx) +
-  geom_vline(data = true_theta, aes(xintercept = value))
+<!-- abc_popgen$plot_posterior(idx) + -->
+<!--   geom_vline(data = true_theta, aes(xintercept = value)) -->
 
-# Plot the worst estimate (larger C.I.)
-idx = which.max(as.numeric(abc_popgen$epistemic_uncertainty[,1]))
-true_theta = data.frame(param = colnames(theta_observed),
-                        value = unlist(c(theta_observed[idx,])))
 
-abc_popgen$plot_posterior(idx) +
-  geom_vline(data = true_theta, aes(xintercept = value))
-```
+<!-- # Plot the best estimate (lower C.I) -->
+<!-- idx = which.min(as.numeric(abc_popgen$epistemic_uncertainty[,1])) -->
+<!-- true_theta = data.frame(param = colnames(theta_observed), -->
+<!--                         value = unlist(c(theta_observed[idx,]))) -->
 
+<!-- abc_popgen$plot_posterior(idx) + -->
+<!--   geom_vline(data = true_theta, aes(xintercept = value)) -->
 
-Train with ABC Importance sampling.
+<!-- # Plot the worst estimate (larger C.I.) -->
+<!-- idx = which.max(as.numeric(abc_popgen$epistemic_uncertainty[,1])) -->
+<!-- true_theta = data.frame(param = colnames(theta_observed), -->
+<!--                         value = unlist(c(theta_observed[idx,]))) -->
+
+<!-- abc_popgen$plot_posterior(idx) + -->
+<!--   geom_vline(data = true_theta, aes(xintercept = value)) -->
+<!-- ``` -->
+
+
+<!-- Train with ABC Importance sampling. -->
 
 
 

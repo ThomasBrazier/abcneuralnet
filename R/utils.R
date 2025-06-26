@@ -1,5 +1,9 @@
 #' Save the `abcnn` object and the serialized luz fitted model
 #'
+#' The function will save a `_luz.Rds`, a `_model.Rds` and a `_abcnn.Rds`,
+#' which will contain the `luz` fitted model, the original `torch` model
+#' and the `abcnn` model. The `abcnn` model will be reconstructed with `load_abcnn()`.
+#'
 #' @param object an `abcnn` object with a `luz` fitted model
 #' @param prefix character, the prefix with path of the saved .Rds object
 #'
@@ -35,6 +39,8 @@ save_abcnn = function(object, prefix = "") {
 
 #' Load an `abcnn` object and the serialized luz fitted model
 #'
+#' The function reconstructs an `abcnn` object from the `_luz.Rds`, `_model.Rds` and `_abcnn.Rds` files.
+#'
 #' @param prefix character, the prefix with path of the saved .Rds object
 #'
 #' @import bundle
@@ -42,7 +48,9 @@ save_abcnn = function(object, prefix = "") {
 #' @import luz
 #'
 #' @export
-#' object and internal torch model
+#'
+#' @return an `abcnn` object
+#'
 load_abcnn = function(prefix = "") {
   object = readRDS(paste0(prefix, "_abcnn.Rds"))
 
@@ -64,23 +72,38 @@ load_abcnn = function(prefix = "") {
 }
 
 
-
+#' Compute the log1pexp trick
+#'
+#' @param x a tensor
+#' @param threshold the threshold value under which the trick is applied to avoid `Inf` values
+#'
+#' @description
+#' This is a more stable version of log(1 + exp(x)). Note that log(1 + exp(x)) is approximately equal to x when x is large enough.
+#' See https://stackoverflow.com/questions/60903821/how-to-prevent-inf-while-working-with-exponential for details
+#'
+#' @return a tensor with values corrected with the log1pexp trick
+#'
 log1pexp = function(x, threshold = 10) {
-  # more stable version of log(1 + exp(x))
-  #  Notice that log(1 + exp(x)) is approximately equal to x when x is large enough.
-  # https://stackoverflow.com/questions/60903821/how-to-prevent-inf-while-working-with-exponential
   torch::torch_where(x < threshold, torch::torch_log1p(torch::torch_exp(x)) + 1e-6, x)
 }
 
 
 
 
-# A scaling function
-# x, a data frame to scale
-# method is either "minmax", "robustscaler", "normalization" or "none"
-# It requires a list of summary statistics learned on the training set
-# type is "forward" when scaling inputs or targets
-# and "backward" when back-transforming targets at prediction time
+#' A scaling function for targets and inputs
+#'
+#' @description
+#'
+#' The function allows to back-transform the numerical values to their original scale.
+#' For this, it requires a list of summary statistics learned on the training set.
+#'
+#' @param x a data frame to scale, each column is scaled separately
+#' @param sum_stats summary statistics learned on the data to back-transform
+#' @param method the scaling method, either `minmax`, `robustscaler`, `normalization` or `none`
+#' @param type is `forward` when scaling inputs or targets and `backward` when back-transforming targets at prediction time
+#'
+#' @return a data frame with scaled values
+#'
 scaler = function(x, sum_stats, method = "minmax", type = "forward") {
 
   if (method == "none") {
