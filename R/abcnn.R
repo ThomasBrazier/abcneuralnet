@@ -30,8 +30,8 @@
 #' @param bandwidth the bandwidth hyperparameter for the kernel smoothing function, either a numeric value or set to "max" if the bandwidth must be estimated as the maximum distance value
 #' @param prior_length_scale the prior length scale hyperparameter for the `concrete dropout` method
 #' @param num_net the number of iterations in the `regression adjustment` approach
-#' @param epsilon_adversarial the multiplying factor for perturbed inputs in adversarial training in the `deep ensemble` method (EXPERIMENTAL). The perturbation is a random noise in the range [-beta, beta], with beta = epsilon_adversarial * variance. Set NULL to disable adversarial training (default). Otherwise 0.01 is a good value to start with.
-#' @param variance_clamping clamp all elements in the network weigths in the range [ min, max ]. See `torch_clamp()`.
+#' @param epsilon_adversarial the multiplying factor for perturbed inputs in adversarial training in the `deep ensemble` method (EXPERIMENTAL). The perturbation is a random noise in the range `[-beta, beta]`, with beta = epsilon_adversarial * variance. Set NULL to disable adversarial training (default). Otherwise 0.01 is a good value to start with.
+#' @param variance_clamping clamp all elements in the network weigths in the range `[min, max]`. See `torch_clamp()`.
 #' @param verbose logical, whether to print messages and progress bars
 #' @param ncores integer, the number of cores in parallel operations
 #'
@@ -151,14 +151,14 @@
 #' @slot optimizer `torch` optimizer nn module
 #' @slot learning_rate learning rate
 #' @slot l2_weight_decay L2 weigth decay (regularization)
-#' @slot variance_clamping (min, max) values for variance clamping during training
+#' @slot variance_clamping `c(min, max)` values for variance clamping during training
 #' @slot loss `torch` nn loss function
 #' @slot tol tolerance rate for `abc` functions (only for `tabnet-abc`)
 #' @slot abc_method ABC sampling method in `abc` function (only for `tabnet-abc`)
 #' @slot num_posterior_samples number of samples to generate for the posterior distribution
 #' @slot prior_length_scale prior length scale hyperparameter value
-#' @slot wr `concrete dropout` regularization term for weights
-#' @slot dr `concrete dropout` regularization term for dropout
+#' @slot weight_regularizer `concrete dropout` regularization term for weights
+#' @slot dropout_regularizer `concrete dropout` regularization term for dropout
 #' @slot num_networks number of networks in `deep ensemble`
 #' @slot epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble`
 #' @slot device `luz`/`torch` device for tensors
@@ -216,70 +216,171 @@
 #'
 abcnn = R6::R6Class("abcnn",
   public = list(
+    #' @field
     theta = NULL,
+    #' @field
     sumstat = NULL,
+    #' @field
     observed = NULL,
+    #' @field
     model=NULL,
+    #' @field
     method='concrete dropout',
+    #' @field
     scale_input=NULL,
+    #' @field
     scale_target=NULL,
+    #' @field
     num_hidden_layers=NA,
+    #' @field
     num_hidden_dim=NA,
+    #' @field
     validation_split=NA,
+    #' @field
     num_conformal=NA,
+    #' @field
     credible_interval_p = NA,
+    #' @field
     test_split=NA,
+    #' @field
     dropout=NA,
+    #' @field
     batch_size=NA,
+    #' @field
     epochs=NA,
+    #' @field
     early_stopping=FALSE,
+    #' @field
     callbacks=NULL,
+    #' @field
     verbose=NULL,
+    #' @field
     patience=4,
+    #' @field
     optimizer=NULL,
+    #' @field
     learning_rate=0.001,
+    #' @field
     l2_weight_decay=1e-5,
+    #' @field
     variance_clamping=TRUE,
+    #' @field
     loss=NULL,
+    #' @field
     tol=NULL,
+    #' @field
     abc_method=NULL,
+    #' @field
     num_posterior_samples=1000,
+    #' @field
     prior_length_scale=1e-4,
-    wr=NA,
-    dr=NA,
+    #' @field
+    weight_regularizer=NA,
+    #' @field
+    dropout_regularizer=NA,
+    #' @field
     num_networks=5,
+    #' @field
     epsilon_adversarial=0,
+    #' @field
     device="cpu",
+    #' @field
     input_dim = NA,
+    #' @field
     output_dim = NA,
+    #' @field
     n_train = NA,
+    #' @field
     sumstat_names = NA,
+    #' @field
     output_names = NA,
+    #' @field
     theta_names = NA,
+    #' @field
     n_obs = NA,
+    #' @field
     prior_lower = NA,
+    #' @field
     prior_upper = NA,
+    #' @field
     fitted = NULL,
+    #' @field
     evaluation=NULL,
+    #' @field
     eval_metrics=NA,
+    #' @field
     posterior_samples = NA,
+    #' @field
     quantile_posterior = NA,
+    #' @field
     predictive_mean = NA,
+    #' @field
     aleatoric_uncertainty = NA,
+    #' @field
     epistemic_uncertainty = NA,
+    #' @field
     overall_uncertainty = NA,
+    #' @field
     epistemic_conformal_quantile = NA,
+    #' @field
     overall_conformal_quantile = NA,
+    #' @field
     dropout_rates = NA,
+    #' @field
     input_summary = NA,
+    #' @field
     target_summary = NA,
+    #' @field
     sumstat_adj = NA,
+    #' @field
     observed_adj = NA,
+    #' @field
     theta_adj = NA,
+    #' @field
     calibration_theta = NA,
+    #' @field
     calibration_sumstat = NA,
+    #' @field
     ncores = NA,
 
+    #' @description
+    #' Create a new `abcnn` object
+    #'
+    #' @param theta parameters of the pseudo-observed samples (i.e. simulations)
+    #' @param sumstat summary statistics of the pseudo-observed samples (i.e. simulations)
+    #' @param observed summary statistics of the observed samples
+    #' @param model a `luz` model
+    #' @param method the ABC-NN method used
+    #' @param scale_input the scaling method for summary statistics
+    #' @param scale_target the scaling method for targets (i.e. theta)
+    #' @param num_hidden_layers number of hidden layers in the neural network
+    #' @param num_hidden_dim number of hidden dimensions (neurons) in each hidden layer
+    #' @param validation_split proportion of samples retained for validation at the end of training
+    #' @param num_conformal number of samples retained for conformal prediction
+    #' @param credible_interval_p significance level for the credible interval, between 0 and 1
+    #' @param test_split proportion of samples retained for test at each training iteration
+    #' @param dropout dropout rate
+    #' @param batch_size  batch size
+    #' @param epochs number of epochs for training
+    #' @param early_stopping whether to do early stopping
+    #' @param patience patience hyperparameter for early stopping. See `luz::luz_callback_early_stopping()`
+    #' @param callbacks custom callbacks
+    #' @param verbose whether to print messages
+    #' @param optimizer `torch` optimizer nn module
+    #' @param learning_rate learning rate
+    #' @param l2_weight_decay L2 weigth decay (regularization)
+    #' @param variance_clamping `c(min, max)` values for variance clamping during training
+    #' @param loss `torch` nn loss function
+    #' @param abc_method ABC sampling method in `abc` function (only for `tabnet-abc`)
+    #' @param tol tolerance rate for `abc` functions (only for `tabnet-abc`)
+    #' @param num_posterior_samples number of samples to generate for the posterior distribution
+    #' @param prior_length_scale prior length scale hyperparameter value
+    #' @param weight_regularizer `concrete dropout` regularization term for weights
+    #' @param dropout_regularizer `concrete dropout` regularization term for dropout
+    #' @param num_networks number of networks in `deep ensemble`
+    #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble`
+    #' @param ncores number of cores for parallelized steps
+    #'
     initialize = function(theta,
                           sumstat,
                           observed,
@@ -304,10 +405,12 @@ abcnn = R6::R6Class("abcnn",
                           l2_weight_decay=1e-5,
                           variance_clamping=c(-1e15, 1e15),
                           loss=torch::nn_mse_loss(),
-                          tol=NULL,
                           abc_method="loclinear",
+                          tol=NULL,
                           num_posterior_samples=1000,
                           prior_length_scale=1e-4,
+                          weight_regularizer = 1e-6,
+                          dropout_regularizer = 1e-5,
                           num_networks=5,
                           epsilon_adversarial=0,
                           ncores = 1) {
@@ -468,11 +571,11 @@ abcnn = R6::R6Class("abcnn",
             luz::set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
         }
         if (self$method == "concrete dropout") {
-          # TODO Make utility functions for wr and dr
+          # TODO Make utility functions for weight_regularizer and weight_regularizer
           l = self$prior_length_scale
           N = self$n_train
-          self$wr = l^2 / N
-          self$dr = 2 / N
+          self$weight_regularizer = l^2 / N
+          self$weight_regularizer = 2 / N
 
           self$model = concrete_model %>%
             luz::setup(optimizer = self$optimizer) %>%
@@ -480,8 +583,8 @@ abcnn = R6::R6Class("abcnn",
                         num_hidden_dim = self$num_hidden_dim,
                         num_output_dim = self$output_dim,
                         num_hidden_layers = self$num_hidden_layers,
-                        weight_regularizer = self$wr,
-                        dropout_regularizer = self$dr,
+                        weight_regularizer = self$weight_regularizer,
+                        dropout_regularizer = self$weight_regularizer,
                         clamp = self$variance_clamping) %>%
             luz::set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
         }
@@ -507,6 +610,7 @@ abcnn = R6::R6Class("abcnn",
       # END ON INIT
     },
 
+    #' @description
     #' Train the neural network
     #'
     #' The neural network is trained with `luz` and `torch`
@@ -522,7 +626,7 @@ abcnn = R6::R6Class("abcnn",
         theta = dl$theta_adj
         sumstat = dl$sumstat_adj
 
-        config = tabnet::tabnet_config(optimizer = self$optimizer,
+        config = tabnet::tabnet_config(optimizer = "adam",
                                batch_size = self$batch_size,
                                verbose = self$verbose,
                                drop_last = TRUE,
@@ -622,6 +726,7 @@ abcnn = R6::R6Class("abcnn",
       }
     },
 
+    #' @description
     #' Predict parameters from a vector/array of observed summary statistics
     #'
     #' Predict theta for the observed summary statistics.
@@ -962,6 +1067,7 @@ abcnn = R6::R6Class("abcnn",
 
     },
 
+    #' @description
     #' Prepare the torch dataloader from sumstat/theta (input/target)
     #'
     #' Build and return a dataloader object
@@ -1128,6 +1234,7 @@ abcnn = R6::R6Class("abcnn",
     #   return(list(theta = theta, sumstat = sumstat))
     # },
 
+    #' @description
     #' Estimate a calibrated credible interval with Conformal Prediction
     #'
     conformal_prediction = function() {
@@ -1206,6 +1313,7 @@ abcnn = R6::R6Class("abcnn",
       rm(abcnn_conformal)
     },
 
+    #' @description
     #' Returns a tidy tibble with predictions and credible intervals
     #'
     predictions = function() {
@@ -1321,6 +1429,7 @@ abcnn = R6::R6Class("abcnn",
       return(predictions)
     },
 
+    #' @description
     #' Print a summary of the `abcnn` object
     #'
     summary = function() {
@@ -1340,7 +1449,10 @@ abcnn = R6::R6Class("abcnn",
       cat("\n")
     },
 
+    #' @description
     #' Plot the training curves (training/validation)
+    #'
+    #' @param discard_first Discard the first epoch, as it may have a large loss compared to next ones (for plotting only)
     #'
     plot_training = function(discard_first = FALSE) {
       if (is.null(self$fitted)) {
@@ -1361,7 +1473,7 @@ abcnn = R6::R6Class("abcnn",
               train_metric[1] = NA
             }
 
-            train_eval = data.frame(Epoch = rep(1:length(train_metric), self$output_dim),
+            train_eval = data.frame(Epoch = rep(1:length(train_metric), 2),
                                     Metric = c(train_metric, valid_metric),
                                     Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
 
@@ -1398,6 +1510,7 @@ abcnn = R6::R6Class("abcnn",
 
     },
 
+    #' @description
     #' Plot predicted values and their credible intervals
     #'
     #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
@@ -1485,9 +1598,10 @@ abcnn = R6::R6Class("abcnn",
 
     },
 
+    #' @description
     #' Plot the distributions of estimates and predictions
     #'
-    #' @sample Index of the sample to plot
+    #' @param sample Index of the sample to plot
     #' @param prior logical, whether to plot the prior underneath the posterior and prediction
     #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
     #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
@@ -1507,7 +1621,7 @@ abcnn = R6::R6Class("abcnn",
         pal = RColorBrewer::brewer.pal(8, "Dark2")
         cols = c("Epistemic" = pal[3],"Overall" = pal[2])
 
-        if (type == "uncertainty") {
+        if (uncertainty_type == "uncertainty") {
           tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_uncertainty
           tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_uncertainty
 
@@ -1515,7 +1629,7 @@ abcnn = R6::R6Class("abcnn",
           tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_uncertainty
         }
 
-        if (type == "conformal") {
+        if (uncertainty_type == "conformal") {
           tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_conformal_credible_interval
           tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_conformal_credible_interval
 
@@ -1523,7 +1637,7 @@ abcnn = R6::R6Class("abcnn",
           tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_conformal_credible_interval
         }
 
-        if (type == "posterior quantile") {
+        if (uncertainty_type == "posterior quantile") {
           tidy_predictions$ci_upper = tidy_predictions$posterior_upper_ci
           tidy_predictions$ci_lower = tidy_predictions$posterior_lower_ci
 
@@ -1586,7 +1700,7 @@ abcnn = R6::R6Class("abcnn",
           scale_colour_manual(name = "Uncertainty", values = cols) +
           scale_fill_manual(name = "Uncertainty", values = cols) +
           xlab("Value") + ylab("Count") +
-          ggtitle(type) +
+          ggtitle(uncertainty_type) +
           theme_bw() +
           theme(legend.position = "right")
 

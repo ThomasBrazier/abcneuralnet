@@ -496,13 +496,12 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 ### Normal Toy model
 
 
-```{r}
+```{r, eval=F, echo=F}
 ########################################################
 #               Simulation of                          #
 #           a Gaussian toy example                     #
 ########################################################
 
-library(doParallel) # for parallel computing
 library(mvtnorm) # for multivariate normal distribution
 library(spatstat) # for weighted.quantile function
 library(MCMCpack) # for the inverse gamma distribution
@@ -717,6 +716,14 @@ homoscedastic_normal = function(alpha = 4,
 
 
 dataset = homoscedastic_normal()
+
+saveRDS(dataset, "../inst/extdata/normal_toy_model.Rds")
+```
+
+
+
+```{r}
+dataset = readRDS("../inst/extdata/normal_toy_model.Rds")
 
 # To train
 sumstats.train = as.data.frame(dataset$x.train)

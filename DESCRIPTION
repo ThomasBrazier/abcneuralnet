@@ -12,5 +12,24 @@ Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
+Imports:
+    R6,
+    RColorBrewer,
+    Rdpack,
+    abc,
+    bundle,
+    dplyr,
+    ggplot2,
+    ggpubr,
+    innsight,
+    janitor,
+    luz,
+    plotly,
+    tabnet,
+    tibble,
+    tidyr,
+    torch,
+    devtools,
+    assertthat
 VignetteBuilder: knitr
 Config/testthat/edition: 3

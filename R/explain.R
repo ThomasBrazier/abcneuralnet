@@ -49,17 +49,34 @@
 #'
 explain = R6::R6Class("explain",
                     public = list(
+                      #' @field x an `abcnn` object
                       x = NULL,
+                      #' @field method the `innsight` method to apply
                       method = NULL,
+                      #' @field converter the torch/luz model converted to an `innsight` object
                       converter = NULL,
+                      #' @field result the result of the explainability method
                       result = NULL,
+                      #' @field model_method the method in the `abcnn` object
                       model_method = NULL,
+                      #' @field variables names of the variables (input dimensions)
                       variables = NULL,
+                      #' @field parameters names of the parameters to estimate (output dimensions)
                       parameters = NULL,
+                      #' @field ensemble_num_model index of the model to explain in Deep Ensemble (default is first model)
                       ensemble_num_model = NULL,
+                      #' @field scale_input method used to scale input dimensions
                       scale_input = NULL,
+                      #' @field input_summary summary statistics for the input scaling method
                       input_summary = NULL,
 
+                      #' @description
+                      #' Create a new `explain` object
+                      #'
+                      #' @param x an `abcnn` model
+                      #' @param method the explainability method to use (see `innsight` for details) (defauls is `cw`)
+                      #' @param ensemble_num_model index of the model to explain in Deep Ensemble (default is first model)
+                      #'
                       initialize = function(x,
                                             method = "cw",
                                             ensemble_num_model = 1) {
@@ -141,7 +158,9 @@ explain = R6::R6Class("explain",
                         # END ON INIT
                       },
 
-                      # Print the converter
+                      #' @description
+                      #' Print the converter
+                      #'
                       print = function() {
                         if (self$model_method == "tabnet-abc") {
                           warning("No converter for the Tabnet-ABC method.")
@@ -150,6 +169,7 @@ explain = R6::R6Class("explain",
                         }
                       },
 
+                      #' @description
                       #' Apply the `method` to the passed `data` to be explained
                       #'
                       #' The method is run on a `data` object (see `innsight` manual)
@@ -229,6 +249,7 @@ explain = R6::R6Class("explain",
 
                       },
 
+                      #' @description
                       #' Get the results of the Feature Attribution method
                       #'
                       #' @param type the results can be returned as an `array`, `data.frame`, or `torch_tensor`
@@ -245,6 +266,7 @@ explain = R6::R6Class("explain",
                         }
                       },
 
+                      #' @description
                       #' Plot the results of the Feature Attribution method
                       #' for single data points
                       #'
@@ -276,6 +298,7 @@ explain = R6::R6Class("explain",
                         }
                       },
 
+                      #' @description
                       #' Plot the results of the Feature Attribution method for the global dataset
                       #'
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
@@ -302,6 +325,7 @@ explain = R6::R6Class("explain",
                         }
                       },
 
+                      #' @description
                       #' Alias for `plot_global` for tabular and signal data
                       #'
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
