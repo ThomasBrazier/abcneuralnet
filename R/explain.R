@@ -44,6 +44,8 @@
 #' @import RColorBrewer
 #' @import janitor
 #'
+#' @importFrom Rdpack reprompt
+#'
 #' @return an `explain` object
 #' @export
 #'

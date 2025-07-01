@@ -1,5 +1,5 @@
 ---
-title: "model_inference"
+title: "Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{model_inference}
@@ -22,7 +22,7 @@ library(torch)
 ```
 
 
-## Basic Bayesian Neural Network inference
+## Bayesian Neural Network inference
 
 
 ### Toy dataset - a simple linear regression problem

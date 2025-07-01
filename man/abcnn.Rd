@@ -103,7 +103,7 @@ or modified directly in the corresponding public \code{slot}.
 
 \item{\code{l2_weight_decay}}{L2 weigth decay (regularization)}
 
-\item{\code{variance_clamping}}{(min, max) values for variance clamping during training}
+\item{\code{variance_clamping}}{\code{c(min, max)} values for variance clamping during training}
 
 \item{\code{loss}}{\code{torch} nn loss function}
 
@@ -115,9 +115,9 @@ or modified directly in the corresponding public \code{slot}.
 
 \item{\code{prior_length_scale}}{prior length scale hyperparameter value}
 
-\item{\code{wr}}{\verb{concrete dropout} regularization term for weights}
+\item{\code{weight_regularizer}}{\verb{concrete dropout} regularization term for weights}
 
-\item{\code{dr}}{\verb{concrete dropout} regularization term for dropout}
+\item{\code{dropout_regularizer}}{\verb{concrete dropout} regularization term for dropout}
 
 \item{\code{num_networks}}{number of networks in \verb{deep ensemble}}
 
@@ -213,14 +213,14 @@ abc = abcnn$new(theta,
 
 }
 \references{
-\insertRef{baragatti2024approximate}
-\insertRef{gal2016}
-\insertRef{gal2017concrete}
-\insertRef{lakshminarayanan2017simple}
-\insertRef{arik2021tabnet}
-\insertRef{tabnet}
-\insertRef{aakesson2021convolutional}
-\insertRef{jiang2017learning}
+\insertRef{baragatti2024approximate}{abcneuralnet}
+\insertRef{gal2016}{abcneuralnet}
+\insertRef{gal2017concrete}{abcneuralnet}
+\insertRef{lakshminarayanan2017simple}{abcneuralnet}
+\insertRef{arik2021tabnet}{abcneuralnet}
+\insertRef{tabnet}{abcneuralnet}
+\insertRef{aakesson2021convolutional}{abcneuralnet}
+\insertRef{jiang2017learning}{abcneuralnet}
 }
 \seealso{
 \code{\link[R6:R6Class]{R6::R6()}}
@@ -245,6 +245,7 @@ abc = abcnn$new(theta,
 \if{html}{\out{<a id="method-abcnn-new"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-new}{}}}
 \subsection{Method \code{new()}}{
+Create a new \code{abcnn} object
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$new(
   theta,
@@ -271,10 +272,12 @@ abc = abcnn$new(theta,
   l2_weight_decay = 1e-05,
   variance_clamping = c(-1e+15, 1e+15),
   loss = torch::nn_mse_loss(),
-  tol = NULL,
   abc_method = "loclinear",
+  tol = NULL,
   num_posterior_samples = 1000,
   prior_length_scale = 1e-04,
+  weight_regularizer = 1e-06,
+  dropout_regularizer = 1e-05,
   num_networks = 5,
   epsilon_adversarial = 0,
   ncores = 1
@@ -284,63 +287,73 @@ abc = abcnn$new(theta,
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{theta}}{a vector, matrix or data frame of the simulated theta_parameter values}
+\item{\code{theta}}{parameters of the pseudo-observed samples (i.e. simulations)}
 
-\item{\code{sumstat}}{a vector, matrix or data frame of the simulated summary statistics}
+\item{\code{sumstat}}{summary statistics of the pseudo-observed samples (i.e. simulations)}
 
-\item{\code{observed}}{a vector of summary statistics computed on the data}
+\item{\code{observed}}{summary statistics of the observed samples}
 
-\item{\code{method}}{either \verb{monte carlo dropout}, \verb{concrete dropout}, \code{tabnet-abc} or \verb{deep ensemble}, See \code{details}}
+\item{\code{model}}{a \code{luz} model}
 
-\item{\code{scale_input}}{the method to scale summary statistics before training (\code{none} (default), \code{minmax} or \code{robustscaler})}
+\item{\code{method}}{the ABC-NN method used}
 
-\item{\code{scale_target}}{the method to scale the parameter to estimate before training (\code{none} (default), \code{minmax} or \code{robustscaler})}
+\item{\code{scale_input}}{the scaling method for summary statistics, whether \code{minmax}, \code{robustscaler}, \code{normalization} or \code{none}}
 
-\item{\code{num_hidden_layers}}{the number of hidden layers in the Neural Network (default = 3)}
+\item{\code{scale_target}}{the scaling method for targets (i.e. theta), whether \code{minmax}, \code{robustscaler}, \code{normalization} or \code{none}}
 
-\item{\code{num_hidden_dim}}{the dimension of hidden layers (i.e. number of neurons) in each layer of the Neural Network (default=128)}
+\item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
 
-\item{\code{validation_split}}{the proportion of samples retained for validation in `luz}
+\item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
 
-\item{\code{num_conformal}}{the number of training samples retained for Conformal Prediction (default=1,000)}
+\item{\code{validation_split}}{proportion of samples retained for validation at the end of training}
 
-\item{\code{credible_interval_p}}{the alpha value for the quantile credible interval (default=0.95, with alpha/2 and 1 - alpha/2 quantiles)}
+\item{\code{num_conformal}}{number of samples retained for conformal prediction}
 
-\item{\code{test_split}}{the proportion of samples retained for evaluation in `luz}
+\item{\code{credible_interval_p}}{significance level for the credible interval, between 0 and 1}
 
-\item{\code{dropout}}{the dropout rate for \verb{monte carlo dropout}, i.e. the proportion of neurons dropped in each layer (must be between 0.1 and 0.5)}
+\item{\code{test_split}}{proportion of samples retained for test at each training iteration}
 
-\item{\code{batch_size}}{the mini-batch size}
+\item{\code{dropout}}{dropout rate}
 
-\item{\code{epochs}}{the number of epochs}
+\item{\code{batch_size}}{batch size}
 
-\item{\code{early_stopping}}{logical, whether to use early stopping or not}
+\item{\code{epochs}}{number of epochs for training}
 
-\item{\code{verbose}}{logical, whether to print messages and progress bars}
+\item{\code{early_stopping}}{whether to do early stopping}
 
-\item{\code{patience}}{the patience (number of iterations) before early stopping}
+\item{\code{verbose}}{whether to print messages}
 
-\item{\code{optimizer}}{a "torch_optimizer_generator", the optimizer to use in \code{luz} (default=optim_adam)}
+\item{\code{patience}}{patience hyperparameter for early stopping. See \code{luz::luz_callback_early_stopping()}}
 
-\item{\code{learning_rate}}{the learning rate}
+\item{\code{optimizer}}{\code{torch} optimizer nn module}
 
-\item{\code{l2_weight_decay}}{the L2 weigth decay value for L2 regularization}
+\item{\code{learning_rate}}{learning rate}
 
-\item{\code{variance_clamping}}{clamp all elements in the network weigths in the range \link{ min, max }. See \code{torch_clamp()}.}
+\item{\code{l2_weight_decay}}{L2 weigth decay (regularization)}
 
-\item{\code{loss}}{a custom loss function passed to the ``monte carlo dropout` method (default=nn_mse_loss())}
+\item{\code{variance_clamping}}{\code{c(min, max)} values for variance clamping during training}
 
-\item{\code{tol}}{the tolerance rate in \code{abc} for the \code{tabnet-abc} method (\code{tolerance}). The required proportion of points accepted nearest the target values.}
+\item{\code{loss}}{\code{torch} nn loss function}
 
-\item{\code{abc_method}}{a character string indicating the type of ABC algorithm to be applied. Possible values are "rejection", "loclinear", "neuralnet" and "ridge".}
+\item{\code{abc_method}}{ABC sampling method in \code{abc} function (only for \code{tabnet-abc})}
 
-\item{\code{num_posterior_samples}}{the number of posterior samples to predict with the \verb{concrete dropout} and \verb{monte carlo dropout} methods}
+\item{\code{tol}}{tolerance rate for \code{abc} functions (only for \code{tabnet-abc})}
 
-\item{\code{prior_length_scale}}{the prior length scale hyperparameter for the \verb{concrete dropout} method}
+\item{\code{num_posterior_samples}}{number of samples to generate for the posterior distribution}
 
-\item{\code{epsilon_adversarial}}{the multiplying factor for perturbed inputs in adversarial training in the \verb{deep ensemble} method (EXPERIMENTAL). The perturbation is a random noise in the range \link{-beta, beta}, with beta = epsilon_adversarial * variance. Set NULL to disable adversarial training (default). Otherwise 0.01 is a good value to start with.}
+\item{\code{prior_length_scale}}{prior length scale hyperparameter value}
 
-\item{\code{ncores}}{integer, the number of cores in parallel operations}
+\item{\code{weight_regularizer}}{\verb{concrete dropout} regularization term for weights}
+
+\item{\code{dropout_regularizer}}{\verb{concrete dropout} regularization term for dropout}
+
+\item{\code{num_networks}}{number of networks in \verb{deep ensemble}}
+
+\item{\code{epsilon_adversarial}}{the amount of perturbation for adversarial training in \verb{deep ensemble}}
+
+\item{\code{ncores}}{number of cores for parallelized steps}
+
+\item{\code{callbacks}}{custom callbacks}
 }
 \if{html}{\out{</div>}}
 }
@@ -349,6 +362,9 @@ abc = abcnn$new(theta,
 \if{html}{\out{<a id="method-abcnn-fit"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-fit}{}}}
 \subsection{Method \code{fit()}}{
+Train the neural network
+
+The neural network is trained with \code{luz} and \code{torch}
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$fit()}\if{html}{\out{</div>}}
 }
@@ -358,6 +374,10 @@ abc = abcnn$new(theta,
 \if{html}{\out{<a id="method-abcnn-predict"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-predict}{}}}
 \subsection{Method \code{predict()}}{
+Predict parameters from a vector/array of observed summary statistics
+
+Predict theta for the observed summary statistics.
+Conformal prediction is also performed at this step on an independent calibration set.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$predict(data = NULL)}\if{html}{\out{</div>}}
 }
@@ -365,21 +385,7 @@ abc = abcnn$new(theta,
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{data}}{a new set of data to predict
-
-Prepare the torch dataloader from sumstat/theta (input/target)
-
-Build and return a dataloader object
-
-Estimate a calibrated credible interval with Conformal Prediction
-
-Returns a tidy tibble with predictions and credible intervals
-
-Print a summary of the \code{abcnn} object
-
-Plot the training curves (training/validation)
-
-Plot predicted values and their credible intervals}
+\item{\code{data}}{a new set of data to predict}
 }
 \if{html}{\out{</div>}}
 }
@@ -388,6 +394,9 @@ Plot predicted values and their credible intervals}
 \if{html}{\out{<a id="method-abcnn-dataloader"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-dataloader}{}}}
 \subsection{Method \code{dataloader()}}{
+Prepare the torch dataloader from sumstat/theta (input/target)
+
+Build and return a dataloader object
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$dataloader()}\if{html}{\out{</div>}}
 }
@@ -397,6 +406,7 @@ Plot predicted values and their credible intervals}
 \if{html}{\out{<a id="method-abcnn-conformal_prediction"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-conformal_prediction}{}}}
 \subsection{Method \code{conformal_prediction()}}{
+Estimate a calibrated credible interval with Conformal Prediction
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$conformal_prediction()}\if{html}{\out{</div>}}
 }
@@ -406,6 +416,7 @@ Plot predicted values and their credible intervals}
 \if{html}{\out{<a id="method-abcnn-predictions"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-predictions}{}}}
 \subsection{Method \code{predictions()}}{
+Returns a tidy tibble with predictions and credible intervals
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$predictions()}\if{html}{\out{</div>}}
 }
@@ -415,6 +426,7 @@ Plot predicted values and their credible intervals}
 \if{html}{\out{<a id="method-abcnn-summary"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-summary}{}}}
 \subsection{Method \code{summary()}}{
+Print a summary of the \code{abcnn} object
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$summary()}\if{html}{\out{</div>}}
 }
@@ -424,15 +436,24 @@ Plot predicted values and their credible intervals}
 \if{html}{\out{<a id="method-abcnn-plot_training"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-plot_training}{}}}
 \subsection{Method \code{plot_training()}}{
+Plot the training curves (training/validation)
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_training(discard_first = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{discard_first}}{Discard the first epoch, as it may have a large loss compared to next ones (for plotting only)}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-plot_prediction"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-plot_prediction}{}}}
 \subsection{Method \code{plot_prediction()}}{
+Plot predicted values and their credible intervals
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_prediction(uncertainty_type = "conformal", plot_type = "line")}\if{html}{\out{</div>}}
 }
@@ -444,9 +465,7 @@ Plot predicted values and their credible intervals}
 the \code{uncertainty} estimated (square root of the variance) or the \verb{posterior quantile}, that are credible intervals
 computed on the distribution of posteriors.}
 
-\item{\code{plot_type}}{The type of plot, whether a \code{line} or \code{errorbar} around points
-
-Plot the distributions of estimates and predictions}
+\item{\code{plot_type}}{The type of plot, whether a \code{line} or \code{errorbar} around points}
 }
 \if{html}{\out{</div>}}
 }
@@ -455,6 +474,7 @@ Plot the distributions of estimates and predictions}
 \if{html}{\out{<a id="method-abcnn-plot_posterior"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-plot_posterior}{}}}
 \subsection{Method \code{plot_posterior()}}{
+Plot the distributions of estimates and predictions
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_posterior(sample = 1, prior = TRUE, uncertainty_type = "conformal")}\if{html}{\out{</div>}}
 }
@@ -462,6 +482,8 @@ Plot the distributions of estimates and predictions}
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
+\item{\code{sample}}{Index of the sample to plot}
+
 \item{\code{prior}}{logical, whether to plot the prior underneath the posterior and prediction}
 
 \item{\code{uncertainty_type}}{The type of uncertainty to plot, whether \code{conformal} credible intervals (default),

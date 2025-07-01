@@ -9,7 +9,7 @@ scaler(x, sum_stats, method = "minmax", type = "forward")
 \arguments{
 \item{x}{a data frame to scale, each column is scaled separately}
 
-\item{sum_stats}{summary statistics learned on the data to back-transform}
+\item{sum_stats}{list, summary statistics learned on the data to back-transform}
 
 \item{method}{the scaling method, either \code{minmax}, \code{robustscaler}, \code{normalization} or \code{none}}
 

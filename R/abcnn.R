@@ -1,4 +1,4 @@
-#' Create an `abcnn` R6 class object
+#' An `abcnn` R6 class object for parameter inference with Bayesian Neural Networks and Approximate Bayesian Computation
 #'
 #' @param observed a vector of summary statistics computed on the data
 #' @param theta a vector, matrix or data frame of the simulated theta_parameter values
@@ -92,14 +92,14 @@
 #' or modified directly in the corresponding public `slot`.
 #'
 #' @references
-#' \insertRef{baragatti2024approximate}
-#' \insertRef{gal2016}
-#' \insertRef{gal2017concrete}
-#' \insertRef{lakshminarayanan2017simple}
-#' \insertRef{arik2021tabnet}
-#' \insertRef{tabnet}
-#' \insertRef{aakesson2021convolutional}
-#' \insertRef{jiang2017learning}
+#' \insertRef{baragatti2024approximate}{abcneuralnet}
+#' \insertRef{gal2016}{abcneuralnet}
+#' \insertRef{gal2017concrete}{abcneuralnet}
+#' \insertRef{lakshminarayanan2017simple}{abcneuralnet}
+#' \insertRef{arik2021tabnet}{abcneuralnet}
+#' \insertRef{tabnet}{abcneuralnet}
+#' \insertRef{aakesson2021convolutional}{abcneuralnet}
+#' \insertRef{jiang2017learning}{abcneuralnet}
 #'
 #' @examples
 #' \dontrun{
@@ -216,131 +216,131 @@
 #'
 abcnn = R6::R6Class("abcnn",
   public = list(
-    #' @field
+    #' @field theta parameters of the pseudo-observed samples (i.e. simulations)
     theta = NULL,
-    #' @field
+    #' @field sumstat summary statistics of the pseudo-observed samples (i.e. simulations)
     sumstat = NULL,
-    #' @field
+    #' @field observed summary statistics of the observed samples
     observed = NULL,
-    #' @field
+    #' @field model the `luz` model
     model=NULL,
-    #' @field
+    #' @field method the ABC-NN method used, whether `tabnet-abc`, `monte carlo dropout`, `concrete dropout` or `deep ensemble`
     method='concrete dropout',
-    #' @field
+    #' @field scale_input the scaling method for summary statistics
     scale_input=NULL,
-    #' @field
+    #' @field scale_target the scaling method for targets (i.e.e theta)
     scale_target=NULL,
-    #' @field
+    #' @field num_hidden_layers number of hidden layers in the neural network
     num_hidden_layers=NA,
-    #' @field
+    #' @field num_hidden_dim number of hidden dimensions (neurons) in each hidden layer
     num_hidden_dim=NA,
-    #' @field
+    #' @field validation_split proportion of training samples to retain for validation at the end of training
     validation_split=NA,
-    #' @field
+    #' @field num_conformal number of training samples to retain for conformal prediction (not used during training)
     num_conformal=NA,
-    #' @field
+    #' @field credible_interval_p proportion, the level of significance for credible intervals
     credible_interval_p = NA,
-    #' @field
+    #' @field test_split proportion of training samples to retain for testing (at each training iteration)
     test_split=NA,
-    #' @field
+    #' @field dropout dropout rate to apply in `monte carlo dropout`
     dropout=NA,
-    #' @field
+    #' @field batch_size batch size in `luz`
     batch_size=NA,
-    #' @field
+    #' @field epochs number of epochs for training
     epochs=NA,
-    #' @field
+    #' @field early_stopping logical, whether to do early stopping in `luz`
     early_stopping=FALSE,
-    #' @field
+    #' @field callbacks list of `luz` callbacks
     callbacks=NULL,
-    #' @field
+    #' @field verbose logical, whether to print messages and progress bars for the user
     verbose=NULL,
-    #' @field
+    #' @field patience patience hyperparameter for `luz``early stopping`, the number of epochs without improving until stoping training
     patience=4,
-    #' @field
+    #' @field optimizer `torch` custom optimizer
     optimizer=NULL,
-    #' @field
+    #' @field learning_rate learningrate in `luz`
     learning_rate=0.001,
-    #' @field
+    #' @field l2_weight_decay L2 weight decay for regularization in the `torch::optimizer`
     l2_weight_decay=1e-5,
-    #' @field
+    #' @field variance_clamping `c(min, max)` values for variance clamping during training
     variance_clamping=TRUE,
-    #' @field
+    #' @field loss custom `torch` loss function (nn module)
     loss=NULL,
-    #' @field
+    #' @field tol tolerance rate in `abc` for the `tabnet-abc` method
     tol=NULL,
-    #' @field
+    #' @field abc_method `abc` method for `tabnet-abc`
     abc_method=NULL,
-    #' @field
+    #' @field num_posterior_samples number of posterior samples to generate in `monte carlo dropout` and `concrete dropout`
     num_posterior_samples=1000,
-    #' @field
+    #' @field prior_length_scale hyperparameter for `concrete dropout`
     prior_length_scale=1e-4,
-    #' @field
+    #' @field weight_regularizer hyperparameter for `concrete dropout`
     weight_regularizer=NA,
-    #' @field
+    #' @field dropout_regularizer hyperparameter for `concrete dropout`
     dropout_regularizer=NA,
-    #' @field
+    #' @field num_networks number of neural networks in `deep ensemble`
     num_networks=5,
-    #' @field
+    #' @field epsilon_adversarial the factor by which perturbating training samples for adversarial training in `deep ensemble`
     epsilon_adversarial=0,
-    #' @field
+    #' @field device device used in `luz` and `torch`, whether 'cpu' or 'cuda' (GPU)
     device="cpu",
-    #' @field
+    #' @field input_dim number of input dimensions (columns in summary statistics)
     input_dim = NA,
-    #' @field
+    #' @field output_dim number of output dimensions (columns in theta, the number of variables to predict)
     output_dim = NA,
-    #' @field
+    #' @field n_train number of samples for training
     n_train = NA,
-    #' @field
+    #' @field sumstat_names names of the summary statistics
     sumstat_names = NA,
-    #' @field
+    #' @field output_names neural network output names (mean and variance)
     output_names = NA,
-    #' @field
+    #' @field theta_names theta names (variables to predict)
     theta_names = NA,
-    #' @field
+    #' @field n_obs number of observations (rows in 'observed')
     n_obs = NA,
-    #' @field
+    #' @field prior_lower lower boundaries of priors (for plotting)
     prior_lower = NA,
-    #' @field
+    #' @field prior_upper upper boundaries of priors (for plotting)
     prior_upper = NA,
-    #' @field
+    #' @field fitted a model fitted with `luz`
     fitted = NULL,
-    #' @field
+    #' @field evaluation numerical value of the evaluation metric
     evaluation=NULL,
-    #' @field
+    #' @field eval_metrics list of custom metrics to use at evaluation (not implemented yet)
     eval_metrics=NA,
-    #' @field
+    #' @field posterior_samples array of all posterior samples predicted in `monte carlo dropout` and `concrete dropout`
     posterior_samples = NA,
-    #' @field
+    #' @field quantile_posterior quantiles of the posterior distributions, given the credible interval significance required
     quantile_posterior = NA,
-    #' @field
+    #' @field predictive_mean mean predicted value
     predictive_mean = NA,
-    #' @field
+    #' @field aleatoric uncertainty aleatoric uncertainty
     aleatoric_uncertainty = NA,
-    #' @field
+    #' @field epistemic uncertainty epistemic uncertainty
     epistemic_uncertainty = NA,
-    #' @field
+    #' @field overall uncertainty overall uncertainty
     overall_uncertainty = NA,
-    #' @field
+    #' @field epistemic uncertainty conformal quantile of epistemic uncertainty calibrated with conformal prediction
     epistemic_conformal_quantile = NA,
-    #' @field
+    #' @field overall uncertainty conformal quantile of overall uncertainty calibrated with conformal prediction
     overall_conformal_quantile = NA,
-    #' @field
+    #' @field dropout_rates dropout rates inferred by `concrete dropout` (not implemented yet)
     dropout_rates = NA,
-    #' @field
+    #' @field input_summary summary statistics of input data for scaling
     input_summary = NA,
-    #' @field
+    #' @field target_summary summary statistics of target data (theta) for scaling
     target_summary = NA,
-    #' @field
+    #' @field sumstat_adj scaled training summary statistics
     sumstat_adj = NA,
-    #' @field
+    #' @field observed_adj scaled observed summary statistics
     observed_adj = NA,
-    #' @field
+    #' @field theta_adj scaled training target
     theta_adj = NA,
-    #' @field
+    #' @field calibration_theta theta saved for calibration with conformal prediction
     calibration_theta = NA,
-    #' @field
+    #' @field calibration_sumstat summary statistics saved for calibration with conformal prediction
     calibration_sumstat = NA,
-    #' @field
+    #' @field ncores number of cores for parallel procedures
     ncores = NA,
 
     #' @description
@@ -351,8 +351,8 @@ abcnn = R6::R6Class("abcnn",
     #' @param observed summary statistics of the observed samples
     #' @param model a `luz` model
     #' @param method the ABC-NN method used
-    #' @param scale_input the scaling method for summary statistics
-    #' @param scale_target the scaling method for targets (i.e. theta)
+    #' @param scale_input the scaling method for summary statistics, whether `minmax`, `robustscaler`, `normalization` or `none`
+    #' @param scale_target the scaling method for targets (i.e. theta), whether `minmax`, `robustscaler`, `normalization` or `none`
     #' @param num_hidden_layers number of hidden layers in the neural network
     #' @param num_hidden_dim number of hidden dimensions (neurons) in each hidden layer
     #' @param validation_split proportion of samples retained for validation at the end of training
@@ -743,11 +743,12 @@ abcnn = R6::R6Class("abcnn",
                                    self$input_summary,
                                    method = self$scale_input,
                                    type = "forward")
+        self$n_obs = nrow(observed)
       }
 
       observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
 
-      if (self$verbose) {print("Making predictions")}
+      if (self$verbose) {print(paste0("Making predictions with ", nrow(observed), " samples."))}
 
       if (is.null(self$fitted)) {
         warning("The model has not been fitted. NAs returned.")
@@ -1132,11 +1133,15 @@ abcnn = R6::R6Class("abcnn",
       target_max = apply(self$theta[train_idx,,drop = F], 2, function(x) max(x, na.rm = TRUE))
       target_mean = apply(self$theta[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
       target_sd = apply(self$theta[train_idx,,drop = F], 2, function(x) sd(x, na.rm = TRUE))
+      quantile_25 = apply(self$theta[train_idx,,drop = F], 2, function(x) quantile(x, 0.25, na.rm = TRUE))
+      quantile_75 = apply(self$theta[train_idx,,drop = F], 2, function(x) quantile(x, 0.75, na.rm = TRUE))
 
       self$target_summary = list(min = target_min,
                                  max = target_max,
                                  mean = target_mean,
-                                 sd = target_sd)
+                                 sd = target_sd,
+                                 quantile_25 = quantile_25,
+                                 quantile_75 = quantile_75)
 
       # Scale with summary statistics learned on training set only
       scaled_input = scaler(self$sumstat,

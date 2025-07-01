@@ -98,13 +98,15 @@ log1pexp = function(x, threshold = 10) {
 #' For this, it requires a list of summary statistics learned on the training set.
 #'
 #' @param x a data frame to scale, each column is scaled separately
-#' @param sum_stats summary statistics learned on the data to back-transform
+#' @param sum_stats list, summary statistics learned on the data to back-transform
 #' @param method the scaling method, either `minmax`, `robustscaler`, `normalization` or `none`
 #' @param type is `forward` when scaling inputs or targets and `backward` when back-transforming targets at prediction time
 #'
 #' @return a data frame with scaled values
 #'
 scaler = function(x, sum_stats, method = "minmax", type = "forward") {
+
+  x = as.data.frame(x)
 
   if (method == "none") {
     # Do nothing

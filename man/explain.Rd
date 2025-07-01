@@ -40,6 +40,31 @@ See \verb{https://bips-hb.github.io/innsight/} for details.
 \item{\code{input_summary}}{the \code{abcnn$input_summary} slot from the \code{abcnn} input object}
 }}
 
+\section{Public fields}{
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{x}}{an \code{abcnn} object}
+
+\item{\code{method}}{the \code{innsight} method to apply}
+
+\item{\code{converter}}{the torch/luz model converted to an \code{innsight} object}
+
+\item{\code{result}}{the result of the explainability method}
+
+\item{\code{model_method}}{the method in the \code{abcnn} object}
+
+\item{\code{variables}}{names of the variables (input dimensions)}
+
+\item{\code{parameters}}{names of the parameters to estimate (output dimensions)}
+
+\item{\code{ensemble_num_model}}{index of the model to explain in Deep Ensemble (default is first model)}
+
+\item{\code{scale_input}}{method used to scale input dimensions}
+
+\item{\code{input_summary}}{summary statistics for the input scaling method}
+}
+\if{html}{\out{</div>}}
+}
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
@@ -57,6 +82,7 @@ See \verb{https://bips-hb.github.io/innsight/} for details.
 \if{html}{\out{<a id="method-explain-new"></a>}}
 \if{latex}{\out{\hypertarget{method-explain-new}{}}}
 \subsection{Method \code{new()}}{
+Create a new \code{explain} object
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{explain$new(x, method = "cw", ensemble_num_model = 1)}\if{html}{\out{</div>}}
 }
@@ -64,11 +90,11 @@ See \verb{https://bips-hb.github.io/innsight/} for details.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{method}}{A feature attribution method, as named in the \code{ìnnsight} R package
-including 'cw' (default), 'grad', 'smoothgrad', 'intgrad', 'expgrad', 'lrp', 'deeplift',
-'deepshap', 'shap', 'lime.' No method required for tabnet-ABC.}
+\item{\code{x}}{an \code{abcnn} model}
 
-\item{\code{ensemble_num_model}}{index of the model when the network is a deep ensemble (default = 1)}
+\item{\code{method}}{the explainability method to use (see \code{innsight} for details) (defauls is \code{cw})}
+
+\item{\code{ensemble_num_model}}{index of the model to explain in Deep Ensemble (default is first model)}
 }
 \if{html}{\out{</div>}}
 }
@@ -77,6 +103,7 @@ including 'cw' (default), 'grad', 'smoothgrad', 'intgrad', 'expgrad', 'lrp', 'de
 \if{html}{\out{<a id="method-explain-print"></a>}}
 \if{latex}{\out{\hypertarget{method-explain-print}{}}}
 \subsection{Method \code{print()}}{
+Print the converter
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{explain$print()}\if{html}{\out{</div>}}
 }
@@ -86,6 +113,9 @@ including 'cw' (default), 'grad', 'smoothgrad', 'intgrad', 'expgrad', 'lrp', 'de
 \if{html}{\out{<a id="method-explain-run"></a>}}
 \if{latex}{\out{\hypertarget{method-explain-run}{}}}
 \subsection{Method \code{run()}}{
+Apply the \code{method} to the passed \code{data} to be explained
+
+The method is run on a \code{data} object (see \code{innsight} manual)
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{explain$run(data, data_ref = NULL, method = NULL)}\if{html}{\out{</div>}}
 }
@@ -104,9 +134,7 @@ Note: For the model-agnostic methods, only models with a single input and output
 The dataset to which the method is to be applied. These must have the same format as the input data of the passed model and has to be either matrix, an array, a data.frame or a torch_tensor.
 Note: For the model-agnostic methods, only models with a single input and output layer is allowed!}
 
-\item{\code{method}}{The method to run. Change the method specified in \code{new()}
-
-Get the results of the Feature Attribution method}
+\item{\code{method}}{The method to run. Change the method specified in \code{new()}}
 }
 \if{html}{\out{</div>}}
 }
@@ -115,6 +143,7 @@ Get the results of the Feature Attribution method}
 \if{html}{\out{<a id="method-explain-get_result"></a>}}
 \if{latex}{\out{\hypertarget{method-explain-get_result}{}}}
 \subsection{Method \code{get_result()}}{
+Get the results of the Feature Attribution method
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{explain$get_result(type = "array")}\if{html}{\out{</div>}}
 }
@@ -128,9 +157,6 @@ Get the results of the Feature Attribution method}
 }
 \subsection{Details}{
 Note that when the \code{abcnn} model is \code{tabnet-abc}, \code{get_result()} returns importances weigths of the fitted model.
-
-Plot the results of the Feature Attribution method
-for single data points
 }
 
 }
@@ -138,6 +164,8 @@ for single data points
 \if{html}{\out{<a id="method-explain-plot"></a>}}
 \if{latex}{\out{\hypertarget{method-explain-plot}{}}}
 \subsection{Method \code{plot()}}{
+Plot the results of the Feature Attribution method
+for single data points
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{explain$plot(as_plotly = FALSE, type = "mask_agg", output_label = NULL)}\if{html}{\out{</div>}}
 }
@@ -155,8 +183,6 @@ for single data points
 }
 \subsection{Details}{
 Note that when the \code{abcnn} model is \code{tabnet-abc}, \code{plot()} returns the \code{autoplot()} function on the results of the \code{tabnet} model.
-
-Plot the results of the Feature Attribution method for the global dataset
 }
 
 }
@@ -164,6 +190,7 @@ Plot the results of the Feature Attribution method for the global dataset
 \if{html}{\out{<a id="method-explain-plot_global"></a>}}
 \if{latex}{\out{\hypertarget{method-explain-plot_global}{}}}
 \subsection{Method \code{plot_global()}}{
+Plot the results of the Feature Attribution method for the global dataset
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{explain$plot_global(as_plotly = FALSE, output_label = NULL)}\if{html}{\out{</div>}}
 }
@@ -173,9 +200,7 @@ Plot the results of the Feature Attribution method for the global dataset
 \describe{
 \item{\code{as_plotly}}{If \code{TRUE}, plot the figure as a plotly object (default = \code{FALSE})}
 
-\item{\code{output_label}}{character, the names of the variables to plot (if NULL, all variables are plotted)
-
-Alias for \code{plot_global} for tabular and signal data}
+\item{\code{output_label}}{character, the names of the variables to plot (if NULL, all variables are plotted)}
 }
 \if{html}{\out{</div>}}
 }
@@ -184,6 +209,7 @@ Alias for \code{plot_global} for tabular and signal data}
 \if{html}{\out{<a id="method-explain-boxplot"></a>}}
 \if{latex}{\out{\hypertarget{method-explain-boxplot}{}}}
 \subsection{Method \code{boxplot()}}{
+Alias for \code{plot_global} for tabular and signal data
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{explain$boxplot(as_plotly = FALSE)}\if{html}{\out{</div>}}
 }
