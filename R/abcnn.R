@@ -314,15 +314,15 @@ abcnn = R6::R6Class("abcnn",
     quantile_posterior = NA,
     #' @field predictive_mean mean predicted value
     predictive_mean = NA,
-    #' @field aleatoric uncertainty aleatoric uncertainty
+    #' @field aleatoric_uncertainty aleatoric uncertainty
     aleatoric_uncertainty = NA,
-    #' @field epistemic uncertainty epistemic uncertainty
+    #' @field epistemic_uncertainty epistemic uncertainty
     epistemic_uncertainty = NA,
-    #' @field overall uncertainty overall uncertainty
+    #' @field overall_uncertainty overall uncertainty
     overall_uncertainty = NA,
-    #' @field epistemic uncertainty conformal quantile of epistemic uncertainty calibrated with conformal prediction
+    #' @field epistemic_conformal_quantile conformal quantile of epistemic uncertainty calibrated with conformal prediction
     epistemic_conformal_quantile = NA,
-    #' @field overall uncertainty conformal quantile of overall uncertainty calibrated with conformal prediction
+    #' @field overall_conformal_quantile conformal quantile of overall uncertainty calibrated with conformal prediction
     overall_conformal_quantile = NA,
     #' @field dropout_rates dropout rates inferred by `concrete dropout` (not implemented yet)
     dropout_rates = NA,

@@ -2,7 +2,7 @@
 % Please edit documentation in R/abcnn.R
 \name{abcnn}
 \alias{abcnn}
-\title{Create an \code{abcnn} R6 class object}
+\title{An \code{abcnn} R6 class object for parameter inference with Bayesian Neural Networks and Approximate Bayesian Computation}
 \value{
 A \code{R6::abcnn} object
 
@@ -224,6 +224,137 @@ abc = abcnn$new(theta,
 }
 \seealso{
 \code{\link[R6:R6Class]{R6::R6()}}
+}
+\section{Public fields}{
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{theta}}{parameters of the pseudo-observed samples (i.e. simulations)}
+
+\item{\code{sumstat}}{summary statistics of the pseudo-observed samples (i.e. simulations)}
+
+\item{\code{observed}}{summary statistics of the observed samples}
+
+\item{\code{model}}{the \code{luz} model}
+
+\item{\code{method}}{the ABC-NN method used, whether \code{tabnet-abc}, \verb{monte carlo dropout}, \verb{concrete dropout} or \verb{deep ensemble}}
+
+\item{\code{scale_input}}{the scaling method for summary statistics}
+
+\item{\code{scale_target}}{the scaling method for targets (i.e.e theta)}
+
+\item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
+
+\item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
+
+\item{\code{validation_split}}{proportion of training samples to retain for validation at the end of training}
+
+\item{\code{num_conformal}}{number of training samples to retain for conformal prediction (not used during training)}
+
+\item{\code{credible_interval_p}}{proportion, the level of significance for credible intervals}
+
+\item{\code{test_split}}{proportion of training samples to retain for testing (at each training iteration)}
+
+\item{\code{dropout}}{dropout rate to apply in \verb{monte carlo dropout}}
+
+\item{\code{batch_size}}{batch size in \code{luz}}
+
+\item{\code{epochs}}{number of epochs for training}
+
+\item{\code{early_stopping}}{logical, whether to do early stopping in \code{luz}}
+
+\item{\code{callbacks}}{list of \code{luz} callbacks}
+
+\item{\code{verbose}}{logical, whether to print messages and progress bars for the user}
+
+\item{\code{patience}}{patience hyperparameter for \verb{luz``early stopping}, the number of epochs without improving until stoping training}
+
+\item{\code{optimizer}}{\code{torch} custom optimizer}
+
+\item{\code{learning_rate}}{learningrate in \code{luz}}
+
+\item{\code{l2_weight_decay}}{L2 weight decay for regularization in the \code{torch::optimizer}}
+
+\item{\code{variance_clamping}}{\code{c(min, max)} values for variance clamping during training}
+
+\item{\code{loss}}{custom \code{torch} loss function (nn module)}
+
+\item{\code{tol}}{tolerance rate in \code{abc} for the \code{tabnet-abc} method}
+
+\item{\code{abc_method}}{\code{abc} method for \code{tabnet-abc}}
+
+\item{\code{num_posterior_samples}}{number of posterior samples to generate in \verb{monte carlo dropout} and \verb{concrete dropout}}
+
+\item{\code{prior_length_scale}}{hyperparameter for \verb{concrete dropout}}
+
+\item{\code{weight_regularizer}}{hyperparameter for \verb{concrete dropout}}
+
+\item{\code{dropout_regularizer}}{hyperparameter for \verb{concrete dropout}}
+
+\item{\code{num_networks}}{number of neural networks in \verb{deep ensemble}}
+
+\item{\code{epsilon_adversarial}}{the factor by which perturbating training samples for adversarial training in \verb{deep ensemble}}
+
+\item{\code{device}}{device used in \code{luz} and \code{torch}, whether 'cpu' or 'cuda' (GPU)}
+
+\item{\code{input_dim}}{number of input dimensions (columns in summary statistics)}
+
+\item{\code{output_dim}}{number of output dimensions (columns in theta, the number of variables to predict)}
+
+\item{\code{n_train}}{number of samples for training}
+
+\item{\code{sumstat_names}}{names of the summary statistics}
+
+\item{\code{output_names}}{neural network output names (mean and variance)}
+
+\item{\code{theta_names}}{theta names (variables to predict)}
+
+\item{\code{n_obs}}{number of observations (rows in 'observed')}
+
+\item{\code{prior_lower}}{lower boundaries of priors (for plotting)}
+
+\item{\code{prior_upper}}{upper boundaries of priors (for plotting)}
+
+\item{\code{fitted}}{a model fitted with \code{luz}}
+
+\item{\code{evaluation}}{numerical value of the evaluation metric}
+
+\item{\code{eval_metrics}}{list of custom metrics to use at evaluation (not implemented yet)}
+
+\item{\code{posterior_samples}}{array of all posterior samples predicted in \verb{monte carlo dropout} and \verb{concrete dropout}}
+
+\item{\code{quantile_posterior}}{quantiles of the posterior distributions, given the credible interval significance required}
+
+\item{\code{predictive_mean}}{mean predicted value}
+
+\item{\code{aleatoric_uncertainty}}{aleatoric uncertainty}
+
+\item{\code{epistemic_uncertainty}}{epistemic uncertainty}
+
+\item{\code{overall_uncertainty}}{overall uncertainty}
+
+\item{\code{epistemic_conformal_quantile}}{conformal quantile of epistemic uncertainty calibrated with conformal prediction}
+
+\item{\code{overall_conformal_quantile}}{conformal quantile of overall uncertainty calibrated with conformal prediction}
+
+\item{\code{dropout_rates}}{dropout rates inferred by \verb{concrete dropout} (not implemented yet)}
+
+\item{\code{input_summary}}{summary statistics of input data for scaling}
+
+\item{\code{target_summary}}{summary statistics of target data (theta) for scaling}
+
+\item{\code{sumstat_adj}}{scaled training summary statistics}
+
+\item{\code{observed_adj}}{scaled observed summary statistics}
+
+\item{\code{theta_adj}}{scaled training target}
+
+\item{\code{calibration_theta}}{theta saved for calibration with conformal prediction}
+
+\item{\code{calibration_sumstat}}{summary statistics saved for calibration with conformal prediction}
+
+\item{\code{ncores}}{number of cores for parallel procedures}
+}
+\if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
