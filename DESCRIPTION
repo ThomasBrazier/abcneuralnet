@@ -30,7 +30,8 @@ Imports:
     tidyr,
     torch,
     devtools,
-    assertthat
+    assertthat,
+    here
 VignetteBuilder: knitr
 RdMacros: Rdpack
 Config/testthat/edition: 3
