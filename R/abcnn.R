@@ -39,7 +39,7 @@
 #' @description
 #'
 #' `abcnn` constructs a `R6` class object for parameter inference with ABC and neural networks.
-#' It implements four different method mixing ABC and neural networks implemented in R `torch`.
+#' It implements four different methods mixing ABC and neural networks implemented in R `torch`.
 #'
 #'
 #' The `initialize` function (`abcnn$new()`) takes as arguments three data frames of training summary statistics,
