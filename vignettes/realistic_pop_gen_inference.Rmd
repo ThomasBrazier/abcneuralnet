@@ -254,3 +254,19 @@ library(abcneuralnet)
 
 
 
+<!-- ### Explain methods -->
+
+<!-- Feature importance, feature selection -->
+
+
+<!-- ```{r} -->
+<!-- expl = explain$new(abc, method = "deeplift") -->
+
+<!-- expl$run(observed) -->
+
+<!-- # Use the method on the test data -->
+<!-- expl$plot() -->
+
+<!-- expl$plot_global() -->
+<!-- ``` -->
+
