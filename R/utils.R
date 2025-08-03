@@ -14,26 +14,20 @@
 #' @export
 #'
 save_abcnn = function(object, prefix = "") {
-  # Save the torch module used as model
-  # torch_save(object$model, paste0(prefix, "_torch.Rds"))
 
-  # Save the luz fitted object
-  luz::luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
-  # bun = bundle::bundle(object$fitted)
-  # saveRDS(bun, paste0(prefix, "_bundle.Rds"))
+  if (object$method == "tabnet-abc") {
+    fitted = bundle::bundle(object$fitted)
+    saveRDS(fitted, paste0(prefix, "_fitted.Rds"))
+  } else {
+    # Save the luz fitted object
+    luz::luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
+  }
 
   mod = bundle::bundle(object$model)
   saveRDS(mod, paste0(prefix, "_model.Rds"))
 
-  # Save the abcnn object
-  # Remove torch module and luz fitted to avoid serialization issues
-  # object$model = NULL
-  # object$fitted = NULL
-
-  # export = list(object = object,
-  #               metrics = object$fitted$records$metrics)
-
   saveRDS(object, paste0(prefix, "_abcnn.Rds"))
+
 }
 
 
@@ -54,14 +48,12 @@ save_abcnn = function(object, prefix = "") {
 load_abcnn = function(prefix = "") {
   object = readRDS(paste0(prefix, "_abcnn.Rds"))
 
-  # object = import$object
-
-  # object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
-  # bun = readRDS(paste0(prefix, "_bundle.Rds"))
-  # object$fitted = bundle::unbundle(bun)
-  object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
-
-  # object$fitted$records$metrics = import$metrics
+  if (object$method == "tabnet-abc") {
+    bun = readRDS(paste0(prefix, "_fitted.Rds"))
+    object$fitted = bundle::unbundle(bun)
+  } else {
+    object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
+  }
 
   mod = readRDS(paste0(prefix, "_model.Rds"))
   object$model = bundle::unbundle(mod)
