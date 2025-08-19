@@ -14,7 +14,7 @@
 #' @param batch_size the mini-batch size
 #' @param learning_rate the learning rate
 #' @param epochs the number of epochs
-#' @param early_stopping logical, whether to use early stopping or not
+#' @param early_stopping logical, whether to use early stopping or not (not implemented yet for the `deep ensemble` method)
 #' @param patience the patience (number of iterations) before early stopping
 #' @param optimizer a "torch_optimizer_generator", the optimizer to use in `luz` (default=optim_adam)
 #' @param loss a custom loss function passed to the ``monte carlo dropout` method (default=nn_mse_loss())
@@ -146,7 +146,7 @@
 #' @slot epochs number of epochs for training
 #' @slot early_stopping whether to do early stopping
 #' @slot patience patience hyperparameter for early stopping. See `luz::luz_callback_early_stopping()`
-#' @slot callbacks custom callbacks
+#' @slot callbacks custom callbacks in `luz` (in development)
 #' @slot verbose whether to print messages
 #' @slot optimizer `torch` optimizer nn module
 #' @slot learning_rate learning rate
@@ -248,9 +248,9 @@ abcnn = R6::R6Class("abcnn",
     batch_size=NA,
     #' @field epochs number of epochs for training
     epochs=NA,
-    #' @field early_stopping logical, whether to do early stopping in `luz`
+    #' @field early_stopping logical, whether to do early stopping in `luz` (not implemented yet for the `deep ensemble` method)
     early_stopping=FALSE,
-    #' @field callbacks list of `luz` callbacks
+    #' @field callbacks list of `luz` callbacks (in development)
     callbacks=NULL,
     #' @field verbose logical, whether to print messages and progress bars for the user
     verbose=NULL,
@@ -363,7 +363,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param batch_size  batch size
     #' @param epochs number of epochs for training
     #' @param early_stopping whether to do early stopping
-    #' @param patience patience hyperparameter for early stopping. See `luz::luz_callback_early_stopping()`
+    #' @param patience patience hyperparameter for early stopping. See `luz::luz_callback_early_stopping()` (not implemented yet for `deep ensemble`)
     #' @param callbacks custom callbacks
     #' @param verbose whether to print messages
     #' @param optimizer `torch` optimizer nn module
@@ -378,7 +378,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param weight_regularizer `concrete dropout` regularization term for weights
     #' @param dropout_regularizer `concrete dropout` regularization term for dropout
     #' @param num_networks number of networks in `deep ensemble`
-    #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble`
+    #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble` (experimental)
     #' @param ncores number of cores for parallelized steps
     #'
     initialize = function(theta,
