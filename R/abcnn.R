@@ -556,9 +556,9 @@ abcnn = R6::R6Class("abcnn",
       # INIT MODELS
       #-----------------------------------#
       if (is.null(model)) {
-        if (self$method == "tabnet-abc") {
-          self$num_conformal = 0
-        }
+        # if (self$method == "tabnet-abc") {
+        #   self$num_conformal = 0
+        # }
         if (self$method == "monte carlo dropout") {
           self$model = mc_dropout_model %>%
             luz::setup(optimizer = self$optimizer,
@@ -745,8 +745,12 @@ abcnn = R6::R6Class("abcnn",
                                    type = "forward")
         self$n_obs = nrow(observed)
       }
-
-      observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
+      
+      if (self$method == "tabnet-abc") {
+        observed = torch::torch_tensor(as.matrix(self$observed), device = self$device)
+      } else {
+        observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
+      }
 
       if (self$verbose) {print(paste0("Making predictions with ", nrow(observed), " samples."))}
 
