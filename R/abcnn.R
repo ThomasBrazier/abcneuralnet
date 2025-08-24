@@ -743,7 +743,7 @@ abcnn = R6::R6Class("abcnn",
                                    self$input_summary,
                                    method = self$scale_input,
                                    type = "forward")
-        self$n_obs = nrow(observed)
+        self$n_obs = nrow(data)
       }
 
       observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)

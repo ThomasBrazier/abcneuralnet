@@ -906,6 +906,11 @@ You can design your own evaluation procedure and metric to assess the performanc
 Feature importance/selection
 
 
+*5. Which type of uncertainty do I look at?*
+
+
+
+
 *5. How do I choose the hyperparameters of the model?*
 
 Stick to simple, widely-used standard values. Train simpler models for test purpose, before running larger models in production. Beware than larger models can sometimes require adjustments for the learning hyperparameters (learning rate, batch size), as larger sample sizes also have effects on overfitting and on the variance that is estimated by the model. Larger sample sizes affect the epistemic uncertainty, the uncertainty of the model, while the aleatoric uncertainty, the uncertainty of the data itself, should not be much affected.
@@ -923,12 +928,15 @@ Reduce model complexity
 Reduces learning rate (slower learning), larger batch size, larger L2 weigths decay for regularization
 Beware that a batch size too high or a learning rate too slow could prevent an efficient learning. As always with Neural Network, there is a significant part of engineering to find a good model, that require some steps of trial/error.
 
+Improving gradient stability and convergence is a next step towards a more user-friendly application.
+
 More specifically:
 
 *6a. Very large epistemic error but the aleatoric/overall is fine?*
 
-Sign of overfitting, happens especially with training set with a large number of samples
+Sign of overfitting, happens especially with training set with a large number of samples, counter-intuitive
 Increase batch size. Smoothening effect.
+Reduce L2 weight decay and learning rate?
 
 
 *6b. Huge loss and/or NaN output values during training?*
