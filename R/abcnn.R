@@ -745,7 +745,7 @@ abcnn = R6::R6Class("abcnn",
                                    type = "forward")
         self$n_obs = nrow(data)
       }
-      
+
       if (self$method == "tabnet-abc") {
         observed = torch::torch_tensor(as.matrix(self$observed), device = self$device)
       } else {
@@ -1500,7 +1500,7 @@ abcnn = R6::R6Class("abcnn",
               train_metric[1] = NA
             }
 
-            train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/self$num_networks), each = self$num_networks), self$output_dim),
+            train_eval = data.frame(Epoch = rep(rep(1:(length(train_metric)/self$num_networks), each = self$num_networks), 2),
                                     Model = rep(1:self$num_networks, (length(train_metric)/self$num_networks)),
                                     Metric = c(train_metric, valid_metric),
                                     Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
