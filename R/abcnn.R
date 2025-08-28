@@ -191,6 +191,7 @@
 #' @slot calibration_theta adjusted theta for conformal prediction after scaling (calibration set)
 #' @slot calibration_sumstat adjusted summary statistics for conformal prediction after scaling (calibration set)
 #' @slot ncores number of cores for parallelized steps
+#' @slot call the call to the new() initialisation function
 #'
 #'
 #' @return A `R6::abcnn` object
@@ -342,6 +343,8 @@ abcnn = R6::R6Class("abcnn",
     calibration_sumstat = NA,
     #' @field ncores number of cores for parallel procedures
     ncores = NA,
+    #' @field call the call to the new() initialisation function
+    call = NULL,
 
     #' @description
     #' Create a new `abcnn` object
@@ -417,6 +420,8 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------#
       # CHECK INPUTS
       #-----------------------------------#
+      self$call = match.call()
+
       # Input data validation
       if(missing(observed)) stop("'observed' is missing")
       if(missing(theta)) stop("'theta' is missing")
@@ -1442,11 +1447,18 @@ abcnn = R6::R6Class("abcnn",
     #' Print a summary of the `abcnn` object
     #'
     summary = function() {
+      cat("===================================================\n")
+      cat("ABC Neural Net. Bayesian Deep learning and ABC.\n")
+      cat("===================================================\n")
       # TODO Print number of samples and basic information on methods
       cat("ABC parameter inference with the method:", self$method, "\n")
 
-      cat("The number of samples is", nrow(self$theta), "for the training set (simulations) and", nrow(self$observed), "observations for predictions.\n")
-      cat("The validation split during training is", self$validation_split, ", the test split after training is", self$test_split, ", and", self$num_conformal, "simulations retained for conformal prediction.\n")
+      # cat("The number of samples is", nrow(self$theta), "for the training set (simulations) and", nrow(self$observed), "observations for predictions.\n")
+      # cat("The validation split during training is", self$validation_split, ", the test split after training is", self$test_split, ", and", self$num_conformal, "simulations retained for conformal prediction.\n")
+
+      print(knitr::kable(samples_abcnn(self)))
+
+
       # CUDA is installed?
       cat("\n")
       cat("Is CUDA available? ")
@@ -1456,6 +1468,14 @@ abcnn = R6::R6Class("abcnn",
       cat("Device is: ")
       print(self$device)
       cat("\n")
+
+      cat("Call: ")
+      print(self$call)
+      cat("\n")
+
+
+      knitr::kable(hyperparams_abcnn(self))
+
     },
 
     #' @description

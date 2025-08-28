@@ -135,3 +135,93 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
     }
   }
 }
+
+
+# TODO Sample table
+
+#' Return a data frame with sample sizes of an `abcnn` object
+#'
+#' The function returns all the sample sizes of training, testing, evaluation, conformal prediction and observed for an `abcnn` object.
+#'
+#' @param object an `abcnn` R6 class object
+#'
+#' @import torch
+#'
+#' @export
+#'
+#' @return a `data.frame` with sample sizes
+#'
+samples_abcnn = function(object) {
+
+  samples = data.frame(Sample = c("Training",
+                                  "Testing split",
+                                  "Testing",
+                                  "Evaluation split",
+                                  "Evaluation",
+                                  "Conformal",
+                                  "Observed"),
+                       Size = c(nrow(object$sumstat) * (1 - object$validation_split),
+                                object$test_split,
+                                nrow(object$sumstat) * (1 - object$validation_split) * object$test_split,
+                                object$validation_split,
+                                nrow(object$sumstat) * (object$validation_split),
+                                object$num_conformal,
+                                nrow(object$observed)))
+
+  return(samples)
+}
+
+
+
+
+# TODO Hyperparam table
+
+#' Return a data frame with hyperparameters of an `abcnn` object
+#'
+#' The function returns all the hyperparameters of the neural network in an `abcnn` object.
+#'
+#' @param object an `abcnn` R6 class object
+#'
+#' @import torch
+#'
+#' @export
+#'
+#' @return a `data.frame` with hyperparameters
+#'
+hyperparams_abcnn = function(object) {
+
+  hyperparams = data.frame(Hyperparameter = c("Method",
+                                      "Scaling for inputs (summary statistics)",
+                                      "Scaling for targets (theta)",
+                                      "Number hidden layers",
+                                      "Number hidden dimensions",
+                                      "Batch size",
+                                      "Epochs",
+                                      "Early stopping callback",
+                                      "Patience for early stopping",
+                                      "Learning rate",
+                                      "L2 weight decay",
+                                      "Method for ABC",
+                                      "Tolerance rate (ABC)",
+                                      "Number of posterior samples (mc dropout and concrete dropout)",
+                                      "Dropout rate",
+                                      "Number of networks (deep ensemble)"),
+                       Value = c(object$method,
+                                 object$scale_input,
+                                 object$scale_target,
+                                 object$num_hidden_layers,
+                                 object$num_hidden_dim,
+                                 object$batch_size,
+                                 object$epochs,
+                                 as.character(object$early_stopping),
+                                 object$patience,
+                                 object$learning_rate,
+                                 object$l2_weight_decay,
+                                 object$abc_method,
+                                 ifelse(is.null(object$tol), "NULL", object$tol),
+                                 object$num_posterior_samples,
+                                 object$dropout,
+                                 object$num_networks))
+
+  return(hyperparams)
+}

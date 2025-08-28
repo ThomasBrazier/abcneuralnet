@@ -33,10 +33,48 @@ cuda_is_available()
 
 ### Install `ABCNN`
 
+So far, `abcneuralnet` is still in development and not available from CRAN.
 
-Install the main branch from github.
 
+You can install the development version with:
 
 ```
 devtools::install_github("ThomasBrazier/abcneuralnet")
 ```
+
+
+## How to use ABCNeuralNet
+
+You can see a detailed example on how to use the `abcneuralnet` package in the vignettes. A basic example is:
+
+```
+library(abcneuralnet) 
+
+abc = abcnn$new(theta,
+            sumstats,
+            observed,
+            method = 'concrete dropout',
+            scale_input = "none",
+            scale_target = "none",
+            num_hidden_layers = 3,
+            num_hidden_dim = 256,
+            epochs = 30,
+            batch_size = 32,
+            l2_weight_decay = 1e-5)
+            
+abc$fit()
+abc$plot_training()
+
+abc$predict()
+abc$plot_prediction()
+```
+
+
+
+## Contributing
+
+
+No matter your current skills it’s possible to contribute to `abcneuralnet` development (contact me for details).
+
+
+It is important for me to have comments and feature requests. Feel free to open an issue if you find a typo or a bug, if you have a question how to use the package, or to submit a feature request.
