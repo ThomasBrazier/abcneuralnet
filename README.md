@@ -1,4 +1,9 @@
-# abcneuralnet
+# ABCNeuralNet
+
+
+![license](https://badgen.net/badge/license/GPL-3.0/blue)
+![release](https://badgen.net/badge/release/0.1.0/blue?icon=github)
+[![rworkflows](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/r.yml/badge.svg)](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/r.yml)
 
 
 
@@ -20,18 +25,18 @@ See the mlverse [Torch](https://torch.mlverse.org/docs/articles/installation) do
 
 ```
 install.packages("torch")
-library(torch)
+library(torch) # Will install all libraries necessary (lantern, torch)
 
 # Check if CUDA installed
 cuda_is_available()
 ```
 
-The `keras3` R package need to be installed for helper functions.
-
-
-```
-install.package("keras3")
-```
-
-
 ### Install `ABCNN`
+
+
+Install the main branch from github.
+
+
+```
+devtools::install_github("ThomasBrazier/abcneuralnet")
+```
