@@ -9,7 +9,7 @@
 
 ## Installation
 
-`ABCCN` requires some dependencies before to be installed. If you want to use the `gpu` to accelerate the training and inferences, you must install `CUDA` on a system with a compatible `gpu`.
+`ABCNeuralNet` requires some dependencies before to be installed. If you want to use the `gpu` to accelerate the training and inferences, you must install `CUDA` on a system with a compatible `gpu`.
 
 ### Install `CUDA` for GPU usage
 
@@ -31,7 +31,7 @@ library(torch) # Will install all libraries necessary (lantern, torch)
 cuda_is_available()
 ```
 
-### Install `ABCNN`
+### Install `ABCNeuralNet`
 
 So far, `abcneuralnet` is still in development and not available from CRAN.
 
