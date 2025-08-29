@@ -32,7 +32,7 @@ jobs:
           r-version: ${{ matrix.r-version }}
       - name: Install dependencies
         run: |
-          install.packages(c("remotes", "rcmdcheck"))
+          install.packages(c("remotes", "rcmdcheck", "abc", "ggpubr", "luz", "plotly", "tabnet", "R6", "RColorBrewer", "Rdpack", "knitr", "bundle", "dplyr", "ggplot2", "ggpubr", "innsight", "janitor", "tibble", "tidyr", "torch", "devtools", "assertthat", "here"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
       - name: Check
