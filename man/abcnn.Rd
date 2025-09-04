@@ -10,7 +10,7 @@ an \code{abcnn} object that can be used to fit(), predict() and plot predictions
 }
 \description{
 \code{abcnn} constructs a \code{R6} class object for parameter inference with ABC and neural networks.
-It implements four different method mixing ABC and neural networks implemented in R \code{torch}.
+It implements four different methods mixing ABC and neural networks implemented in R \code{torch}.
 
 The \code{initialize} function (\code{abcnn$new()}) takes as arguments three data frames of training summary statistics,
 training theta values and observed summary statistics. Public slots can be accessed and modified.
@@ -93,7 +93,7 @@ or modified directly in the corresponding public \code{slot}.
 
 \item{\code{patience}}{patience hyperparameter for early stopping. See \code{luz::luz_callback_early_stopping()}}
 
-\item{\code{callbacks}}{custom callbacks}
+\item{\code{callbacks}}{custom callbacks in \code{luz} (in development)}
 
 \item{\code{verbose}}{whether to print messages}
 
@@ -182,6 +182,8 @@ or modified directly in the corresponding public \code{slot}.
 \item{\code{calibration_sumstat}}{adjusted summary statistics for conformal prediction after scaling (calibration set)}
 
 \item{\code{ncores}}{number of cores for parallelized steps}
+
+\item{\code{call}}{the call to the new() initialisation function}
 }}
 
 \examples{
@@ -260,9 +262,9 @@ abc = abcnn$new(theta,
 
 \item{\code{epochs}}{number of epochs for training}
 
-\item{\code{early_stopping}}{logical, whether to do early stopping in \code{luz}}
+\item{\code{early_stopping}}{logical, whether to do early stopping in \code{luz} (not implemented yet for the \verb{deep ensemble} method)}
 
-\item{\code{callbacks}}{list of \code{luz} callbacks}
+\item{\code{callbacks}}{list of \code{luz} callbacks (in development)}
 
 \item{\code{verbose}}{logical, whether to print messages and progress bars for the user}
 
@@ -353,6 +355,8 @@ abc = abcnn$new(theta,
 \item{\code{calibration_sumstat}}{summary statistics saved for calibration with conformal prediction}
 
 \item{\code{ncores}}{number of cores for parallel procedures}
+
+\item{\code{call}}{the call to the new() initialisation function}
 }
 \if{html}{\out{</div>}}
 }
@@ -393,7 +397,7 @@ Create a new \code{abcnn} object
   credible_interval_p = 0.95,
   test_split = 0.1,
   dropout = 0.5,
-  batch_size = 32,
+  batch_size = 128,
   epochs = 20,
   early_stopping = FALSE,
   verbose = TRUE,
@@ -454,7 +458,7 @@ Create a new \code{abcnn} object
 
 \item{\code{verbose}}{whether to print messages}
 
-\item{\code{patience}}{patience hyperparameter for early stopping. See \code{luz::luz_callback_early_stopping()}}
+\item{\code{patience}}{patience hyperparameter for early stopping. See \code{luz::luz_callback_early_stopping()} (not implemented yet for \verb{deep ensemble})}
 
 \item{\code{optimizer}}{\code{torch} optimizer nn module}
 
@@ -480,7 +484,7 @@ Create a new \code{abcnn} object
 
 \item{\code{num_networks}}{number of networks in \verb{deep ensemble}}
 
-\item{\code{epsilon_adversarial}}{the amount of perturbation for adversarial training in \verb{deep ensemble}}
+\item{\code{epsilon_adversarial}}{the amount of perturbation for adversarial training in \verb{deep ensemble} (experimental)}
 
 \item{\code{ncores}}{number of cores for parallelized steps}
 

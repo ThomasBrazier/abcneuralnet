@@ -1,8 +1,10 @@
 Package: abcneuralnet
 Title: Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference
 Version: 0.0.0.9000
-Authors: 
+Authors@R: 
     person("Brazier", "Thomas", , "brazier.thomas@gmail.com", role = c("aut", "cre"))
+Author: Thomas Brazier [aut, cre]
+Maintainer: Thomas Brazier <brazier.thomas@gmail.com>
 Description:
   This package is designed for parameter inference with ABC and neural networks for population genetics.
   It implements four different methods mixing ABC and neural networks implemented in R `torch`.

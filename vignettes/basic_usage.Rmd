@@ -284,10 +284,10 @@ Compare epistemic and aleatoric uncertainties to get interpretability of the mod
 
 
 ```{r, echo = T}
-abc$plot_posterior(sample = 735, prior = TRUE, uncertainty_type = "uncertainty") +
-  geom_vline(xintercept = Y_obs[735], color = "red", size = 1.5)
-Y_obs[735]
-abc$predictive_mean$y1[735]
+abc$plot_posterior(sample = 700, prior = TRUE, uncertainty_type = "uncertainty") +
+  geom_vline(xintercept = Y_obs[700], color = "red", size = 1.5)
+Y_obs[700]
+abc$predictive_mean$y1[700]
 ```
 
 
@@ -377,15 +377,17 @@ observed_y  = df_observed[, c("y1", "y2")]
 ```
 
 
-```{r, echo = F}
+```{r, echo = F, eval = F}
 # Save the dataset
 df_deepensemble = list(df_train = df_train,
                        df_observed = df_observed)
 
 saveRDS(df_deepensemble, "../inst/extdata/df_deepensemble.rds")
+```
 
+```{r, echo = F}
 # Load it back
-df_concrete = readRDS("../inst/extdata/df_deepensemble.rds")
+df_deepensemble = readRDS("../inst/extdata/df_deepensemble.rds")
 
 df_train = df_deepensemble$df_train
 df_observed = df_deepensemble$df_observed
@@ -756,7 +758,7 @@ theta.exact = dataset$y.exact
 ```
 
 
-```{r}, echo = T}
+```{r, echo = T}
 ggplot(theta.train, aes(x = theta1, y = theta2)) +
   geom_point() +
   geom_point(data = theta.test, aes(x = theta1, y = theta2), color = "red", alpha = 0.5)
@@ -785,13 +787,14 @@ tabnetabc$summary()
 
 
 
-```{r, eval = F}
+```{r, eval = T}
 tabnetabc$fit()
 ```
 
 
-```{r, echo = F, eval=T}
-# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+```{r, echo = F, eval=F}
+save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+
 tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
@@ -802,7 +805,7 @@ tabnetabc$plot_training()
 ```
 
 
-```{r, eval = F}
+```{r, eval = T}
 tabnetabc$predict()
 ```
 
@@ -838,7 +841,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 
 
-```{r, echo = T}
+```{r, echo = T, eval = T}
 exp = explain$new(tabnetabc)
 
 exp$run(data = sumstats.test)
@@ -849,7 +852,9 @@ exp$plot(type = "steps")
 ```
 
 
-## The `explain()` class
+## The `explain()` class and methods
+
+
 
 
 

@@ -18,7 +18,7 @@ The list of CUDA-compatible [GPUs](https://developer.nvidia.com/cuda-gpus#comput
 [CUDA toolkit](https://docs.nvidia.com/cuda/archive/11.7.0/)
 
 Instructions to install [cudnn](https://developer.nvidia.com/cudnn)
-
+# 
 ### Install `Torch`
 
 See the mlverse [Torch](https://torch.mlverse.org/docs/articles/installation) documentation for installing the `torch` R package.

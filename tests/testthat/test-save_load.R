@@ -1,6 +1,7 @@
 test_that("save_abcnn() and load_abcnn() functions work", {
   # Load test data
-  df = readRDS(paste0(here::here(), "/inst/extdata/test_data.Rds"))
+  # TODO Make ests data ad hoc
+  df = readRDS("../../tests/data/test_data.Rds")
 
   theta = df$train_y
   sumstats = df$train_x
@@ -26,17 +27,17 @@ test_that("save_abcnn() and load_abcnn() functions work", {
     abc$fit()
     abc$predict()
 
-    save_abcnn(abc, prefix = paste0(here::here(), "/tests/data/abc_test"))
+    save_abcnn(abc, prefix = "../../tests/data/abc_test")
 
     # Is it possible to fit and predict again?
-    abc = load_abcnn(prefix = paste0(here::here(), "/tests/data/abc_test"))
+    abc = load_abcnn(prefix = "../../tests/data/abc_test")
     abc$fit()
 
-    abc = load_abcnn(prefix = paste0(here::here(), "/tests/data/abc_test"))
+    abc = load_abcnn(prefix = "../../tests/data/abc_test")
     abc$predict()
 
     # Other methods work?
-    abc = load_abcnn(prefix = paste0(here::here(), "/tests/data/abc_test"))
+    abc = load_abcnn(prefix = "../../tests/data/abc_test")
     abc$plot_training()
     abc$plot_prediction()
     abc$plot_posterior()

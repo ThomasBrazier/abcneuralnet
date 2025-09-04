@@ -16,6 +16,10 @@
 save_abcnn = function(object, prefix = "") {
 
   if (object$method == "tabnet-abc") {
+    # See https://github.com/mlverse/tabnet/issues/34
+    # # Serialization
+    torch::torch_save(object$fitted$fit, paste0(prefix, "_torch.Rds"))
+
     fitted = bundle::bundle(object$fitted)
     saveRDS(fitted, paste0(prefix, "_fitted.Rds"))
   } else {
@@ -49,8 +53,11 @@ load_abcnn = function(prefix = "") {
   object = readRDS(paste0(prefix, "_abcnn.Rds"))
 
   if (object$method == "tabnet-abc") {
+    # Loading
+    torch_network = torch::torch_load(paste0(prefix, "_torch.Rds"))
     bun = readRDS(paste0(prefix, "_fitted.Rds"))
     object$fitted = bundle::unbundle(bun)
+    object$fitted$fit = torch_network
   } else {
     object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
   }

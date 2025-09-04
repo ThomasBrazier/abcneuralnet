@@ -2,7 +2,9 @@
 
 export(abcnn)
 export(explain)
+export(hyperparams_abcnn)
 export(load_abcnn)
+export(samples_abcnn)
 export(save_abcnn)
 import(R6)
 import(RColorBrewer)
