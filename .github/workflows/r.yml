@@ -37,6 +37,7 @@ jobs:
           install.packages(c("Matrix", "MatrixModels", "mvtnorm"), type = "binary")
           install.packages(c("remotes", "rcmdcheck", "quantreg", "car", "abc", "ggpubr", "luz", "plotly", "tabnet", "R6", "RColorBrewer", "Rdpack", "knitr", "bundle", "dplyr", "ggplot2", "innsight", "janitor", "tibble", "tidyverse", "torch", "devtools", "assertthat", "here"))
           remotes::install_deps(dependencies = TRUE)
+          torch::install_torch()
         shell: Rscript {0}
       - name: Check
         run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
