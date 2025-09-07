@@ -32,7 +32,8 @@ jobs:
           r-version: ${{ matrix.r-version }}
       - name: Install dependencies
         run: |
-          install.packages(c("remotes", "rcmdcheck", "MatrixModels", "quantreg", "car", "abc", "ggpubr", "luz", "plotly", "tabnet", "R6", "RColorBrewer", "Rdpack", "knitr", "bundle", "dplyr", "ggplot2", "innsight", "janitor", "tibble", "tidyverse", "torch", "devtools", "assertthat", "here"))
+          install.packages(c("Matrix", "MatrixModels", "mvtnorm"), type = "binary")
+          install.packages(c("remotes", "rcmdcheck", "quantreg", "car", "abc", "ggpubr", "luz", "plotly", "tabnet", "R6", "RColorBrewer", "Rdpack", "knitr", "bundle", "dplyr", "ggplot2", "innsight", "janitor", "tibble", "tidyverse", "torch", "devtools", "assertthat", "here"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
       - name: Check
