@@ -22,7 +22,7 @@ jobs:
     runs-on: macos-13
     strategy:
       matrix:
-        r-version: ['4.1.1']
+        r-version: ['4.2.3']
 
     steps:
       - uses: actions/checkout@v4
@@ -30,10 +30,14 @@ jobs:
         uses: r-lib/actions/setup-r@f57f1301a053485946083d7a45022b278929a78a
         with:
           r-version: ${{ matrix.r-version }}
+      - name: Install pandoc
+        uses: pandoc/actions/setup@v1
       - name: Install dependencies
         run: |
-          install.packages(c("remotes", "rcmdcheck", "abc", "ggpubr", "luz", "plotly", "tabnet", "R6", "RColorBrewer", "Rdpack", "knitr", "bundle", "dplyr", "ggplot2", "ggpubr", "innsight", "janitor", "tibble", "tidyr", "torch", "devtools", "assertthat", "here"))
+          install.packages(c("Matrix", "MatrixModels", "mvtnorm"), type = "binary")
+          install.packages(c("remotes", "rcmdcheck", "quantreg", "car", "abc", "ggpubr", "luz", "plotly", "tabnet", "R6", "RColorBrewer", "Rdpack", "knitr", "bundle", "dplyr", "ggplot2", "innsight", "janitor", "tibble", "tidyverse", "torch", "devtools", "assertthat", "here"))
           remotes::install_deps(dependencies = TRUE)
+          torch::install_torch()
         shell: Rscript {0}
       - name: Check
         run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
