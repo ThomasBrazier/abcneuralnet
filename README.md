@@ -39,7 +39,7 @@ So far, `abcneuralnet` is still in development and not available from CRAN.
 You can install the development version with:
 
 ```
-devtools::install_github("ThomasBrazier/abcneuralnet")
+devtools::install_github("https://github.com/ThomasBrazier/abcneuralnet")
 ```
 
 
