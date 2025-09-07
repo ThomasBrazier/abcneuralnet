@@ -16,7 +16,9 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 # library(abcneuralnet)
-devtools::load_all()
+# devtools::load_all()
+devtools::install_github("ThomasBrazier/abcneuralnet")
+library(abcneuralnet)
 library(ggplot2)
 library(torch)
 ```
