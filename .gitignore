@@ -5,7 +5,6 @@ envs/
 inst/extdata/abc_popgen_*
 inst/extdata/*.csv
 inst/extdata/toy_example/
-tests/data
 /doc/
 /Meta/
 .*
