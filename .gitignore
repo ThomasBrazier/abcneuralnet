@@ -2,7 +2,7 @@
 .Rproj.user
 inst/doc
 envs/
-inst/extdata/*.Rds
+inst/extdata/abc_popgen_*
 inst/extdata/*.csv
 inst/extdata/toy_example/
 tests/data
