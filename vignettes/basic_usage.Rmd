@@ -843,7 +843,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 
 ```{r, echo = T, eval = T}
-exp = explain$new(tabnetabc)
+exp = abcneuralnet::explain$new(tabnetabc)
 
 exp$run(data = sumstats.test)
 
