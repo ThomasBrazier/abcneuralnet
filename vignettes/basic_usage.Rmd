@@ -15,12 +15,11 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-# library(abcneuralnet)
-# devtools::load_all()
 devtools::install_github("ThomasBrazier/abcneuralnet")
 library(abcneuralnet)
 library(ggplot2)
 library(torch)
+library(tidyverse)
 ```
 
 
@@ -795,9 +794,9 @@ tabnetabc$fit()
 
 
 ```{r, echo = F, eval=F}
-save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
-
-tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+# 
+# tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
 
