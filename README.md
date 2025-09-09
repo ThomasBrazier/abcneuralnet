@@ -3,7 +3,7 @@
 
 ![license](https://badgen.net/badge/license/GPL-3.0/blue)
 ![release](https://badgen.net/badge/release/0.1.0/blue?icon=github)
-[![rworkflows](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/r.yml/badge.svg)](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/r.yml)
+
 
 
 
