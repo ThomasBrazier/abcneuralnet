@@ -3,7 +3,7 @@
 #'
 #' @description
 #'
-#' This module function allows the used to apply a diverse set of explainability methods on a fitted `abcnn` neural network
+#' This module function allows to apply a diverse set of Feature attribtion methods on a fitted `abcnn` neural network
 #' and a given observed dataset, in order to compute the weight of each summary statistic on predictions.
 #' Summary statistics with the higher weight (or importance) are those contributing the most to the prediction.
 #'

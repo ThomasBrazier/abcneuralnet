@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
+```{r setup, echo = F}
 devtools::install_github("ThomasBrazier/abcneuralnet")
 library(abcneuralnet)
 library(ggplot2)
@@ -509,6 +509,9 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 
 
+
+
+
 ## Train with Tabnet-ABC
 
 ### Normal Toy model
@@ -854,6 +857,57 @@ exp$plot(type = "steps")
 
 
 ## The `explain()` class and methods
+
+
+
+```{r}
+abc_concrete = abcnn$new(theta.train,
+            sumstats.train,
+            sumstats.test[1:1000,],
+            method = 'concrete dropout',
+            scale_input = "minmax",
+            scale_target = "none",
+            epochs = 30,
+            batch_size = 128,
+            l2_weight_decay = 1e-3)
+```
+
+
+
+```{r, eval = T}
+abc_concrete$fit()
+```
+
+
+```{r, echo = F, eval=F}
+# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+# 
+# tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+```
+
+
+
+```{r, echo = T}
+abc_concrete$plot_training()
+```
+
+
+```{r, eval = T}
+abc_concrete$predict()
+```
+
+
+```{r, echo = T, eval = T}
+exp = abcneuralnet::explain$new(abc_concrete)
+
+exp$run(data = sumstats.test,
+        method = "deepLift")
+
+exp$plot()
+
+exp$plot(type = "steps")
+```
+
 
 
 
