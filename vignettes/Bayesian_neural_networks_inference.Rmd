@@ -19,12 +19,12 @@ devtools::install_github("ThomasBrazier/abcneuralnet")
 ```
 
 
-```{r setup, echo = F}
+```{r setup2, echo = F}
 torch::install_torch()
 ```
 
 
-```{r setup2, echo = F}
+```{r setup3, echo = F}
 library(abcneuralnet)
 library(ggplot2)
 library(torch)
