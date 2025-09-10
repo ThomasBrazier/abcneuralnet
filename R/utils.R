@@ -167,11 +167,11 @@ samples_abcnn = function(object) {
                                   "Evaluation",
                                   "Conformal",
                                   "Observed"),
-                       Size = c(nrow(object$sumstat) * (1 - object$validation_split),
+                       Size = c(round(nrow(object$sumstat) * (1 - object$validation_split), digit = 0),
                                 object$test_split,
-                                nrow(object$sumstat) * (1 - object$validation_split) * object$test_split,
+                                round(nrow(object$sumstat) * (1 - object$validation_split) * object$test_split, digit = 0),
                                 object$validation_split,
-                                nrow(object$sumstat) * (object$validation_split),
+                                round(nrow(object$sumstat) * (object$validation_split), digit = 0),
                                 object$num_conformal,
                                 nrow(object$observed)))
 

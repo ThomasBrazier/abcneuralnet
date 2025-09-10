@@ -20,7 +20,18 @@
 #'
 #' @details
 #'
-#' All the methods used in explain are implemented in the `innsight` R package, that is part of the R torch ecosystem.
+#' All the methods used in explain are implemented in the `innsight` R package, that is part of the R torch ecosystem. These methods are:
+#'
+#' - Vanilla Gradient and GradientxInput
+#' - SmoothGrand and SmoothGradxInput
+#' - Integrated Gradients
+#' - Expected Gradients
+#' - Layer-Wise Relevance Propagation (LRP)
+#' - Deep learning important features (DeepLift)
+#' - Deep Shapley additive explanations (DeepSHAP)
+#' - Connection weights method
+#' - Local interpretable model-agnostic explanations (LIME)
+#' - Shapley values (SHAP)
 #'
 #' See `https://bips-hb.github.io/innsight/` for details.
 #'

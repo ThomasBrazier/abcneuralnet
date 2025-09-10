@@ -2,7 +2,7 @@
 title: "Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference"
 output:
   rmarkdown::html_vignette
-vignette: >
+<!-- vignette: > -->
   %\VignetteIndexEntry{model_inference}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
