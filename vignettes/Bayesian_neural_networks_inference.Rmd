@@ -16,8 +16,13 @@ knitr::opts_chunk$set(
 
 ```{r setup, echo = F, eval = F}
 devtools::install_github("ThomasBrazier/abcneuralnet")
+```
+
+
+```{r setup, echo = F}
 torch::install_torch()
 ```
+
 
 ```{r setup2, echo = F}
 library(abcneuralnet)
@@ -908,7 +913,7 @@ abc_concrete$predict()
 exp = explainn$new(abc_concrete)
 
 exp$run(data = sumstats.test,
-        method = "deepLift")
+        method = "deeplift")
 
 exp$plot()
 
