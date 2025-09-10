@@ -846,7 +846,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 
 ```{r, echo = T, eval = T}
-exp = abcneuralnet::explain$new(tabnetabc)
+exp = abcneuralnet::explainn$new(tabnetabc)
 
 exp$run(data = sumstats.test)
 
@@ -856,7 +856,7 @@ exp$plot(type = "steps")
 ```
 
 
-## The `explain()` class and methods
+## The `explainn()` class and methods
 
 
 
@@ -898,7 +898,7 @@ abc_concrete$predict()
 
 
 ```{r, echo = T, eval = T}
-exp = abcneuralnet::explain$new(abc_concrete)
+exp = abcneuralnet::explainn$new(abc_concrete)
 
 exp$run(data = sumstats.test,
         method = "deepLift")

@@ -1,4 +1,4 @@
-#' An `explain` object for feature attribution
+#' An `explainn` object for feature attribution
 #' A R6 class object
 #'
 #' @description
@@ -27,7 +27,7 @@
 #'
 #' @slot converter Stores the `innsight::converter` object
 #'
-#' @slot result stores results of the `explain$run()` method.
+#' @slot result stores results of the `explainn$run()` method.
 #' @slot model_method method of the trained neural network (e.g. "concrete dropout")
 #' @slot variables names of the variables (summary statistics)
 #' @slot parameters names of the parameter to infer
@@ -46,10 +46,10 @@
 #'
 #' @importFrom Rdpack reprompt
 #'
-#' @return an `explain` object
+#' @return an `explainn` object
 #' @export
 #'
-explain = R6::R6Class("explain",
+explainn = R6::R6Class("explainn",
                     public = list(
                       #' @field x an `abcnn` object
                       x = NULL,
@@ -73,7 +73,7 @@ explain = R6::R6Class("explain",
                       input_summary = NULL,
 
                       #' @description
-                      #' Create a new `explain` object
+                      #' Create a new `explainn` object
                       #'
                       #' @param x an `abcnn` model
                       #' @param method the explainability method to use (see `innsight` for details) (defauls is `cw`)
