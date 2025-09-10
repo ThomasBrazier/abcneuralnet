@@ -1,6 +1,7 @@
 ---
 title: "Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{model_inference}
   %\VignetteEngine{knitr::rmarkdown}
@@ -846,7 +847,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 
 ```{r, echo = T, eval = T}
-exp = abcneuralnet::explainn$new(tabnetabc)
+exp = explainn$new(tabnetabc)
 
 exp$run(data = sumstats.test)
 
@@ -898,7 +899,7 @@ abc_concrete$predict()
 
 
 ```{r, echo = T, eval = T}
-exp = abcneuralnet::explainn$new(abc_concrete)
+exp = explainn$new(abc_concrete)
 
 exp$run(data = sumstats.test,
         method = "deepLift")
