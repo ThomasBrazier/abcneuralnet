@@ -59,18 +59,21 @@ Y_obs = XY$Y[(n_train + 1):(n_train + n_obs)]
 theta = data.frame(y1 = Y_train)
 sumstats = data.frame(x1 = X_train)
 observed = data.frame(X1 = X_obs)
-```
 
-
-```{r, echo=F}
-# Save the dataset
 df_concrete = list(X_train = X_train,
                    Y_train = Y_train,
                    X_obs = X_obs,
                    Y_obs = Y_obs)
+```
 
+
+```{r, echo=F, eval = F}
+# Save the dataset
 saveRDS(df_concrete, "../inst/extdata/df_concrete.rds")
+```
 
+
+```{r, echo=F}
 # Load it back
 df_concrete = readRDS("../inst/extdata/df_concrete.rds")
 
@@ -380,14 +383,14 @@ df_observed = data.frame(x1 = data_x1,
 
 observed_x  = df_observed[, c("x1", "x2")]
 observed_y  = df_observed[, c("y1", "y2")]
+
+df_deepensemble = list(df_train = df_train,
+                       df_observed = df_observed)
 ```
 
 
 ```{r, echo = F, eval = F}
 # Save the dataset
-df_deepensemble = list(df_train = df_train,
-                       df_observed = df_observed)
-
 saveRDS(df_deepensemble, "../inst/extdata/df_deepensemble.rds")
 ```
 
