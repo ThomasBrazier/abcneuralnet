@@ -1,0 +1,1051 @@
+---
+title: "Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{parameter_inference}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, echo = F, eval = F}
+devtools::install_github("ThomasBrazier/abcneuralnet")
+```
+
+
+```{r setup2, echo = F}
+torch::install_torch()
+```
+
+
+```{r setup3, echo = F}
+library(abcneuralnet)
+library(ggplot2)
+library(torch)
+library(tidyverse)
+```
+
+
+## Bayesian Neural Network inference
+
+
+### Toy dataset - a simple linear regression problem
+
+
+```{r, echo = T}
+n_train = 2000 # Number of data points
+n_obs = 1000 # Validation size
+
+gen_data_1d = function(n) {
+  sigma = 1
+  X = matrix(rnorm(n))
+  w = 2
+  b = 8
+  Y = matrix(X %*% w + b + sigma * rnorm(n))
+  list(X = X, Y = Y)
+}
+
+XY = gen_data_1d(n_train + n_obs)
+
+X_train = XY$X[1:n_train]
+Y_train = XY$Y[1:n_train]
+
+X_obs = XY$X[(n_train + 1):(n_train + n_obs)]
+Y_obs = XY$Y[(n_train + 1):(n_train + n_obs)]
+
+# Predict Y when X is observed
+theta = data.frame(y1 = Y_train)
+sumstats = data.frame(x1 = X_train)
+observed = data.frame(X1 = X_obs)
+
+df_concrete = list(X_train = X_train,
+                   Y_train = Y_train,
+                   X_obs = X_obs,
+                   Y_obs = Y_obs)
+```
+
+
+```{r, echo=F, eval = F}
+# Save the dataset
+saveRDS(df_concrete, "../inst/extdata/df_concrete.rds")
+```
+
+
+```{r, echo=F}
+# Load it back
+df_concrete = readRDS("../inst/extdata/df_concrete.rds")
+
+X_train = df_concrete$X_train
+Y_train = df_concrete$Y_train
+
+X_obs = df_concrete$X_obs
+Y_obs = df_concrete$Y_obs
+
+theta = data.frame(y1 = Y_train)
+sumstats = data.frame(x1 = X_train)
+observed = data.frame(X1 = X_obs)
+```
+
+
+### Fit a model with `abcnn`
+
+We use a Concrete Dropout regression model described in [ref]. See https://blogs.rstudio.com/ai/posts/2018-11-12-uncertainty_estimates_dropout/ for more details.
+
+
+```{r, echo = T}
+# Init an abcnn object with inputs and targets
+abc = abcnn$new(theta,
+            sumstats,
+            observed,
+            method = 'concrete dropout',
+            scale_input = "none",
+            scale_target = "none",
+            num_hidden_layers = 3,
+            num_hidden_dim = 256,
+            epochs = 30,
+            batch_size = 32,
+            l2_weight_decay = 1e-5)
+```
+
+
+
+```{r, echo = T}
+abc$summary()
+```
+
+The `abcnn` object is a `R6Class` object.
+Modern implementation, OOP
+
+
+For example, the fitted model can be accessed with `abc$model`.
+
+
+The model is trained by calling `abc$fit()`.
+
+
+```{r, echo = T, eval = F}
+# Use the fit() method to train the neural network
+abc$fit()
+```
+
+
+```{r, echo=F}
+# save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
+
+abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
+```
+
+Note that sometimes the heteroscedastic loss value can be negative, but it does not impact the training procedure.
+
+Check model fit.
+
+Plot the training curve. The black horizontal line is the loss computed on the test dataset.
+
+
+```{r, echo = T}
+train_metric = as.numeric(unlist(abc$fitted$records$metrics$train))
+valid_metric = as.numeric(unlist(abc$fitted$records$metrics$valid))
+eval = abc$eval_metrics$value
+
+
+train_eval = data.frame(Epoch = rep(1:length(train_metric), 2),
+                        Metric = c(train_metric, valid_metric),
+                        Mode = c(rep("train", length(train_metric)), rep("validation", length(valid_metric))))
+
+ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
+  geom_point() +
+  geom_line() +
+  xlab("Epoch") + ylab("Loss") +
+  geom_hline(yintercept = eval) +
+  theme_bw()
+```
+
+
+
+```{r, echo = T}
+abc$plot_training()
+```
+
+
+
+
+### Predicting parameters with the Concrete Dropout method
+
+
+After the model is trained, parameter estimates can be predicted with `abc$predict()`.
+
+
+
+```{r, echo = T, eval = F}
+abc$predict()
+```
+
+
+
+Save the `abccn` object with the fitted model and predictions.
+
+
+```{r, echo = T, eval = F}
+save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
+
+abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
+```
+
+
+
+
+Model predictions.
+
+```{r, echo = T, message=F}
+# Return a tidy data frame
+head(abc$predictions())
+```
+
+
+
+Predictions for the test dataset. Here I can plot the true Y value since we used a simulated observed dataset.
+
+
+```{r, echo = T}
+df_predicted = abc$predictions()
+
+df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_uncertainty
+df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_uncertainty
+
+df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
+df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
+
+df_predicted$ci_conformal_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
+df_predicted$ci_conformal_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
+
+df_predicted$ci_conformal_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
+df_predicted$ci_conformal_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
+
+df_predicted$x = X_obs
+df_predicted$y_true = Y_obs
+
+df_training = data.frame(x = X_train,
+                         y = Y_train)
+```
+
+```{r, echo = T}
+ggplot(data = df_training, aes(x = x, y = y)) +
+  geom_point(color = "blue", alpha = 0.3) +
+  # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
+  geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
+  geom_point(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
+  facet_wrap(~ parameter, scales = "free") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_conformal_e_upper, ymax = ci_conformal_e_lower), alpha = 0.4, fill = "purple") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_conformal_upper, ymax = ci_conformal_lower), alpha = 0.3, fill = "green") +
+  theme_bw()
+```
+
+```{r, echo = T}
+ggplot(data = df_training, aes(x = x, y = y)) +
+  geom_point(color = "blue", alpha = 0.3) +
+  # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
+  geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
+  geom_point(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
+  facet_wrap(~ parameter, scales = "free") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_overall_lower, ymax = ci_overall_upper), alpha = 0.3, fill = "red") +
+  geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_e_lower, ymax = ci_e_upper), alpha = 0.3, fill = "red") +
+  theme_bw()
+```
+
+
+Alternatively you can directly use the `plot_prediction()` method.
+
+Uncertainty estimated by the model, epistemic and aleatoric uncertainty. These are not credible intervals, but more a measure of the variance of the data (aleatoric) and the estimates of the model (epistemic).
+
+```{r, echo = T}
+# predicted (+ C.I.) ~ observed
+abc$plot_prediction(uncertainty_type = "uncertainty")
+```
+
+Errorbar representation
+
+```{r, echo = T}
+abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
+```
+
+
+Credible intervals calibrated with conformal prediction
+
+```{r, echo = T}
+abc$plot_prediction(uncertainty_type = "conformal")
+```
+
+
+
+To focus on a single prediction, you can look at the distribution of approximate posterior estimates with predictive mean and credible intervals. Compared with prior distribution.
+
+
+```{r, echo = T}
+abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "conformal") +
+  geom_vline(xintercept = Y_obs[501], color = "red", size = 1.5)
+Y_obs[501]
+abc$predictive_mean$y1[501]
+```
+
+Compare epistemic and aleatoric uncertainties to get interpretability of the model prediction.
+
+
+```{r, echo = T}
+abc$plot_posterior(sample = 700, prior = TRUE, uncertainty_type = "uncertainty") +
+  geom_vline(xintercept = Y_obs[700], color = "red", size = 1.5)
+Y_obs[700]
+abc$predictive_mean$y1[700]
+```
+
+
+## Deep Ensemble
+
+
+### Fit a more complex relationship (a combination of sinus and cosinus functions)
+
+Two parameters to estimate.
+
+Simulate two different functions (sin and cos), with missing data (gaps) and different amounts of random noise in the two parts of the dataset.
+
+```{r, echo = T, eval = F}
+# Parameters of simulated input x
+data_range = 7
+data_step = 0.0005
+
+# Boundaries of the gap in the data range
+bound1 = -2
+bound2 = 2
+
+# Random noise applied on y
+data_sigma1a = 0.1
+data_sigma2a = 0.5
+
+data_sigma1b = 0.2
+data_sigma2b = 0.1
+
+# Number of simulated data points
+# num_data = 10000
+
+# Simulate x1
+data_x1a = seq(-data_range, bound1 + data_step, by = data_step)
+data_x1b = seq(bound2, data_range + data_step, by = data_step)
+# Simulate targets y
+data_y1a = sin(data_x1a) + rnorm(length(data_x1a), 0, data_sigma1a)
+data_y1b = sin(data_x1b) + rnorm(length(data_x1b), 0, data_sigma2a)
+
+# Shift X1 to get X2
+data_x2a = data_x1a + 7
+data_x2b = data_x1b + 7
+# Simulate targets y
+data_y2a = cos(data_x2a) + rnorm(length(data_x2a), 0, data_sigma1b)
+data_y2b = cos(data_x2b) + rnorm(length(data_x2b), 0, data_sigma2b)
+
+df = data.frame(x1 = c(data_x1a, data_x1b),
+                    x2 = c(data_x2a, data_x2b),
+                    y1 = c(data_y1a, data_y1b),
+                    y2 = c(data_y2a, data_y2b))
+
+# Shuffle data
+shuffle_idx = sample(1:(nrow(df)), nrow(df), replace = FALSE)
+df_train = df[shuffle_idx,]
+
+# Train/Test datasets
+# test_ratio = 0.1
+# num_train_data = round(nrow(df) * (1 - test_ratio), digits = 0)
+# num_test_data  = nrow(df) - num_train_data
+# 
+# train_x = df[1:num_train_data, c("x1", "x2")]
+# train_y = df[1:num_train_data, c("y1", "y2")]
+# test_x = df[num_train_data:nrow(df_train), c("x1", "x2")]
+# test_y = df[num_train_data:nrow(df_train), c("y1", "y2")]
+train_x = df_train[, c("x1", "x2")]
+train_y = df_train[, c("y1", "y2")]
+
+
+# Make a pseudo-obseerved dataset with out of distribution data points
+# Simulate x1
+data_x1 = seq(-data_range, data_range, length.out = 1000)
+# Simulate true targets y
+data_y1 = sin(data_x1)
+
+# Shift X1 to get X2
+data_x2 = data_x1 + 7
+# Simulate targets y
+data_y2 = cos(data_x2)
+
+df_observed = data.frame(x1 = data_x1,
+                x2 = data_x2,
+                y1 = data_y1,
+                y2 = data_y2)
+
+
+observed_x  = df_observed[, c("x1", "x2")]
+observed_y  = df_observed[, c("y1", "y2")]
+
+df_deepensemble = list(df_train = df_train,
+                       df_observed = df_observed)
+```
+
+
+```{r, echo = F, eval = F}
+# Save the dataset
+saveRDS(df_deepensemble, "../inst/extdata/df_deepensemble.rds")
+```
+
+```{r, echo = F}
+# Load it back
+df_deepensemble = readRDS("../inst/extdata/df_deepensemble.rds")
+
+df_train = df_deepensemble$df_train
+df_observed = df_deepensemble$df_observed
+
+train_x = df_train[, c("x1", "x2")]
+train_y = df_train[, c("y1", "y2")]
+observed_x  = df_observed[, c("x1", "x2")]
+observed_y  = df_observed[, c("y1", "y2")]
+```
+
+
+
+
+```{r, echo = F}
+# Plot the simulated data
+p1 = ggplot(data = df_train, aes(x = x1, y = y1)) +
+  geom_point(color = "Blue", alpha = 0.2) +
+  geom_line(data = df_observed, aes(x = x1, y = y1), color = "red") +
+  theme_bw()
+
+p2 = ggplot(data = df_train, aes(x = x2, y = y2)) +
+  geom_point(color = "Green", alpha = 0.2) +
+  geom_line(data = df_observed, aes(x = x2, y = y2), color = "red") +
+  theme_bw()
+
+ggpubr::ggarrange(p1, p2, ncol = 2)
+```
+
+
+
+
+### Fit a Deep Ensemble network with two output parameters
+
+
+
+Train five networks with the Deep Ensemble algorithm and adversarial training.
+
+
+
+```{r, echo = T}
+# devtools::load_all()
+# Predict Y when X is observed
+theta = train_y
+sumstats = train_x
+observed = observed_x
+
+abc_ensemble = abcnn$new(theta,
+            sumstats,
+            observed,
+            method = 'deep ensemble',
+            num_networks = 5,
+            scale_input = "minmax",
+            scale_target = "none",
+            epochs = 30,
+            num_hidden_layers = 3,
+            num_hidden_dim = 512,
+            batch_size = 128)
+```
+
+
+```{r, echo = T, eval = F}
+abc_ensemble$fit()
+```
+
+
+```{r, echo = F}
+# save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
+
+abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
+```
+
+
+
+```{r, echo = T}
+abc_ensemble$plot_training()
+```
+
+
+
+
+```{r, echo = F}
+abc_ensemble$predict()
+```
+
+
+
+```{r, echo = F}
+# save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
+
+abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
+```
+
+
+How to read the difference between uncertainty and conformal credible interval?
+
+
+```{r, echo = T}
+abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
+abc_ensemble$plot_prediction(uncertainty_type = "conformal")
+```
+
+
+
+
+```{r, echo = T}
+# Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
+# which(abc$observed < -4 & abc$observed > -5)
+abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
+
+# Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
+# which(abc$observed < 5 & abc$observed > 4)
+abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
+
+# Print a sample with -1 < x1 < 1 (out of training distribution)
+# which(abc$observed < 1 & abc$observed > -1)
+abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
+```
+
+
+
+
+
+
+## Train with Tabnet-ABC
+
+### Normal Toy model
+
+
+```{r, eval=F, echo=F}
+########################################################
+#               Simulation of                          #
+#           a Gaussian toy example                     #
+########################################################
+
+library(mvtnorm) # for multivariate normal distribution
+library(spatstat) # for weighted.quantile function
+library(MCMCpack) # for the inverse gamma distribution
+
+#====================================
+# Homoscedastic Normal toy model
+#====================================
+# Sample size of y
+n = 10
+# Inverse gamma parameters
+alpha = 4
+beta = 3
+# Training set sample size
+N = 10000
+# Test set sample size
+p = 100
+# offset for the out-of-dist data
+offset = 0
+
+homoscedastic_normal = function(alpha = 4,
+                                beta = 3,
+                                n = 10,
+                                N = 10000,
+                                p = 1000,
+                                offset = 0) {
+  # Function to compute quantiles from
+  # student distribution
+  qnst = function(p, deg, loca, scale) {
+    return(loca + scale * qt(p, df = deg))
+  }
+  
+  # Simulation of the ABC reference table
+  
+  set.seed(1) # for reproducibility 
+  
+  # X parameter
+  theta1.train = rep(NA, N)
+  theta2.train = 1 / rgamma(N, shape = alpha, rate = beta)
+  for (i in 1:N) {
+    theta1.train[i] = rnorm(1, 0, sqrt(theta2.train[i]))
+  }
+  
+  # Add offset for out of dist
+  theta2.train = theta2.train + offset
+  theta1.train = theta1.train + offset
+  
+  # Y parameter
+  # n sample cols
+  # n training set rows
+  y.ref = matrix(NA, N, n)
+  for (i in 1:N) {
+    y.ref[i, ] = rnorm(n, theta1.train[i], sqrt(theta2.train[i]))
+  }
+  
+  # Compute some summary statistics 
+  sumstats.train = matrix(NA, N, 3)
+  
+  for (i in 1:N) {
+    sumstats.train[i, ] = c(mean(y.ref[i, ]), var(y.ref[i, ]), mad(y.ref[i, ]))
+  }
+  
+  ref.training = cbind(theta1.train, theta2.train, sumstats.train)
+  colnames(ref.training) = c("theta1", "theta2", "expectation", "variance", "mad")
+  
+  # Simulation of the ABC test table
+  theta1.test = rep(NA, p)
+  
+  theta2.test = 1 / rgamma(p, shape = alpha, rate = beta)
+  for (i in 1:p) {
+    theta1.test[i] = rnorm(1, 0, sqrt(theta2.test[i]))
+  }
+  
+  theta2.test = theta2.test + offset
+  theta1.test = theta1.test + offset
+  
+  y.test = matrix(NA, p, n)
+  
+  for (i in 1:p) {
+    y.test[i, ] = rnorm(n, theta1.test[i], sqrt(theta2.test[i]))
+  }
+  
+  # Compute some summary statistics
+  sumstats.test = matrix(NA, p, 3)
+  
+  for (i in 1:p) {
+    sumstats.test[i, ] =
+      c(mean(y.test[i, ]), var(y.test[i, ]), mad(y.test[i, ]))
+  }
+  
+  ref.testing = cbind(theta1.test, theta2.test, sumstats.test)
+  colnames(ref.testing) = c("theta1", "theta2", "expectation", "variance", "mad")
+  
+  
+  # Compute the exact posterior expectations, variances and quantiles 
+  # for parameters theta1 and theta2
+  theta1.test.exact = rep(NA, p)
+  theta2.test.exact = rep(NA, p)
+  var1.test.exact = rep(NA, p)
+  var2.test.exact = rep(NA, p)
+  quant.theta1.test.freq = matrix(NA, p, 2)
+  quant.theta2.test.freq = matrix(NA, p, 2)
+  
+  for (i in 1:p) {
+    theta1.test.exact[i] = sum(y.test[i, ]) / (n + 1)
+    var1.test.exact[i] =
+      (beta + sum((y.test[i, ] - mean(y.test[i, ])) ^ 2)/2 + n*(mean(y.test[i, ]))^2 / (2*(n+1))  ) /
+      ( (n + 1) * (alpha - 1 + n / 2) )
+    theta2.test.exact[i] =
+      (beta + sum((y.test[i, ] - mean(y.test[i, ])) ^ 2)/2 + n*(mean(y.test[i, ]))^2 / (2*(n+1))  ) / (alpha - 1 + n / 2)
+    var2.test.exact[i] =
+      (beta + sum((y.test[i, ] - mean(y.test[i, ])) ^ 2)/2 + n*(mean(y.test[i, ]))^2 / (2*(n+1))  ) ^ 2 / ((alpha - 1 + n / 2) ^ 2 * (alpha - 2 + n / 2))
+    quant.theta1.test.freq[i, ] =
+      c(qnst(0.025, n + 2 * alpha, sum(y.test[i, ]) / (n + 1), sqrt(2 * (beta + sum((y.test[i, ] - mean(y.test[i, ])) ^ 2)/2 + n*(mean(y.test[i, ]))^2 / (2*(n+1))  ) / ((n + 1) * (n + 2 * alpha) ))),
+        qnst(0.975, n + 2 * alpha, sum(y.test[i, ]) / (n + 1), sqrt(2 * (beta + sum((y.test[i, ] - mean(y.test[i, ])) ^ 2)/2 + n*(mean(y.test[i, ]))^2 / (2*(n+1))  ) / ((n + 1) * (n + 2 * alpha) ))))
+    quant.theta2.test.freq[i, ] = 
+      c(1 / qgamma(0.975, shape = (n + 2 * alpha) / 2, rate = (beta + sum((y.test[i, ] - mean(y.test[i, ])) ^ 2)/2 + n*(mean(y.test[i, ]))^2 / (2*(n+1))  ) ),
+        1 / qgamma(0.025, shape = (n + 2 * alpha) / 2, rate = (beta + sum((y.test[i, ] - mean(y.test[i, ])) ^ 2)/2 + n*(mean(y.test[i, ]))^2 / (2*(n+1))  )) )
+  }
+  
+  test.exact = data.frame(mean.theta1 = theta1.test.exact,
+                          var.theta1 = var1.test.exact,
+                          lower.theta1 = quant.theta1.test.freq[,1],
+                          upper.theta1 = quant.theta1.test.freq[,2],
+                          mean.theta2 = theta2.test.exact,
+                          var.theta2 = var2.test.exact,
+                          lower.theta2 = quant.theta2.test.freq[,1],
+                          upper.theta2 = quant.theta2.test.freq[,2])
+  
+  # Add noise to summary statistics simulated according 
+  # to a uniform(0,1) distribution
+  nNoise = 50 # or 500
+  
+  set.seed(3)  # for reproducibility 
+  
+  sumstats.noise = matrix(runif((N+p) * nNoise), N+p, nNoise) 
+  ref.training = cbind(ref.training, sumstats.noise[1:N, ])
+  ref.testing = cbind(ref.testing, sumstats.noise[(N+1):(N+p), ])
+  
+  colnames(ref.training) =
+    c("theta1", "theta2", "expectation", "variance", "mad", c(1:nNoise))
+  colnames(ref.testing) =
+    c("theta1", "theta2", "expectation", "variance", "mad", c(1:nNoise))
+  
+  # Add some others summary statistics 
+  y = ref.training[, 1:2]
+  x = ref.training[, -c(1:2)]
+  
+  x =cbind(x, x[, 1] + x[, 2], x[, 1] + x[, 3], x[, 2] + x[, 3], x[, 1] + x[, 2] +
+             x[, 3], x[, 1] * x[, 2], x[, 1] * x[, 3], x[, 2] * x[, 3], x[, 1] * x[, 2] *
+             x[, 3])
+  colnames(x) =
+    c("expectation",
+      "variance",
+      "mad",
+      c(1:nNoise),
+      "sum_esp_var",
+      "sum_esp_mad" ,
+      "sum_var_mad",
+      "sum_esp_var_mad",
+      "prod_esp_var",
+      "prod_esp_mad",
+      "prod_var_mad" ,
+      "prod_esp_var_mad")
+  
+  ytest = ref.testing[, 1:2]
+  xtest = ref.testing[, -c(1:2)]
+  
+  xtest =
+    cbind(
+      xtest,
+      xtest[, 1] + xtest[, 2],
+      xtest[, 1] + xtest[, 3],
+      xtest[, 2] + xtest[, 3],
+      xtest[, 1] + xtest[, 2] + xtest[, 3],
+      xtest[, 1] * xtest[, 2],
+      xtest[, 1] * xtest[, 3],
+      xtest[, 2] * xtest[, 3],
+      xtest[, 1] * xtest[, 2] * xtest[, 3]
+    )
+  colnames(xtest) =
+    c("expectation",
+      "variance",
+      "mad",
+      c(1:nNoise),
+      "sum_esp_var",
+      "sum_esp_mad" ,
+      "sum_var_mad",
+      "sum_esp_var_mad",
+      "prod_esp_var",
+      "prod_esp_mad",
+      "prod_var_mad" ,
+      "prod_esp_var_mad")
+  
+  data.theta1 = data.frame(theta1 = y[,1], x)
+  data.theta2 = data.frame(theta2 = y[,2], x)
+  
+  param.Test = data.frame(ytest)
+  
+  colnames(param.Test) = c("theta1", "theta2")
+  
+  stats.Test = data.frame(xtest)
+  
+  colnames(stats.Test) = colnames(x)
+  colnames(param.Test) = colnames(y)
+  
+  return(list(x.train = x,
+              y.train = y,
+              x.test = stats.Test,
+              y.test = param.Test,
+              y.exact = test.exact))
+}
+
+
+dataset = homoscedastic_normal()
+
+saveRDS(dataset, "../inst/extdata/normal_toy_model.Rds")
+```
+
+
+
+```{r, echo = F}
+dataset = readRDS("../inst/extdata/normal_toy_model.Rds")
+```
+
+
+```{r, echo = T}
+# For training
+sumstats.train = as.data.frame(dataset$x.train)
+theta.train = as.data.frame(dataset$y.train)
+
+# Testing
+sumstats.test = dataset$x.test
+theta.test = dataset$y.test
+
+# The exact value to find
+theta.exact = dataset$y.exact
+```
+
+
+```{r, echo = T}
+ggplot(theta.train, aes(x = theta1, y = theta2)) +
+  geom_point() +
+  geom_point(data = theta.test, aes(x = theta1, y = theta2), color = "red", alpha = 0.5)
+
+```
+
+### Fit and predict with Tabnet-ABC
+
+
+```{r}
+tabnetabc = abcnn$new(theta.train,
+            sumstats.train,
+            sumstats.test[1:1000,],
+            method = 'tabnet-abc',
+            scale_input = "normalization",
+            scale_target = "none",
+            epochs = 30,
+            batch_size = 128,
+            l2_weight_decay = 1e-3,
+            tol = 0.1,
+            abc_method = "loclinear")
+
+
+tabnetabc$summary()
+```
+
+
+
+```{r, eval = T}
+tabnetabc$fit()
+```
+
+
+```{r, echo = F, eval=F}
+# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+# 
+# tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+```
+
+
+
+```{r, echo = T}
+tabnetabc$plot_training()
+```
+
+
+```{r, eval = T}
+tabnetabc$predict()
+```
+
+
+```{r, echo = F, eval=F}
+# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+```
+
+
+
+```{r}
+tabnetabc$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
+```
+
+
+```{r, message=F, echo=TRUE}
+tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
+```
+
+
+```{r, message=F, echo=TRUE}
+df = tabnetabc$predictions() %>%
+  filter(parameter == "theta1")
+
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), fill = "lightgrey", alpha = 0.5) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_bw()
+```
+
+
+
+```{r, echo = T, eval = T}
+exp = explainn$new(tabnetabc)
+
+exp$run(data = sumstats.test)
+
+exp$plot()
+
+exp$plot(type = "steps")
+```
+
+
+## The `explainn()` class and methods
+
+
+
+```{r}
+abc_concrete = abcnn$new(theta.train,
+            sumstats.train,
+            sumstats.test[1:1000,],
+            method = 'concrete dropout',
+            scale_input = "minmax",
+            scale_target = "none",
+            epochs = 30,
+            batch_size = 128,
+            l2_weight_decay = 1e-3)
+```
+
+
+
+```{r, eval = T}
+abc_concrete$fit()
+```
+
+
+```{r, echo = F, eval=F}
+# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+# 
+# tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+```
+
+
+
+```{r, echo = T}
+abc_concrete$plot_training()
+```
+
+
+```{r, eval = T}
+abc_concrete$predict()
+```
+
+
+```{r, echo = T, eval = T}
+exp = explainn$new(abc_concrete)
+
+exp$run(data = sumstats.test,
+        method = "deeplift")
+
+exp$plot()
+
+exp$plot(type = "steps")
+```
+
+
+
+
+
+
+## FAQ - How to train your model?
+
+
+
+*1. How should I begin?*
+
+
+First of all, the same procedures and guidelines as for any neural network apply to the methods implemented in ABCNN (se the book **Hands-on machine learning with Scikit-Learn, Keras, and TensorFlow** from Aurélien Géron, for example). For example, I advise you to try a smaller/simpler model to begin with (around 3-5 hidden layers and between 100 and 500 neurons per layer max), on a reduced dataset (10,000 - 100,000 samples), to check first how it behave with your data (see the point 3). A small training set will allow you to rapidly explore the hyperparameter space. Then, once you have found a model learning well, you can increase the training dataset and adjust accordingly the hyperparameters to scale up.
+
+
+Feel free to contact me for any questions and comments on your usage of the package (post your issues). I will do my best to document any troubleshooting encountered and to address bugs. This package is under continuous development and improvements.
+ 
+ 
+
+*2. Which method should I choose?*
+
+
+
+Bayesian neural networks have some specificity to account for that are described in more details below. 
+For the `Concrete Dropout` and `Deep Ensemble` methods, it can be more difficult for the model to learn than for a regular neural network, due to the variance component that is co-estimated with the mean prediction. However, this variance component is also what make these two models the most interesting ones in a Bayesian framework. You can estimate the uncertainty of your model (epistemic), the variance in the data (aleatoric) and you know when the model don't know, all of these being are powerful features to evaluate the performance and quality of your model. I think it justifies the slightly lower performance of this models compared to regular neural networks.
+
+
+
+The `Monte Carlo dropout` and `Tabnet-ABC` methods do not suffer from this 'variance' issue, and they should behave similarly to regular neural networks. The `Monte Carlo dropout`  method is a simple approach, not the most performant one, and lacks interpretability (only the epistemic uncertainty is estimated), but it is useful to rapidly test some hypothesis, because it is easier to train. The `Tabnet-ABC` is similar to the approach described in Åkesson et al. (2022), but the CNN is replaced by a Transformer Neural network more performant with tabular data. A neural network is used to estimate the summary statistics, and the estimates are then used as summary statistics in a classical ABC procedure. Hence the Bayesian part is performed only by the ABC procedure (`abc` package) and not integrated in the neural network. The `Tabnet` neural network is a very efficient architecture to process tabular data (as the reference table in ABC) and has a built-in Attention map for feature importance. `Tabnet-ABC` is a good choice if you have trouble to use `Concrete Dropout` and `Deep Ensemble`, or if you want to stay as close as possible to the ABC framework.
+
+
+
+*3. Should I transform the input data?*
+
+For Neural Networks, pre-processing and scaling the input data is crucial to achieve correct performances. It is even more true with Bayesian Neural Network, as differences in scales between variables can have even more dramatic effects on the variance than the mean. If your model is not learning well or have an unexpected behavior, I advise you to think about the nature of your data and try to find an appropriate scaling function. Scaling the data is very easy, as scaling both the input and target data is directly implemented in the package, through the `scale_input` and `scale_target` arguments. You can choose the `minmax`, `robustscaler` or `normalization` scaling methods, or just `none` if you don't want scaling. Usually `minmax` and `robustscaler` perform well. For the scaling, the scale function learns its parameters on the training set only to avoid data leakage. If you choose to scale the target too (for example if your target is a mix of rates and continuous values), the predictions are transformed back to the original scale.
+
+
+
+*4. How do I evaluate the performance and quality of my model?*
+
+To evaluate the training of your model (how well it learned), the best approach is simply to look at the learning curves. I will not detail how to interpret these curves, there is a lot of literature about it and it is the same for every neural network. See for example [this post](https://rstudio-conf-2020.github.io/dl-keras-tf/notebooks/learning-curve-diagnostics.nb.html). The package offers all the necessary information to evaluate the learning curve, with three independent training, validation and evaluation sets.
+
+
+Once your model passes the learning curve diagnostic, you can dig deeper into model validation, by checking and comparing the epistemic and aleatoric uncertainties. The raw epistemic and aleatoric uncertainties provide a particularly useful insight into the performance of the model across samples. It allows you to detect regions where the predictions are accurate with a high confidence (low epistemic uncertainty), and regions where the model don't know, therefore predictions are unreliable. Generally, the epistemic uncertainty is high where you have only few data point and out of the training distribution. It also allows you to evaluate if your performance relies more on the model (epistemic) or on the data (aleatoric). Note that the model performance can be improved with more data, while aleatoric uncertainty cannot be improved with more data, since it measure the random noise in the data. The comparison between the aleatoric and epistemic uncertainties is informative: in general the epistemic uncertainty should be much lower than the aleatoric. If the epistemic uncertainty is similar of higher than the aleatoric, then it means than your model didn't learn from the data.
+
+
+
+For a publication or communicating about the results, the Conformal Credible Interval is more relevant than the raw uncertainty, as it is calibrated to guarantees a certain significance threshold (by default it is the 95% C.I.). Its interpretation is similar to [Bayesian Credible Intervals](https://en.wikipedia.org/wiki/Credible_interval).
+
+
+
+Leverage the multi-output feature -> predict on a simulated test set alongside the observed dataset
+You can design your own evaluation procedure and metric to assess the performance of the model
+
+
+Feature importance/selection
+
+
+*5. Which type of uncertainty do I look at?*
+
+
+
+
+*5. How do I choose the hyperparameters of the model?*
+
+Stick to simple, widely-used standard values. Train simpler models for test purpose, before running larger models in production. Beware than larger models can sometimes require adjustments for the learning hyperparameters (learning rate, batch size), as larger sample sizes also have effects on overfitting and on the variance that is estimated by the model. Larger sample sizes affect the epistemic uncertainty, the uncertainty of the model, while the aleatoric uncertainty, the uncertainty of the data itself, should not be much affected.
+
+
+The number of hidden layers and hidden dimensions (number of neurons) are important to efficiently capture complex non-linear relationships between input and output features. Yet the most critical hyperparameters are those related to the training procedure, such as the learning rate, the batch size or the L2 weight decay (see below for details).
+
+
+*6. What to do if my model has difficulties to learn?*
+
+Bayesian neural nets can sometimes be harder to train than regular neural nets
+In concrete dropout, dropout is used at prediction time to approximate the Bayesian posterior, hence it is not efficiently used as regularization during training. This is something on which I am still working on. For example, you can use the early stopping callback to stop the training as soon as a good level of performance is achieved, before overfitting.
+Tests with smaller training sets
+Reduce model complexity
+Reduces learning rate (slower learning), larger batch size, larger L2 weigths decay for regularization
+Beware that a batch size too high or a learning rate too slow could prevent an efficient learning. As always with Neural Network, there is a significant part of engineering to find a good model, that require some steps of trial/error.
+
+Improving gradient stability and convergence is a next step towards a more user-friendly application.
+
+More specifically:
+
+*6a. Very large epistemic error but the aleatoric/overall is fine?*
+
+Sign of overfitting, happens especially with training set with a large number of samples, counter-intuitive
+Increase batch size. Smoothening effect.
+Reduce L2 weight decay and learning rate?
+
+
+*6b. Huge loss and/or NaN output values during training?*
+
+The model fails during the training step, due to an explosion of the loss value.
+This is something that can happen with the methods concrete dropout and deep ensemble, because the variance component is co-estimated in the model. It usually tells you that the model has difficulties to learn due to high variance in the samples or too much complexity in the model, leading to very large loss values, then returning NaN/NA values at the next training step.
+Reduce the learning rate, increase the batch size, reduce model complexity
+
+
+
+*7. I used conformal prediction, by my C.I. coverage is different from the one expected*
+
+Calibration with conformal prediction guarantees a coverage at least equal or superior to the expected. For many reasons the coverage can be higher than expected.
+
+
+More samples in conformal prediction
+
+The performance of the model is limited, hence a more conservative CI
+
+
+
+
+
+*8. How much time, memory and CPU/GPU do I need?*
+
+
+Torch can leverage CUDA
+
+
+For faster training, increase batch size, use early stopping
+
+
+## References
+
+Åkesson, M., Singh, P., Wrede, F., and Hellander, A. (2022). Convolutional Neural Networks as Summary Statistics for Approximate Bayesian Computation. IEEE/ACM Transactions on Computational Biology and Bioinformatics 19 (6): 3353‑65. https://doi.org/10.1109/TCBB.2021.3108695.
+
+
+Géron, A. (2022). Hands-on machine learning with Scikit-Learn, Keras, and TensorFlow. " O'Reilly Media, Inc.".
+
+
