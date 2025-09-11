@@ -19,8 +19,9 @@ devtools::install_github("ThomasBrazier/abcneuralnet")
 ```
 
 
-```{r setup2, echo = F}
+```{r setup2, echo = F, eval = F}
 torch::install_torch()
+# After installing torch CUDA dependencies, session must be reloaded
 ```
 
 
@@ -107,7 +108,7 @@ abc = abcnn$new(theta,
             scale_input = "none",
             scale_target = "none",
             num_hidden_layers = 3,
-            num_hidden_dim = 256,
+            num_hidden_dim = 128,
             epochs = 30,
             batch_size = 32,
             l2_weight_decay = 1e-5)
@@ -148,7 +149,7 @@ Check model fit.
 Plot the training curve. The black horizontal line is the loss computed on the test dataset.
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 train_metric = as.numeric(unlist(abc$fitted$records$metrics$train))
 valid_metric = as.numeric(unlist(abc$fitted$records$metrics$valid))
 eval = abc$eval_metrics$value
@@ -168,7 +169,7 @@ ggplot(train_eval, aes(x = Epoch, y = Metric, color = Mode, fill = Mode)) +
 
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc$plot_training()
 ```
 
@@ -234,7 +235,7 @@ df_training = data.frame(x = X_train,
                          y = Y_train)
 ```
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 ggplot(data = df_training, aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
@@ -246,7 +247,7 @@ ggplot(data = df_training, aes(x = x, y = y)) +
   theme_bw()
 ```
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 ggplot(data = df_training, aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
@@ -263,21 +264,21 @@ Alternatively you can directly use the `plot_prediction()` method.
 
 Uncertainty estimated by the model, epistemic and aleatoric uncertainty. These are not credible intervals, but more a measure of the variance of the data (aleatoric) and the estimates of the model (epistemic).
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 # predicted (+ C.I.) ~ observed
 abc$plot_prediction(uncertainty_type = "uncertainty")
 ```
 
 Errorbar representation
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
 ```
 
 
 Credible intervals calibrated with conformal prediction
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc$plot_prediction(uncertainty_type = "conformal")
 ```
 
@@ -286,7 +287,7 @@ abc$plot_prediction(uncertainty_type = "conformal")
 To focus on a single prediction, you can look at the distribution of approximate posterior estimates with predictive mean and credible intervals. Compared with prior distribution.
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "conformal") +
   geom_vline(xintercept = Y_obs[501], color = "red", size = 1.5)
 Y_obs[501]
@@ -296,7 +297,7 @@ abc$predictive_mean$y1[501]
 Compare epistemic and aleatoric uncertainties to get interpretability of the model prediction.
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc$plot_posterior(sample = 700, prior = TRUE, uncertainty_type = "uncertainty") +
   geom_vline(xintercept = Y_obs[700], color = "red", size = 1.5)
 Y_obs[700]
@@ -414,7 +415,7 @@ observed_y  = df_observed[, c("y1", "y2")]
 
 
 
-```{r, echo = F}
+```{r, echo = F, fig.height = 4, fig.width = 6, fig.align="center"}
 # Plot the simulated data
 p1 = ggplot(data = df_train, aes(x = x1, y = y1)) +
   geom_point(color = "Blue", alpha = 0.2) +
@@ -474,7 +475,7 @@ abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
 
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc_ensemble$plot_training()
 ```
 
@@ -497,8 +498,13 @@ abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
 How to read the difference between uncertainty and conformal credible interval?
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
+```
+
+
+
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc_ensemble$plot_prediction(uncertainty_type = "conformal")
 ```
 
@@ -509,11 +515,15 @@ abc_ensemble$plot_prediction(uncertainty_type = "conformal")
 # Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
 # which(abc$observed < -4 & abc$observed > -5)
 abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
+```
 
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 # Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
 # which(abc$observed < 5 & abc$observed > 4)
 abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
+```
 
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 # Print a sample with -1 < x1 < 1 (out of training distribution)
 # which(abc$observed < 1 & abc$observed > -1)
 abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
@@ -774,7 +784,7 @@ theta.exact = dataset$y.exact
 ```
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 ggplot(theta.train, aes(x = theta1, y = theta2)) +
   geom_point() +
   geom_point(data = theta.test, aes(x = theta1, y = theta2), color = "red", alpha = 0.5)
@@ -789,7 +799,7 @@ tabnetabc = abcnn$new(theta.train,
             sumstats.train,
             sumstats.test[1:1000,],
             method = 'tabnet-abc',
-            scale_input = "normalization",
+            scale_input = "none",
             scale_target = "none",
             epochs = 30,
             batch_size = 128,
@@ -816,7 +826,7 @@ tabnetabc$fit()
 
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 tabnetabc$plot_training()
 ```
 
@@ -832,17 +842,17 @@ tabnetabc$predict()
 
 
 
-```{r}
+```{r, fig.height = 4, fig.width = 6, fig.align="center"}
 tabnetabc$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
 ```
 
 
-```{r, message=F, echo=TRUE}
+```{r, message=F, echo=TRUE, fig.height = 4, fig.width = 6, fig.align="center"}
 tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
 ```
 
 
-```{r, message=F, echo=TRUE}
+```{r, message=F, echo=TRUE, fig.height = 4, fig.width = 6, fig.align="center"}
 df = tabnetabc$predictions() %>%
   filter(parameter == "theta1")
 
@@ -861,9 +871,13 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 exp = explainn$new(tabnetabc)
 
 exp$run(data = sumstats.test)
+```
 
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 exp$plot()
+```
 
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 exp$plot(type = "steps")
 ```
 
@@ -899,7 +913,7 @@ abc_concrete$fit()
 
 
 
-```{r, echo = T}
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 abc_concrete$plot_training()
 ```
 
@@ -914,9 +928,14 @@ exp = explainn$new(abc_concrete)
 
 exp$run(data = sumstats.test,
         method = "deeplift")
+```
 
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 exp$plot()
+```
 
+
+```{r, echo = T, fig.height = 4, fig.width = 6, fig.align="center"}
 exp$plot(type = "steps")
 ```
 
