@@ -50,9 +50,10 @@ You can see a detailed example on how to use the `abcneuralnet` package in the v
 ```
 library(abcneuralnet) 
 
-abc = abcnn$new(theta,
-            sumstats,
-            observed,
+# Initialize an acbnn R6 object
+abc = abcnn$new(parameters_training_sims,
+            sumstats_training_sims,
+            sumstats_observed,
             method = 'concrete dropout',
             scale_input = "none",
             scale_target = "none",
@@ -62,11 +63,17 @@ abc = abcnn$new(theta,
             batch_size = 32,
             l2_weight_decay = 1e-5)
             
+# Fit the neural network
 abc$fit()
+# Assess training quality
 abc$plot_training()
 
+# Predict on observed summary statistics
 abc$predict()
+# Plot the predictions
 abc$plot_prediction()
+# Plot the posterior for a single sample
+abc$plot_posterior()
 ```
 
 
