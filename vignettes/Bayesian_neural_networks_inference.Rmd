@@ -15,13 +15,15 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup, echo = F, eval = F}
+# Install ABCNeuralNet
 devtools::install_github("ThomasBrazier/abcneuralnet")
 ```
 
 
 ```{r setup2, echo = F, eval = F}
+# Install C++ dependencies of torch (e.g. CUDA, lantern)
 torch::install_torch()
-# After installing torch CUDA dependencies, session must be reloaded
+# After installing torch CUDA dependencies, the R session must be reloaded
 ```
 
 
@@ -35,10 +37,10 @@ library(tidyverse)
 
 ## Bayesian Neural Network inference
 
-Throughout this tutorial, I will use the three core methods developped in `ABCNeuralNet`, sepcifically Concrete Dropout, Deep Ensemble and Tabnet-ABC. I will use simple toy models to show how to initialize an `abcnn` object, then fit, predict on test and observed samples, evaluate the performance of the trained neural network and of the predictions on observed data.
+Throughout this tutorial, I will use the three core methods developed in `ABCNeuralNet`, sepcifically Concrete Dropout, Deep Ensemble and Tabnet-ABC. I will use simple toy models to show how to initialize an `abcnn` object, then fit, predict on test and observed samples, evaluate the performance of the trained neural network and of the predictions on observed data.
 
 
-ABCNeuralNet uses the `torch` R package, which is a very efficient implementation leveraging the Torch C++ library, and providing codes and functions very similar to the PyTorch framework. Neural networks are fitted with the `luz` R package. If you are beginners with `torch` in R and want to know more, I strongly encourage you to read the book [Deep Learning and Scientific Computing with R torch](https://skeydan.github.io/Deep-Learning-and-Scientific-Computing-with-R-torch/) by Sigrid Keydana, in open access.
+ABCNeuralNet uses the `torch` R package, which is a very efficient implementation leveraging the Torch C++ library, and providing codes and functions very similar to the PyTorch framework. Neural networks are fitted with the `luz` R package. If you are beginners with `torch` in R and want to know more, I strongly encourage you to read the book ['Deep Learning and Scientific Computing with R torch'](https://skeydan.github.io/Deep-Learning-and-Scientific-Computing-with-R-torch/) by Sigrid Keydana, in open access.
 
 
 
@@ -143,10 +145,11 @@ abc = abcnn$new(theta,
             scale_input = "none",
             scale_target = "none",
             num_hidden_layers = 3,
-            num_hidden_dim = 128,
+            num_hidden_dim = 256,
             epochs = 30,
             batch_size = 32,
-            l2_weight_decay = 1e-5)
+            l2_weight_decay = 1e-5,
+            learning_rate = 1e-4)
 ```
 
 
@@ -176,11 +179,11 @@ abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
 ```
 
 
-The `abcnn` object is a `R6Class` object, providing a modern Object-Oriented Programming (OOP) approach. All the settings and data of an `abcnn` object can be accessed in public slots. For example, the `torch` model can be accessed with `abcnn$model`, and the `luz` fitted model can be accessed with `abcnn$fitted`.
+The `abcnn` object is a `R6Class` object, providing a modern Object-Oriented Programming (OOP) approach. All the settings and data of an `abcnn` object can be accessed in public slots. For example, the `torch` model can be accessed with `abcnn$fitted$model`, and the `luz` fitted model can be accessed with `abcnn$fitted`.
 
 ```{r, echo = T}
 # The torch model
-abc$model
+abc$fitted$model
 
 # The luz fitted model
 abc$fitted
@@ -200,7 +203,7 @@ Check model fit.
 
 
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="The training curve of the neural network across 30 epochs, computed on training data split in two partitions: training and validation. The black horizontal line is the loss computed on the evaluation dataset at the end of the training procedure.}
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="The training curve of the neural network across 30 epochs, computed on training data split in three partitions: training, validation (also called testing) and evaluation. Training and validation are computed at the end of each epoch. The black horizontal line is the loss computed on the evaluation dataset at the end of the training procedure."}
 train_metric = as.numeric(unlist(abc$fitted$records$metrics$train))
 valid_metric = as.numeric(unlist(abc$fitted$records$metrics$valid))
 eval = abc$eval_metrics$value
@@ -286,7 +289,7 @@ df_training = data.frame(x = X_train,
                          y = Y_train)
 ```
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the 95% Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the 95% Conformal Credible Interval based on the overall unvertainty."}
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the Conformal Credible Interval based on the overall unvertainty."}
 ggplot(data = df_training, aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
@@ -303,7 +306,7 @@ There are different Credible Intervals and uncertainty measures provided. I reco
 
 
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center, fig.cap="Predictions as a function of simulated parameter. The epistemic uncertainty (red) and aleatoric uncertainty (blue) were estimated with Concrete Dropout (as in Gal et 2016).}
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameters. The epistemic uncertainty (red) and aleatoric uncertainty (blue) were estimated with Concrete Dropout (Gal et 2016)."}
 ggplot(data = df_training, aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
