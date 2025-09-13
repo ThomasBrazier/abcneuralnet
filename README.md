@@ -26,6 +26,8 @@ See the mlverse [Torch](https://torch.mlverse.org/docs/articles/installation) do
 ```
 install.packages("torch")
 library(torch) # Will install all libraries necessary (lantern, torch)
+# Alternatively, to install C/C++ dependencies
+torch::install_torch()
 
 # Check if CUDA installed
 cuda_is_available()
