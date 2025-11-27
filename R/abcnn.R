@@ -272,6 +272,8 @@ abcnn = R6::R6Class("abcnn",
     #' @field abc_method `abc` method for `tabnet-abc`
     abc_method=NULL,
     #' @field num_posterior_samples number of posterior samples to generate in `monte carlo dropout` and `concrete dropout`
+    abc_keep_original_sumstats=NULL,
+    #' @field abc_keep_original_sumstats (logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE)
     num_posterior_samples=1000,
     #' @field prior_length_scale hyperparameter for `concrete dropout`
     prior_length_scale=1e-4,
@@ -376,6 +378,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param loss `torch` nn loss function
     #' @param abc_method ABC sampling method in `abc` function (only for `tabnet-abc`)
     #' @param tol tolerance rate for `abc` functions (only for `tabnet-abc`)
+    #' @param abc_keep_original_sumstats (logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value)
     #' @param num_posterior_samples number of samples to generate for the posterior distribution
     #' @param prior_length_scale prior length scale hyperparameter value
     #' @param weight_regularizer `concrete dropout` regularization term for weights
@@ -410,6 +413,7 @@ abcnn = R6::R6Class("abcnn",
                           loss=torch::nn_mse_loss(),
                           abc_method="loclinear",
                           tol=NULL,
+                          abc_keep_original_sumstats = FALSE,
                           num_posterior_samples=1000,
                           prior_length_scale=1e-4,
                           weight_regularizer = 1e-6,
@@ -466,6 +470,7 @@ abcnn = R6::R6Class("abcnn",
       self$optimizer=optimizer
       self$loss=loss
       self$tol=tol
+      self$abc_keep_original_sumstats=abc_keep_original_sumstats
       self$abc_method=abc_method
       self$num_posterior_samples=num_posterior_samples
       self$l2_weight_decay
@@ -751,13 +756,16 @@ abcnn = R6::R6Class("abcnn",
         self$n_obs = nrow(data)
       }
 
-      if (self$method == "tabnet-abc") {
-        observed = torch::torch_tensor(as.matrix(self$observed), device = self$device)
-      } else {
-        observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
-      }
+      # if (self$method == "tabnet-abc") {
+      #   # Keep unscaled input sum stats for tabnet? They are not used in Tabnet-ABC.
+      #   observed = torch::torch_tensor(as.matrix(self$observed), device = self$device)
+      # } else {
+      #   observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
+      # }
 
-      if (self$verbose) {print(paste0("Making predictions with ", nrow(observed), " samples."))}
+      observed = torch::torch_tensor(as.matrix(self$observed_adj), device = self$device)
+
+      if (self$verbose) {print(paste0("Predictions with ", nrow(observed), " samples."))}
 
       if (is.null(self$fitted)) {
         warning("The model has not been fitted. NAs returned.")
@@ -768,8 +776,15 @@ abcnn = R6::R6Class("abcnn",
           tabnet_train = predict(self$fitted, self$sumstat_adj)
           tabnet_observed = predict(self$fitted, self$observed_adj)
 
-          new_sumstats_train = cbind(tabnet_train, self$sumstat_adj)
-          new_sumstats_observed = cbind(tabnet_observed, self$observed_adj)
+          # Whether to keep merge new sumstats with the original ones
+          # Or just keep the new ones
+          if (isTRUE(self$abc_keep_original_sumstats)) {
+            new_sumstats_train = cbind(tabnet_train, self$sumstat_adj)
+            new_sumstats_observed = cbind(tabnet_observed, self$observed_adj)
+          } else {
+            new_sumstats_train = tabnet_train
+            new_sumstats_observed = tabnet_observed
+          }
 
           self$num_posterior_samples = nrow(new_sumstats_train) * self$tol
           nsamples = nrow(self$observed_adj)

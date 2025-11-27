@@ -857,10 +857,11 @@ tabnetabc = abcnn$new(theta.train,
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 30,
+            epochs = 40,
             batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
+            abc_keep_original_sumstats = FALSE,
             abc_method = "loclinear")
 
 
@@ -941,6 +942,10 @@ exp$plot(type = "steps")
 ## The `explainn()` class and methods
 
 
+[https://bips-hb.github.io/innsight/](innsight R package)
+
+
+
 
 ```{r}
 abc_concrete = abcnn$new(theta.train,
@@ -962,9 +967,9 @@ abc_concrete$fit()
 
 
 ```{r, echo = F, eval=F}
-# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+# save_abcnn(abc_concrete, prefix = "../inst/extdata/abc_concrete_explain")
 # 
-# tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+# abc_concrete = load_abcnn(prefix = "../inst/extdata/abc_concrete_explain")
 ```
 
 
@@ -1007,10 +1012,37 @@ exp$plot(type = "steps")
 *1. How should I begin?*
 
 
-First of all, the same procedures and guidelines as for any neural network apply to the methods implemented in ABCNN (se the book **Hands-on machine learning with Scikit-Learn, Keras, and TensorFlow** from Aurélien Géron, for example). For example, I advise you to try a smaller/simpler model to begin with (around 3-5 hidden layers and between 100 and 500 neurons per layer max), on a reduced dataset (10,000 - 100,000 samples), to check first how it behave with your data (see the point 3). A small training set will allow you to rapidly explore the hyperparameter space. Then, once you have found a model learning well, you can increase the training dataset and adjust accordingly the hyperparameters to scale up.
+There is a common procedure and guidelines that apply to every neural network. `abcneuralnet` propose a simple straightforward workflow and allows hyperparameter tuning. If you are not familar with Neural Networks, I recommend the book **Hands-on machine learning with Scikit-Learn, Keras, and TensorFlow** from Aurélien Géron, or this free online book [https://skeydan.github.io/Deep-Learning-and-Scientific-Computing-with-R-torch/](Deep Learning and Scientific Computing with R torch) as a good introduction to the Torch ecosystem in R. See also the documentation at [https://torch.mlverse.org/](torch for R).
 
 
-Feel free to contact me for any questions and comments on your usage of the package (post your issues). I will do my best to document any troubleshooting encountered and to address bugs. This package is under continuous development and improvements.
+Here's a concise overview of the gold standard workflow to train a Neural Network:
+
+
+
+1. Training. Define your data and model architecture with `abcnn$new()`. Call `abcnn$fit()` on your model. All is very user-friendly, `torch` and `luz` handle batching, backpropagation, and optimization automatically, as well as handling the device (cpu or CUDA gpu).
+
+
+
+2. Validation. During training, `luz` evaluates the performance of the model on a separate validation dataset on this validation set every epoch to monitor overfitting and generalization.
+
+
+
+3. Testing. After training, evaluate the trained model on an unseen test set. With ABCNeuralNet, you can leverage the multi-output feature and pass a test set (a simulated dataset with known truth) along with the observed data. Use `abcnn$predict()` method to get predictions on both the test set and the observed set, and calculate metrics on the test set.
+
+
+
+4. Diagnostics. Check training and validation loss curves with `abcnn$plot_training()` to monitor under/overfitting. Check the relationship between predicted and true values on the test set. This flexibility of passing a test set directly to the `abcnn$predict()` method allows to optionally implement custom metrics for deeper insight.
+
+
+
+5. Iteratively improve the model. Adjust hyperparameters or model architecture based on diagnostics, and re-train.
+
+
+
+At first, I advise to train a smaller/simpler model (around 3-5 hidden layers and between 100 and 500 neurons per layer max), on a reduced dataset (10,000 - 100,000 samples), to check first how it behaves with your dataset. A small training set will allow you to rapidly explore the hyperparameter space. Then, once you have found a model learning well, you can increase the training dataset and adjust accordingly the hyperparameters to scale up (usually batch size and learning rates have to be adjusted to account for overfitting when the sample size increases, see Table 1 for details on hyperparameters).
+
+
+It is important that you feel free to contact me for any questions and comments on your usage of the package (post your issues). I will do my best to document any troubleshooting encountered and to address bugs. This package is under continuous development and improvements.
  
  
 
@@ -1022,8 +1054,32 @@ Bayesian neural networks have some specificity to account for that are described
 For the `Concrete Dropout` and `Deep Ensemble` methods, it can be more difficult for the model to learn than for a regular neural network, due to the variance component that is co-estimated with the mean prediction. However, this variance component is also what make these two models the most interesting ones in a Bayesian framework. You can estimate the uncertainty of your model (epistemic), the variance in the data (aleatoric) and you know when the model don't know, all of these being are powerful features to evaluate the performance and quality of your model. I think it justifies the slightly lower performance of this models compared to regular neural networks.
 
 
+It also means that if your training set (simulations) is not informative or your model is not appropriate to the observed data, the neural network will explicitly tell you that he is not able to learn: the learning will fail, with a loss function weakly decreasing across epochs, or a huge stochastic variation in loss values among epochs (that is why checking the training curve is crucial). Even if learning succeeds, a poorly specified model or non-informative simulations would only produce drastically large uncertainty values and Credible Intervals.
+
+
 
 The `Monte Carlo dropout` and `Tabnet-ABC` methods do not suffer from this 'variance' issue, and they should behave similarly to regular neural networks. The `Monte Carlo dropout`  method is a simple approach, not the most performant one, and lacks interpretability (only the epistemic uncertainty is estimated), but it is useful to rapidly test some hypothesis, because it is easier to train. The `Tabnet-ABC` is similar to the approach described in Åkesson et al. (2022), but the CNN is replaced by a Transformer Neural network more performant with tabular data. A neural network is used to estimate the summary statistics, and the estimates are then used as summary statistics in a classical ABC procedure. Hence the Bayesian part is performed only by the ABC procedure (`abc` package) and not integrated in the neural network. The `Tabnet` neural network is a very efficient architecture to process tabular data (as the reference table in ABC) and has a built-in Attention map for feature importance. `Tabnet-ABC` is a good choice if you have trouble to use `Concrete Dropout` and `Deep Ensemble`, or if you want to stay as close as possible to the ABC framework.
+
+
+
+
+```{r, echo=F}
+methods_table = data.frame(Method = c("",
+                                      "",
+                                      "",
+                                      ""),
+                        Advantages = c("",
+                                      "",
+                                      "",
+                                      ""),
+                        Limitations = c("",
+                                      "",
+                                      "",
+                                      ""))
+
+  
+knitr::kable(methods_table, caption = "Summary of the methods in abcnn with their advantages and limitations.")
+```
 
 
 
@@ -1038,6 +1094,11 @@ For Neural Networks, pre-processing and scaling the input data is crucial to ach
 To evaluate the training of your model (how well it learned), the best approach is simply to look at the learning curves. I will not detail how to interpret these curves, there is a lot of literature about it and it is the same for every neural network. See for example [this post](https://rstudio-conf-2020.github.io/dl-keras-tf/notebooks/learning-curve-diagnostics.nb.html). The package offers all the necessary information to evaluate the learning curve, with three independent training, validation and evaluation sets.
 
 
+
+*5. Which type of uncertainty do I look at?*
+
+
+
 Once your model passes the learning curve diagnostic, you can dig deeper into model validation, by checking and comparing the epistemic and aleatoric uncertainties. The raw epistemic and aleatoric uncertainties provide a particularly useful insight into the performance of the model across samples. It allows you to detect regions where the predictions are accurate with a high confidence (low epistemic uncertainty), and regions where the model don't know, therefore predictions are unreliable. Generally, the epistemic uncertainty is high where you have only few data point and out of the training distribution. It also allows you to evaluate if your performance relies more on the model (epistemic) or on the data (aleatoric). Note that the model performance can be improved with more data, while aleatoric uncertainty cannot be improved with more data, since it measure the random noise in the data. The comparison between the aleatoric and epistemic uncertainties is informative: in general the epistemic uncertainty should be much lower than the aleatoric. If the epistemic uncertainty is similar of higher than the aleatoric, then it means than your model didn't learn from the data.
 
 
@@ -1046,27 +1107,49 @@ For a publication or communicating about the results, the Conformal Credible Int
 
 
 
-Leverage the multi-output feature -> predict on a simulated test set alongside the observed dataset
-You can design your own evaluation procedure and metric to assess the performance of the model
+<!-- Leverage the multi-output feature -> predict on a simulated test set alongside the observed dataset -->
+<!-- You can design your own evaluation procedure and metric to assess the performance of the model -->
 
 
-Feature importance/selection
-
-
-*5. Which type of uncertainty do I look at?*
+<!-- Feature importance/selection -->
 
 
 
 
-*5. How do I choose the hyperparameters of the model?*
-
-Stick to simple, widely-used standard values. Train simpler models for test purpose, before running larger models in production. Beware than larger models can sometimes require adjustments for the learning hyperparameters (learning rate, batch size), as larger sample sizes also have effects on overfitting and on the variance that is estimated by the model. Larger sample sizes affect the epistemic uncertainty, the uncertainty of the model, while the aleatoric uncertainty, the uncertainty of the data itself, should not be much affected.
 
 
-The number of hidden layers and hidden dimensions (number of neurons) are important to efficiently capture complex non-linear relationships between input and output features. Yet the most critical hyperparameters are those related to the training procedure, such as the learning rate, the batch size or the L2 weight decay (see below for details).
+*7. How do I choose the hyperparameters of the model?*
+
+Stick to simple, widely-used standard values. Train simpler models for test purpose, before running larger models in production. Beware than larger models can sometimes require adjustments for the learning hyperparameters when scaling up (learning rate, batch size), as larger sample sizes also have effects on overfitting and on the variance that is estimated by the model. A larger sample size affects the epistemic uncertainty, the uncertainty of the model, while the aleatoric uncertainty, the uncertainty of the data itself, should not be much affected.
 
 
-*6. What to do if my model has difficulties to learn?*
+The number of hidden layers and hidden dimensions (number of neurons) are important to efficiently capture complex non-linear relationships between input and output features, but with Bayesian Neural Network it is not necessary to use a large number of neurons and layers. Generally 3-6 layers with 100-500 neurons each is sufficient. Yet the most critical hyperparameters are those related to the training procedure, such as the learning rate and the batch size. The L2 weight decay only has a minimum impact, and the default value should be fine, except if you observe a strong overfitting.
+
+
+```{r, echo=F}
+hyperparam = data.frame(Hyperparameter = c("Number of hidden dimensions (i.e. neurons) in one layer",
+                                           "Number of hidden layers",
+                                           "Epochs",
+                                           "Batch size",
+                                           "Learning rate",
+                                           "L2 weight decay",
+                                           "Dropout (only for Monte Carlo Dropout)"),
+                        Values = c("100-500 is generally a good range. You can try higher values if you have more than 200 summary statistics.",
+                                   "3-6, deeper networks tend to be harder to train",
+                                   "30-60 are generally enough to avoid overfitting",
+                                   "32-256, depending mostly on the variance in your training set. Higher batch sizes have a smoothing effect on excess of variance during training.",
+                                   "1e-3 is generally fine for 10,000-100,000 training samples. 1e-4 tend to be better for sample sizes >= 1,000,000.",
+                                   "1e-5, minimal impact.",
+                                   "0.1-0.5. Smaller values should produce smaller Credible Intervals, but at the risk of less precise or biased estimates. Higher values are more conservative."))
+
+  
+knitr::kable(hyperparam, caption = "Hyperparameters available in abcnn and standard range of values.")
+```
+
+
+
+
+*8. What to do if my model has difficulties to learn?*
 
 Bayesian neural nets can sometimes be harder to train than regular neural nets
 In concrete dropout, dropout is used at prediction time to approximate the Bayesian posterior, hence it is not efficiently used as regularization during training. This is something on which I am still working on. For example, you can use the early stopping callback to stop the training as soon as a good level of performance is achieved, before overfitting.
@@ -1079,14 +1162,14 @@ Improving gradient stability and convergence is a next step towards a more user-
 
 More specifically:
 
-*6a. Very large epistemic error but the aleatoric/overall is fine?*
+*9. Very large epistemic error but the aleatoric/overall is fine?*
 
 Sign of overfitting, happens especially with training set with a large number of samples, counter-intuitive
 Increase batch size. Smoothening effect.
 Reduce L2 weight decay and learning rate?
 
 
-*6b. Huge loss and/or NaN output values during training?*
+*10. Huge loss and/or NaN output values during training?*
 
 The model fails during the training step, due to an explosion of the loss value.
 This is something that can happen with the methods concrete dropout and deep ensemble, because the variance component is co-estimated in the model. It usually tells you that the model has difficulties to learn due to high variance in the samples or too much complexity in the model, leading to very large loss values, then returning NaN/NA values at the next training step.
@@ -1094,7 +1177,7 @@ Reduce the learning rate, increase the batch size, reduce model complexity
 
 
 
-*7. I used conformal prediction, by my C.I. coverage is different from the one expected*
+*11. I used conformal prediction, by my C.I. coverage is different from the one expected*
 
 Calibration with conformal prediction guarantees a coverage at least equal or superior to the expected. For many reasons the coverage can be higher than expected.
 
@@ -1107,13 +1190,15 @@ The performance of the model is limited, hence a more conservative CI
 
 
 
-*8. How much time, memory and CPU/GPU do I need?*
+*12. How much time, memory and CPU/GPU do I need?*
 
 
 Torch can leverage CUDA
 
 
 For faster training, increase batch size, use early stopping
+
+
 
 
 ## References
