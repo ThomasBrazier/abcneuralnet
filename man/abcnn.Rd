@@ -286,6 +286,8 @@ abc = abcnn$new(theta,
 
 \item{\code{num_posterior_samples}}{number of posterior samples to generate in \verb{monte carlo dropout} and \verb{concrete dropout}}
 
+\item{\code{abc_keep_original_sumstats}}{(logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE)}
+
 \item{\code{prior_length_scale}}{hyperparameter for \verb{concrete dropout}}
 
 \item{\code{weight_regularizer}}{hyperparameter for \verb{concrete dropout}}
@@ -409,6 +411,7 @@ Create a new \code{abcnn} object
   loss = torch::nn_mse_loss(),
   abc_method = "loclinear",
   tol = NULL,
+  abc_keep_original_sumstats = FALSE,
   num_posterior_samples = 1000,
   prior_length_scale = 1e-04,
   weight_regularizer = 1e-06,
@@ -473,6 +476,8 @@ Create a new \code{abcnn} object
 \item{\code{abc_method}}{ABC sampling method in \code{abc} function (only for \code{tabnet-abc})}
 
 \item{\code{tol}}{tolerance rate for \code{abc} functions (only for \code{tabnet-abc})}
+
+\item{\code{abc_keep_original_sumstats}}{(logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value)}
 
 \item{\code{num_posterior_samples}}{number of samples to generate for the posterior distribution}
 
