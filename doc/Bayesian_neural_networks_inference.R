@@ -621,10 +621,11 @@ tabnetabc = abcnn$new(theta.train,
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 30,
+            epochs = 40,
             batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
+            abc_keep_original_sumstats = FALSE,
             abc_method = "loclinear")
 
 
@@ -691,9 +692,9 @@ abc_concrete = abcnn$new(theta.train,
 abc_concrete$fit()
 
 ## ----echo = F, eval=F---------------------------------------------------------
-# # save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+# # save_abcnn(abc_concrete, prefix = "../inst/extdata/abc_concrete_explain")
 # #
-# # tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+# # abc_concrete = load_abcnn(prefix = "../inst/extdata/abc_concrete_explain")
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 abc_concrete$plot_training()
@@ -712,4 +713,40 @@ exp$plot()
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 exp$plot(type = "steps")
+
+## ----echo=F-------------------------------------------------------------------
+methods_table = data.frame(Method = c("",
+                                      "",
+                                      "",
+                                      ""),
+                        Advantages = c("",
+                                      "",
+                                      "",
+                                      ""),
+                        Limitations = c("",
+                                      "",
+                                      "",
+                                      ""))
+
+  
+knitr::kable(methods_table, caption = "Summary of the methods in abcnn with their advantages and limitations.")
+
+## ----echo=F-------------------------------------------------------------------
+hyperparam = data.frame(Hyperparameter = c("Number of hidden dimensions (i.e. neurons) in one layer",
+                                           "Number of hidden layers",
+                                           "Epochs",
+                                           "Batch size",
+                                           "Learning rate",
+                                           "L2 weight decay",
+                                           "Dropout (only for Monte Carlo Dropout)"),
+                        Values = c("100-500 is generally a good range. You can try higher values if you have more than 200 summary statistics.",
+                                   "3-6, deeper networks tend to be harder to train",
+                                   "30-60 are generally enough to avoid overfitting",
+                                   "32-256, depending mostly on the variance in your training set. Higher batch sizes have a smoothing effect on excess of variance during training.",
+                                   "1e-3 is generally fine for 10,000-100,000 training samples. 1e-4 tend to be better for sample sizes >= 1,000,000.",
+                                   "1e-5, minimal impact.",
+                                   "0.1-0.5. Smaller values should produce smaller Credible Intervals, but at the risk of less precise or biased estimates. Higher values are more conservative."))
+
+  
+knitr::kable(hyperparam, caption = "Hyperparameters available in abcnn and standard range of values.")
 
