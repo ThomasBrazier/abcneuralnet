@@ -1,0 +1,128 @@
+# recipe/meta.yaml
+package:
+  name: r-abcneuralnet
+  version: 0.1
+
+source:
+  url: https://github.com/ThomasBrazier/abcneuralnet/archive/v0.1.tar.gz
+  sha256: # Add SHA256 hash when package is released
+  
+build:
+  number: 0
+  noarch: generic
+  rpaths:
+    - lib/
+    - lib/R/lib/
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ posix }}filesystem  # [win]
+    - {{ posix }}make
+    - {{ posix }}sed  # [win]
+    - {{ posix }}coreutils  # [win]
+    
+  host:
+    - r-base >= 4.0
+    - r-r6
+    - r-rcolorbrewer
+    - r-rdpack
+    - r-knitr
+    - r-abc
+    - r-bundle
+    - r-dplyr
+    - r-ggplot2
+    - r-ggpubr
+    - r-innsight
+    - r-janitor
+    - r-luz
+    - r-plotly
+    - r-tabnet
+    - r-tibble
+    - r-tidyr
+    - r-tidyverse
+    - r-torch
+    - r-devtools
+    - r-assertthat
+    - r-here
+    
+  run:
+    - r-base >= 4.0
+    - r-r6
+    - r-rcolorbrewer
+    - r-rdpack
+    - r-abc
+    - r-bundle
+    - r-dplyr
+    - r-ggplot2
+    - r-ggpubr
+    - r-innsight
+    - r-janitor
+    - r-luz
+    - r-plotly
+    - r-tabnet
+    - r-tibble
+    - r-tidyr
+    - r-tidyverse
+    - r-torch
+    - r-devtools
+    - r-assertthat
+    - r-here
+    
+test:
+  commands:
+    - $R -e "library(abcneuralnet)"           # [unix]
+    - "\"%R%\" -e \"library(abcneuralnet)\""  # [win]
+    
+  imports:
+    - r-abcneuralnet
+    
+  requires:
+    - r-testthat >= 3.0.0
+
+about:
+  home: https://github.com/ThomasBrazier/abcneuralnet
+  license: GPL-3.0-only
+  license_family: GPL
+  license_file: LICENSE
+  summary: "Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference"
+  description: |
+    This package is designed for parameter inference with ABC and neural networks 
+    for population genetics. It implements four different methods mixing ABC and 
+    neural networks implemented in R torch:
+    
+    - concrete dropout: Implementation of Gal et al. (2017) for aleatoric and epistemic uncertainty
+    - deep ensemble: Implementation of Lakshminarayanan et al. (2017) with uncertainty quantification
+    - monte carlo dropout: Implementation of Gal and Ghahramani (2016) for epistemic uncertainty
+    - tabnet-abc: New method combining TabNet neural networks with ABC inference
+    
+    The neural networks are implemented with the torch R package and support CUDA 
+    devices for training. The luz package provides a high-level API for training 
+    and predictions. Credible intervals are calibrated with conformal prediction.
+    
+  doc_url: https://ThomasBrazier.github.io/abcneuralnet/
+  dev_url: https://github.com/ThomasBrazier/abcneuralnet
+  bug_report_url: https://github.com/ThomasBrazier/abcneuralnet/issues
+  contributors:
+    - Thomas Brazier
+
+extra:
+  recipe-maintainers:
+    - your-github-username
+    
+  # Package identifiers
+  conda-forge:
+    source_url: https://github.com/ThomasBrazier/abcneuralnet
+    cran_url: https://cran.r-project.org/package=abcneuralnet
+    
+  # Additional metadata
+  tags:
+    - bioinformatics
+    - machine-learning
+    - bayesian-inference
+    - neural-networks
+    - population-genetics
+    - approximate-bayesian-computation
+    - deep-learning
+    - uncertainty-quantification

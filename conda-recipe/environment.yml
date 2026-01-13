@@ -1,0 +1,14 @@
+name: abcneuralnet
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - r-base>=4.0
+  - r-abcneuralnet
+  - r-devtools
+  - r-testthat
+  - python=3.10
+  - pytorch
+  - cuda-toolkit=11.8  # [linux64 and cuda_available]
+  - jupyterlab
+  - nb_conda_kernels
