@@ -10,17 +10,19 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 4,
+  warning = FALSE,
+  message = FALSE
 )
 ```
 
 ```{r setup, echo = F, eval = F}
 # Install ABCNeuralNet
 devtools::install_github("ThomasBrazier/abcneuralnet")
-```
 
-
-```{r setup2, echo = F, eval = F}
 # Install C++ dependencies of torch (e.g. CUDA, lantern)
 torch::install_torch()
 # After installing torch CUDA dependencies, the R session must be reloaded
@@ -32,6 +34,7 @@ library(abcneuralnet)
 library(ggplot2)
 library(torch)
 library(tidyverse)
+library(kableExtra)
 ```
 
 
