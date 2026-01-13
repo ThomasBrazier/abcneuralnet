@@ -858,11 +858,13 @@ tabnetabc = abcnn$new(theta.train,
             scale_input = "none",
             scale_target = "none",
             epochs = 40,
-            batch_size = 128,
-            l2_weight_decay = 1e-3,
+            num_hidden_layers = 3,
+            num_hidden_dim = 128,
+            batch_size = 64,
+            l2_weight_decay = 1e-5,
             tol = 0.1,
             abc_keep_original_sumstats = FALSE,
-            abc_method = "loclinear")
+            abc_method = "ridge")
 
 
 tabnetabc$summary()
@@ -916,7 +918,7 @@ df = tabnetabc$predictions() %>%
 df$true.theta = theta.exact[1:1000,"mean.theta1"]
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), fill = "lightgrey", alpha = 0.5) +
+  geom_errorbar(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), fill = "lightgrey", alpha = 0.1) +
   geom_point() +
   geom_smooth(method = "lm") +
   theme_bw()
