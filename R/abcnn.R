@@ -791,7 +791,7 @@ abcnn = R6::R6Class("abcnn",
           ndim = ncol(self$theta_adj)
           mc_samples = array(0, dim = c(self$num_posterior_samples, nsamples, ndim))
 
-          pb = txtProgressBar(min = 1, max = nrow(self$observed_adj), style = 3)
+          pb = txtProgressBar(min = 0, max = nrow(self$observed_adj), style = 3)
           for (i in 1:nrow(self$observed_adj)) {
             setTxtProgressBar(pb, i)
 
