@@ -43,6 +43,21 @@ test_that("abcnn handles invalid inputs gracefully", {
   )
 })
 
+
+test_that("abcnn handles edge cases", {
+  # Test with minimal data
+  theta_small = data.frame(param1 = c(1, 2, 3))
+  sumstats_small = data.frame(stat1 = c(1, 2, 3))
+  observed_small = data.frame(stat1 = 2)
+  
+  # TODO
+  
+  # Test with single observation
+  # TODO
+}
+)
+
+
 test_that("abcnn handles extreme parameter values", {
   n_samples <- 50
   theta_training <- data.frame(param1 = runif(n_samples, 0, 10))

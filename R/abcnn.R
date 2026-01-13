@@ -434,6 +434,12 @@ abcnn = R6::R6Class("abcnn",
       if(!is.data.frame(sumstat)) stop("'sumstat' has to be a data.frame with column names.")
       if(!is.data.frame(observed)) stop("'observed' has to be a data.frame with column names.")
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
+      
+      methods = c("monte carlo dropout",
+                  "concrete dropout",
+                  "deep ensemble",
+                  "tabnet-abc")
+      if(!(method %in% methods)) stop( paste("Method must be one of:", paste(methods, collapse = ",")))
 
       # Device. Use CUDA if available
       self$device = torch::torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})

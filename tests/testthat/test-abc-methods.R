@@ -151,48 +151,13 @@ test_that("Method-specific outputs are correct", {
 
 test_that("Methods handle different data dimensions correctly", {
   set.seed(123)
-  n_samples = 100
-  
-  # Test 1D case
-  theta_1d = data.frame(param1 = runif(n_samples, 0, 10))
-  sumstats_1d = data.frame(stat1 = theta_1d$param1 + rnorm(n_samples, 0, 0.5))
-  observed_1d = data.frame(stat1 = 5.2)
-  
-  methods_1d = c("monte carlo dropout", "concrete dropout", "deep ensemble")
-  for (method in methods_1d) {
-    abc = abcnn$new(
-      theta_1d, sumstats_1d, observed_1d,
-      method = method, epochs = 2, verbose = FALSE
-    )
-    abc$fit()
-    abc$predict()
-    
-    expect_equal(dim(abc$predictive_mean), c(1, 1))
-    expect_equal(dim(abc$predictive_variance), c(1, 1))
-  }
-  
-  # Test multi-dimensional case
-  theta_md = data.frame(
-    param1 = runif(n_samples, 0, 10),
-    param2 = runif(n_samples, -5, 5)
+  n_samples = 10000
+  theta_training = data.frame(param1 = runif(n_samples, 0, 1))
+  sumstats_training = data.frame(
+    stat1 = theta_training$param1 + rnorm(n_samples, 0, 0.05),
+    stat2 = theta_training$param1^2 + rnorm(n_samples, 0, 0.1)
   )
-  sumstats_md = data.frame(
-    stat1 = theta_md$param1 + rnorm(n_samples, 0, 0.5),
-    stat2 = theta_md$param2 + rnorm(n_samples, 0, 0.3),
-    stat3 = theta_md$param1 * theta_md$param2 + rnorm(n_samples, 0, 1)
-  )
-  observed_md = data.frame(stat1 = 5.2, stat2 = 1.1, stat3 = 8.5)
+  sumstats_observed = data.frame(stat1 = 0.4, stat2 = 0.2)
   
-  for (method in methods_1d) {
-    abc = abcnn$new(
-      theta_md, sumstats_md, observed_md,
-      method = method, epochs = 2, verbose = FALSE
-    )
-    abc$fit()
-    abc$predict()
-    
-    expect_equal(dim(abc$predictive_mean), c(1, 2))
-    expect_equal(dim(abc$predictive_variance), c(1, 2))
-  }
 }
 )

@@ -1,4 +1,4 @@
-# Test scaling sunmmary statistics in
+# Test scaling summary statistics in
 test_that("Scaling summary statistics works", {
   
   make_test_data = function() {
