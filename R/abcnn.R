@@ -251,7 +251,7 @@ abcnn = R6::R6Class("abcnn",
     epochs=NA,
     #' @field early_stopping logical, whether to do early stopping in `luz` (not implemented yet for the `deep ensemble` method)
     early_stopping=FALSE,
-    #' @field callbacks list of `luz` callbacks (in development)
+    #' @field callbacks list of `luz` callbacks  (not implemented for the method 'deep ensemble')
     callbacks=NULL,
     #' @field verbose logical, whether to print messages and progress bars for the user
     verbose=NULL,
@@ -367,7 +367,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param dropout dropout rate
     #' @param batch_size  batch size
     #' @param epochs number of epochs for training
-    #' @param early_stopping whether to do early stopping
+    #' @param early_stopping whether to do early stopping (not implemented for the method 'deep ensemble')
     #' @param patience patience hyperparameter for early stopping. See `luz::luz_callback_early_stopping()` (not implemented yet for `deep ensemble`)
     #' @param callbacks custom callbacks
     #' @param verbose whether to print messages
@@ -412,7 +412,7 @@ abcnn = R6::R6Class("abcnn",
                           variance_clamping=c(-1e15, 1e15),
                           loss=torch::nn_mse_loss(),
                           abc_method="loclinear",
-                          tol=NULL,
+                          tol=0.1,
                           abc_keep_original_sumstats = FALSE,
                           num_posterior_samples=1000,
                           prior_length_scale=1e-4,
@@ -430,9 +430,23 @@ abcnn = R6::R6Class("abcnn",
       if(missing(observed)) stop("'observed' is missing")
       if(missing(theta)) stop("'theta' is missing")
       if(missing(sumstat)) stop("'sumstat' is missing")
+      # Check input type
       if(!is.data.frame(theta)) stop("'theta' has to be a data.frame with column names.")
       if(!is.data.frame(sumstat)) stop("'sumstat' has to be a data.frame with column names.")
       if(!is.data.frame(observed)) stop("'observed' has to be a data.frame with column names.")
+      # Check if numeric data
+      if(sum(apply(theta, 2, is.numeric)) != ncol(theta)) stop("'theta' must be numeric.")
+      if(sum(apply(sumstat, 2, is.numeric)) != ncol(sumstat)) stop("'sumstat' must be numeric.")
+      if(sum(apply(observed, 2, is.numeric)) != ncol(observed)) stop("'observed' must be numeric.")
+      
+      # Check empty data frames
+      if(nrow(theta) < 1) stop("'theta' is empty.")
+      if(nrow(sumstat) < 1) stop("'sumstat' is empty.")
+      if(nrow(observed) < 1) stop("'observed' is empty.")
+      
+      # Check mismatched row counts
+      if(nrow(theta) != nrow(sumstat)) stop("Mismatch row count between training theta and summary statistics.")
+      
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
       
       methods = c("monte carlo dropout",

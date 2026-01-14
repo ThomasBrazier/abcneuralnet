@@ -20,7 +20,8 @@ test_that("abcnn class initializes correctly", {
         sumstats_observed,
         method = method,
         epochs = 1,
-        verbose = FALSE
+        verbose = FALSE,
+        tol = 0.1
       )
     }, message = paste("Failed to initialize with method:", method))
     
@@ -80,7 +81,8 @@ test_that("abcnn plotting methods work", {
       sumstats_observed,
       method = method,
       epochs = 3,
-      verbose = FALSE
+      verbose = FALSE,
+      tol = 0.1
     )
     
     abc$fit()
