@@ -264,7 +264,7 @@ abc = abcnn$new(theta,
 
 \item{\code{early_stopping}}{logical, whether to do early stopping in \code{luz} (not implemented yet for the \verb{deep ensemble} method)}
 
-\item{\code{callbacks}}{list of \code{luz} callbacks (in development)}
+\item{\code{callbacks}}{list of \code{luz} callbacks  (not implemented for the method 'deep ensemble')}
 
 \item{\code{verbose}}{logical, whether to print messages and progress bars for the user}
 
@@ -410,7 +410,7 @@ Create a new \code{abcnn} object
   variance_clamping = c(-1e+15, 1e+15),
   loss = torch::nn_mse_loss(),
   abc_method = "loclinear",
-  tol = NULL,
+  tol = 0.1,
   abc_keep_original_sumstats = FALSE,
   num_posterior_samples = 1000,
   prior_length_scale = 1e-04,
@@ -457,7 +457,7 @@ Create a new \code{abcnn} object
 
 \item{\code{epochs}}{number of epochs for training}
 
-\item{\code{early_stopping}}{whether to do early stopping}
+\item{\code{early_stopping}}{whether to do early stopping (not implemented for the method 'deep ensemble')}
 
 \item{\code{verbose}}{whether to print messages}
 

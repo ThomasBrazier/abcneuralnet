@@ -84,7 +84,7 @@ Throughout this tutorial, I will use the three core methods developed in **abcne
 
 ## Architecture and Dependencies
 
-The **abcneuralnet** package is built on the **torch** ecosystem for R [@torch2023], providing efficient tensor operations and automatic differentiation. The key architectural components include:
+The **abcneuralnet** package is built on the **torch** ecosystem for R [@torch2025], providing efficient tensor operations and automatic differentiation. The key architectural components include:
 
 - **R6 abcnn()**: the core R6 class implementing all methods and functions in a single R object: fit, predict and plot results
 - **Core Engine**: `torch::nn_module` implementing different Bayesian neural network methods
@@ -370,6 +370,7 @@ ggplot(data = df_training, aes(x = x, y = y)) +
   theme_bw()
 ```
 
+The aleatoric uncertainty is constant across the dataset, as the variance in the data is homogeneous (i.e. homoscedasticity), while the epistemic uncertainty, reflecting model's uncertainty, decreases at the iddle of the distribution, where the model's predictive performance is better.
 
 
 
@@ -379,11 +380,21 @@ The raw uncertainty estimated with **Concrete Dropout**:
 abc$plot_prediction(uncertainty_type = "uncertainty")
 ```
 
+The epistemic uncertainty increases at the edges of the distribution of the training dataset.
+
+
 The Conformal Credible intervals provide calibrated uncertainty estimates with guaranteed coverage properties [@baragatti_approximate_2024]:
 
 ```{r concrete_conformal, echo = T, fig.height = 4, fig.width = 8, fig.cap="Conformal credible intervals (green) compared to epistemic uncertainty intervals (purple). Conformal intervals provide calibrated coverage guarantees."}
 abc$plot_prediction(uncertainty_type = "conformal")
 ```
+
+The epistemic Conformal Credible Intervals, based on the epistemic uncertainty as a proxy of uncertainty, are very sensitive to variance in uncertainty, and increases shaprly at the edges of the data distribution. It is a good choice if you are interested in very conservative C.I. and want to assess the sensitivity to over-fitting.
+
+
+On the contrary, the overall Conformal Credible Intervals, based on both the aleatoric and epistemic uncertainties a proxy of the whole uncertainty, is smoother and less impacted by local variance in epistemic uncertainty. It is a good choice if you are searching for a reliable and well-calibrated C.I.
+
+
 
 
 If you have the same number of input and output parameters (e.g., x1 and x2 as input, y1 and y2 as output), then the default representation in `abc$plot_prediction()` will naturally represent linear regressions (as many subplots as output parameters). Otherwise predictions are simply represented side by side and the X axis is meaningless (the `plot_type = "errorbar"` option offers a better representation).
@@ -559,7 +570,7 @@ ggpubr::ggarrange(p1, p2, ncol = 2)
 
 ### Deep Ensemble Training
 
-Deep Ensemble trains multiple networks with different random initialization and random batches (adversarial training not implemented yet) [@lakshminarayanan2017simple]:
+Deep Ensemble trains multiple networks with different random initialization and random batches (adversarial training not implemented yet) [@lakshminarayanan_simple_2016]:
 
 
 ```{r, echo = T}
@@ -602,14 +613,14 @@ abc_ensemble$plot_training()
 ```
 
 
-## Variation in Uncertainty Quantification across different regions
 
-
-
-
-```{r, echo = F}
+```{r, echo = T, eval = F}
 abc_ensemble$predict()
 ```
+
+
+
+## Variation in Uncertainty Quantification across different regions
 
 
 
@@ -966,7 +977,7 @@ tabnetabc$plot_training()
 ```
 
 
-```{r, eval = T}
+```{r, eval = T, message=FALSE, results = FALSE, include=FALSE}
 tabnetabc$predict()
 ```
 
@@ -1110,7 +1121,12 @@ exp$plot(type = "steps")
 ```
 
 
+The individual contributions of input variables to each prediction:
 
+
+```{r, echo = T}
+head(exp$get_result())
+```
 
 
 
