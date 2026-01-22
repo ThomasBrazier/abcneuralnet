@@ -1085,13 +1085,13 @@ tabnetabc$summary()
 
 
 
-```{r, eval = T}
+```{r, eval = F}
 tabnetabc$fit()
 ```
 
 
-```{r, echo = F, eval=F}
-save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+```{r, echo = F, eval=T}
+# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
 
 tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
@@ -1103,7 +1103,7 @@ tabnetabc$plot_training()
 ```
 
 
-```{r, eval = T, message=FALSE, results = FALSE, include=FALSE}
+```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
 tabnetabc$predict()
 ```
 
