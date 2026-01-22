@@ -667,11 +667,11 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 
 
-# Case Study 3: ABC Integration with TabNet
 
-## TabNet Architecture for Summary Statistics
 
-TabNet-ABC [@arik_tabnet_2020; @akesson_convolutional_2022] combines interpretable attention mechanisms with traditional ABC methods. The key innovation is using TabNet to learn informative summary statistics from raw simulation outputs, then applying standard ABC regression on these learned features.
+
+
+# Case Study 3: A high-dimensional dataset
 
 ## Gaussian Toy Model
 
@@ -936,6 +936,132 @@ ggplot(theta.train, aes(x = theta1, y = theta2)) +
 ```
 
 
+
+## Training a Deep Ensemble model with adversarial training
+
+
+```{r}
+deepensemble_highdim = abcnn$new(theta.train,
+            sumstats.train,
+            sumstats.test[1:1000,],
+            method = 'deep ensemble',
+            scale_input = "minmax",
+            scale_target = "minmax",
+            epochs = 60,
+            batch_size = 128,
+            l2_weight_decay = 1e-4,
+            epsilon_adversarial = 0.1)
+
+
+deepensemble_highdim$summary()
+```
+
+
+
+```{r, eval = F}
+deepensemble_highdim$fit()
+```
+
+
+With adversarial training, the training and validation losses are different (adversarial perturbation is applied on training only), yet the training curve is smoother after a strong perturbation at the beginning:
+
+```{r, echo = F, eval=T}
+deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
+deepensemble_highdim$plot_training()
+```
+
+
+```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
+deepensemble_highdim$predict()
+```
+
+
+```{r, echo = F, eval=F}
+save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim")
+```
+
+
+```{r, echo = F, eval=F}
+deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
+```
+
+
+## Model performance
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
+deepensemble_highdim$plot_prediction()
+```
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+df = deepensemble_highdim$predictions() %>%
+  filter(parameter == "theta1")
+
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "Deep Ensemble Predictive check") +
+  theme_bw()
+```
+
+
+# Model Interpretability and Feature Importance
+
+Understanding which summary statistics drive parameter estimates is crucial for scientific interpretation. The **explainn** class implements a suite of methods to provide interpretable feature attributions. 
+
+
+## The `explainn()` class and methods for model explanation
+
+The [https://bips-hb.github.io/innsight/](**innsight**) package backend provides ten different explainability methods to interpret feature importance within an **explainn** object.
+
+
+```{r, echo = T, eval = T}
+exp = explainn$new(deepensemble_highdim)
+
+exp$run(data = sumstats.test[1:1000,],
+        method = "deeplift")
+```
+
+```{r explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
+exp$plot()
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
+exp$plot(type = "steps")
+```
+
+
+The individual contributions of input variables to each prediction:
+
+
+```{r, echo = T}
+head(exp$get_result())
+```
+
+
+
+
+
+
+
+
+# ABC Integration with TabNet
+
+## TabNet Architecture for Summary Statistics
+
+TabNet-ABC [@arik_tabnet_2020; @akesson_convolutional_2022] combines interpretable attention mechanisms with traditional ABC methods. The key innovation is using TabNet to learn informative summary statistics from raw simulation outputs, then applying standard ABC regression on these learned features.
+
+
 ## TabNet-ABC Implementation
 
 
@@ -946,8 +1072,8 @@ tabnetabc = abcnn$new(theta.train,
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 40,
-            batch_size = 128,
+            epochs = 60,
+            batch_size = 256,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_keep_original_sumstats = FALSE,
@@ -959,15 +1085,13 @@ tabnetabc$summary()
 
 
 
-```{r, eval = T}
+```{r, eval = F}
 tabnetabc$fit()
 ```
 
 
-```{r, echo = F, eval=F}
-# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
-# 
-# tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+```{r, echo = F, eval=T}
+tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
 
@@ -977,13 +1101,14 @@ tabnetabc$plot_training()
 ```
 
 
-```{r, eval = T, message=FALSE, results = FALSE, include=FALSE}
+```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
 tabnetabc$predict()
 ```
 
 
+
 ```{r, echo = F, eval=F}
-# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
 ```
 
 
@@ -1006,7 +1131,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, color = "red") +
   labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "TabNet-ABC Calibration") +
+       title = "TabNet-ABC Predictive check") +
   theme_bw()
 ```
 
@@ -1036,14 +1161,10 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 <!-- ``` -->
 
 
-
-
-# Model Interpretability and Feature Importance
-
 ## Tabnet attention maps for model explanation
 
 
-Understanding which summary statistics drive parameter estimates is crucial for scientific interpretation. The **explainn** class implements a suite of methods to provide interpretable feature attributions. With the method **Tabnet-ABC**, built-in attention maps and **tabnet** methods are used:
+With the method **Tabnet-ABC**, built-in attention maps and **tabnet** methods are used instead of **innsight** methods:
 
 
 ```{r, echo = T, eval = T}
@@ -1061,72 +1182,6 @@ exp$plot(type = "steps")
 ```
 
 
-
-## The `explainn()` class and methods for model explanation
-
-With methods other than **tabnet-abc**, the [https://bips-hb.github.io/innsight/](**innsight**) package backend provides ten different explainability methods to interpret feature importance:
-
-
-```{r}
-abc_concrete = abcnn$new(theta.train,
-            sumstats.train,
-            sumstats.test[1:1000,],
-            method = 'concrete dropout',
-            scale_input = "minmax",
-            scale_target = "none",
-            epochs = 30,
-            batch_size = 128,
-            l2_weight_decay = 1e-3)
-```
-
-
-
-```{r, eval = T}
-abc_concrete$fit()
-```
-
-
-```{r, echo = F, eval=F}
-# save_abcnn(abc_concrete, prefix = "../inst/extdata/abc_concrete_explain")
-# 
-# abc_concrete = load_abcnn(prefix = "../inst/extdata/abc_concrete_explain")
-```
-
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-abc_concrete$plot_training()
-```
-
-
-```{r, eval = T}
-abc_concrete$predict()
-```
-
-
-```{r, echo = T, eval = T}
-exp = explainn$new(abc_concrete)
-
-exp$run(data = sumstats.test,
-        method = "deeplift")
-```
-
-```{r explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
-exp$plot()
-```
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-exp$plot(type = "steps")
-```
-
-
-The individual contributions of input variables to each prediction:
-
-
-```{r, echo = T}
-head(exp$get_result())
-```
 
 
 
