@@ -705,23 +705,6 @@ exp$plot(type = "steps")
 head(exp$get_result())
 
 ## ----echo=F-------------------------------------------------------------------
-methods_table = data.frame(Method = c("",
-                                      "",
-                                      "",
-                                      ""),
-                        Advantages = c("",
-                                      "",
-                                      "",
-                                      ""),
-                        Limitations = c("",
-                                      "",
-                                      "",
-                                      ""))
-
-  
-knitr::kable(methods_table, caption = "Summary of the methods in abcnn with their advantages and limitations.")
-
-## ----echo=F-------------------------------------------------------------------
 hyperparam = data.frame(Hyperparameter = c("Number of hidden dimensions (i.e. neurons) in one layer",
                                            "Number of hidden layers",
                                            "Epochs",

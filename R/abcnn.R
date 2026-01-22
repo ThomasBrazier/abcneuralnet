@@ -345,6 +345,8 @@ abcnn = R6::R6Class("abcnn",
     calibration_sumstat = NA,
     #' @field ncores number of cores for parallel procedures
     ncores = NA,
+    #' @field seed a random seed when initializing the network
+    seed = NA,
     #' @field call the call to the new() initialisation function
     call = NULL,
 
@@ -386,6 +388,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param num_networks number of networks in `deep ensemble`
     #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble` (experimental)
     #' @param ncores number of cores for parallelized steps
+    #' @param seed a random seed
     #'
     initialize = function(theta,
                           sumstat,
@@ -420,7 +423,8 @@ abcnn = R6::R6Class("abcnn",
                           dropout_regularizer = 1e-5,
                           num_networks=5,
                           epsilon_adversarial=0,
-                          ncores = 1) {
+                          ncores = 1,
+                          seed = round(runif(1, 0, 1e4), digits = 0)) {
       #-----------------------------------#
       # CHECK INPUTS
       #-----------------------------------#
@@ -585,6 +589,8 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------#
       # INIT MODELS
       #-----------------------------------#
+      torch::local_torch_manual_seed(self$seed, .env = .GlobalEnv)
+      
       if (is.null(model)) {
         # if (self$method == "tabnet-abc") {
         #   self$num_conformal = 0

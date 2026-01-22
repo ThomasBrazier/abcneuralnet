@@ -667,11 +667,11 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 
 
-# Case Study 3: ABC Integration with TabNet
 
-## TabNet Architecture for Summary Statistics
 
-TabNet-ABC [@arik_tabnet_2020; @akesson_convolutional_2022] combines interpretable attention mechanisms with traditional ABC methods. The key innovation is using TabNet to learn informative summary statistics from raw simulation outputs, then applying standard ABC regression on these learned features.
+
+
+# Case Study 3: A high-dimensional dataset
 
 ## Gaussian Toy Model
 
@@ -936,6 +936,132 @@ ggplot(theta.train, aes(x = theta1, y = theta2)) +
 ```
 
 
+
+## Training a Deep Ensemble model with adversarial training
+
+
+```{r}
+deepensemble_highdim = abcnn$new(theta.train,
+            sumstats.train,
+            sumstats.test[1:1000,],
+            method = 'deep ensemble',
+            scale_input = "minmax",
+            scale_target = "minmax",
+            epochs = 60,
+            batch_size = 128,
+            l2_weight_decay = 1e-4,
+            epsilon_adversarial = 0.1)
+
+
+deepensemble_highdim$summary()
+```
+
+
+
+```{r, eval = F}
+deepensemble_highdim$fit()
+```
+
+
+With adversarial training, the training and validation losses are different (adversarial perturbation is applied on training only), yet the training curve is smoother after a strong perturbation at the beginning:
+
+```{r, echo = F, eval=T}
+deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
+deepensemble_highdim$plot_training()
+```
+
+
+```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
+deepensemble_highdim$predict()
+```
+
+
+```{r, echo = F, eval=F}
+save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim")
+```
+
+
+```{r, echo = F, eval=F}
+deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
+```
+
+
+## Model performance
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
+deepensemble_highdim$plot_prediction()
+```
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+df = deepensemble_highdim$predictions() %>%
+  filter(parameter == "theta1")
+
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "Deep Ensemble Predictive check") +
+  theme_bw()
+```
+
+
+# Model Interpretability and Feature Importance
+
+Understanding which summary statistics drive parameter estimates is crucial for scientific interpretation. The **explainn** class implements a suite of methods to provide interpretable feature attributions. 
+
+
+## The `explainn()` class and methods for model explanation
+
+The [https://bips-hb.github.io/innsight/](**innsight**) package backend provides ten different explainability methods to interpret feature importance within an **explainn** object.
+
+
+```{r, echo = T, eval = T}
+exp = explainn$new(deepensemble_highdim)
+
+exp$run(data = sumstats.test[1:1000,],
+        method = "deeplift")
+```
+
+```{r explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
+exp$plot()
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
+exp$plot(type = "steps")
+```
+
+
+The individual contributions of input variables to each prediction:
+
+
+```{r, echo = T}
+head(exp$get_result())
+```
+
+
+
+
+
+
+
+
+# ABC Integration with TabNet
+
+## TabNet Architecture for Summary Statistics
+
+TabNet-ABC [@arik_tabnet_2020; @akesson_convolutional_2022] combines interpretable attention mechanisms with traditional ABC methods. The key innovation is using TabNet to learn informative summary statistics from raw simulation outputs, then applying standard ABC regression on these learned features.
+
+
 ## TabNet-ABC Implementation
 
 
@@ -946,8 +1072,8 @@ tabnetabc = abcnn$new(theta.train,
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 40,
-            batch_size = 128,
+            epochs = 60,
+            batch_size = 256,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_keep_original_sumstats = FALSE,
@@ -965,9 +1091,9 @@ tabnetabc$fit()
 
 
 ```{r, echo = F, eval=F}
-# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
-# 
-# tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
+save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+
+tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
 
@@ -983,7 +1109,12 @@ tabnetabc$predict()
 
 
 ```{r, echo = F, eval=F}
-# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
+```
+
+
+```{r, echo = F, eval=T}
+tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
 
@@ -1006,7 +1137,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, color = "red") +
   labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "TabNet-ABC Calibration") +
+       title = "TabNet-ABC Predictive check") +
   theme_bw()
 ```
 
@@ -1036,14 +1167,10 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 <!-- ``` -->
 
 
-
-
-# Model Interpretability and Feature Importance
-
 ## Tabnet attention maps for model explanation
 
 
-Understanding which summary statistics drive parameter estimates is crucial for scientific interpretation. The **explainn** class implements a suite of methods to provide interpretable feature attributions. With the method **Tabnet-ABC**, built-in attention maps and **tabnet** methods are used:
+With the method **Tabnet-ABC**, built-in attention maps and **tabnet** methods are used instead of **innsight** methods:
 
 
 ```{r, echo = T, eval = T}
@@ -1062,101 +1189,31 @@ exp$plot(type = "steps")
 
 
 
-## The `explainn()` class and methods for model explanation
-
-With methods other than **tabnet-abc**, the [https://bips-hb.github.io/innsight/](**innsight**) package backend provides ten different explainability methods to interpret feature importance:
-
-
-```{r}
-abc_concrete = abcnn$new(theta.train,
-            sumstats.train,
-            sumstats.test[1:1000,],
-            method = 'concrete dropout',
-            scale_input = "minmax",
-            scale_target = "none",
-            epochs = 30,
-            batch_size = 128,
-            l2_weight_decay = 1e-3)
-```
-
-
-
-```{r, eval = T}
-abc_concrete$fit()
-```
-
-
-```{r, echo = F, eval=F}
-# save_abcnn(abc_concrete, prefix = "../inst/extdata/abc_concrete_explain")
-# 
-# abc_concrete = load_abcnn(prefix = "../inst/extdata/abc_concrete_explain")
-```
-
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-abc_concrete$plot_training()
-```
-
-
-```{r, eval = T}
-abc_concrete$predict()
-```
-
-
-```{r, echo = T, eval = T}
-exp = explainn$new(abc_concrete)
-
-exp$run(data = sumstats.test,
-        method = "deeplift")
-```
-
-```{r explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
-exp$plot()
-```
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-exp$plot(type = "steps")
-```
-
-
-The individual contributions of input variables to each prediction:
-
-
-```{r, echo = T}
-head(exp$get_result())
-```
-
 
 
 # FAQ
 
 
 
-*1. How should I begin?*
+*1. How does it work?*
 
 
-There is a common procedure and guidelines that apply to every neural network. `abcneuralnet` propose a simple straightforward workflow and allows hyperparameter tuning. If you are not familar with Neural Networks, I recommend the book **Hands-on machine learning with Scikit-Learn, Keras, and TensorFlow** from Aurélien Géron, or this free online book [https://skeydan.github.io/Deep-Learning-and-Scientific-Computing-with-R-torch/](Deep Learning and Scientific Computing with R torch) as a good introduction to the Torch ecosystem in R. See also the documentation at [https://torch.mlverse.org/](torch for R).
-
-
-Here's a concise overview of the gold standard workflow to train a Neural Network:
-
+**abcneuralnet** proposes a simple straightforward workflow:
 
 
 1. Training. Define your data and model architecture with `abcnn$new()`. Call `abcnn$fit()` on your model. All is very user-friendly, `torch` and `luz` handle batching, backpropagation, and optimization automatically, as well as handling the device (cpu or CUDA gpu).
 
 
 
-2. Validation. During training, `luz` evaluates the performance of the model on a separate validation dataset on this validation set every epoch to monitor overfitting and generalization.
+2. Validation. During training, `luz` evaluates and print the performance of the model on a separate validation dataset to monitor overfitting and generalization at each epoch. After training, check training and validation loss curves with `abcnn$plot_training()` to evaluate under/overfitting.
 
 
 
-3. Testing. After training, evaluate the trained model on an unseen test set. With ABCNeuralNet, you can leverage the multi-output feature and pass a test set (a simulated dataset with known truth) along with the observed data. Use `abcnn$predict()` method to get predictions on both the test set and the observed set, and calculate metrics on the test set.
+3. Testing. After training, evaluate the trained model on an unseen test set (a subset of the training data). The multi-output predictions of **abcneuralnet** allow you to evaluate the predictive performance by predicting on a test set (a simulated dataset with known ground truth). Use `abcnn$predict()` method to get predictions on both the test set and calculate custom metrics on the test set. 
 
 
 
-4. Diagnostics. Check training and validation loss curves with `abcnn$plot_training()` to monitor under/overfitting. Check the relationship between predicted and true values on the test set. This flexibility of passing a test set directly to the `abcnn$predict()` method allows to optionally implement custom metrics for deeper insight.
+4. Posterior predictive check is an additional important step to evaluate the model's performance in a Bayesian framework. It is similar to step 3, but instead of testing on a subset of the training data, you must re-generate a simulated dataset where the priors are the posterior estimated by the model. Call `abcnn$predict(posterior_check_data)` where `posterior_check_data` is your new simulated summary statistics generated by drawing parameters in the posterior. As in step 3, calculate custom metrics on the posterior predictive test set to evaluate the model's predictive performance.
 
 
 
@@ -1164,83 +1221,64 @@ Here's a concise overview of the gold standard workflow to train a Neural Networ
 
 
 
-At first, I advise to train a smaller/simpler model (around 3-5 hidden layers and between 100 and 500 neurons per layer max), on a reduced dataset (10,000 - 100,000 samples), to check first how it behaves with your dataset. A small training set will allow you to rapidly explore the hyperparameter space. Then, once you have found a model learning well, you can increase the training dataset and adjust accordingly the hyperparameters to scale up (usually batch size and learning rates have to be adjusted to account for overfitting when the sample size increases, see Table 1 for details on hyperparameters).
+6. Infer parameters based on observed summary statistics. Call `abcnn$predict(observed_data)` where `observed_data` is your observed summary statistics.
 
 
-It is important that you feel free to contact me for any questions and comments on your usage of the package (post your issues). I will do my best to document any troubleshooting encountered and to address bugs. This package is under continuous development and improvements.
+
+
+At first, I advise to train a smaller/simpler model (around 3-5 hidden layers and between 100 and 500 neurons per layer max), on a reduced dataset (10,000 - 100,000 samples), to check first how it behaves with your dataset. A small training set will allow you to rapidly explore the hyperparameter space. Then, once you have found a model learning well, you can increase the training dataset and adjust accordingly the hyperparameters to scale up (usually `batch size` and `learning rates` have to be adjusted to account for overfitting when the sample size increases, see Table 1 for details on hyperparameters).
+
+
+Most importantly, feel free to contact me for any questions and comments on your usage of the package (and raise **github issues**). I will do my best to document any troubleshooting encountered and to address bugs as fast as possible. Note that this package is under continuous development and improvements.
+
+
+
+ If you are not familar with Neural Networks, I recommend the book **Hands-on machine learning with Scikit-Learn, Keras, and TensorFlow** from Aurélien Géron, or this free online book [https://skeydan.github.io/Deep-Learning-and-Scientific-Computing-with-R-torch/](Deep Learning and Scientific Computing with R torch) as a good introduction to the Torch ecosystem in R. See also the documentation at [https://torch.mlverse.org/](torch for R).
  
- 
+
 
 *2. Which method should I choose?*
 
 
+Bayesian neural networks possess several specific characteristics that must be considered, as detailed below. For the Concrete Dropout and Deep Ensemble methods, model training can be more challenging than with conventional neural networks, since the model jointly estimates both the mean prediction and its associated variance. However, this variance component is also what makes these two methods particularly valuable in a Bayesian context. They allow the joint estimation of the model's epistemic uncertainty (uncertainty in the model itself) and the aleatoric uncertainty (uncertainty inherent in the data), effectively enabling the model to "know when it doesn't know". These capabilities are powerful features for assessing model performance and overall reliability, and they arguably justify the slightly lower predictive performance often observed compared to standard neural networks.
 
-Bayesian neural networks have some specificity to account for that are described in more details below. 
-For the `Concrete Dropout` and `Deep Ensemble` methods, it can be more difficult for the model to learn than for a regular neural network, due to the variance component that is co-estimated with the mean prediction. However, this variance component is also what make these two models the most interesting ones in a Bayesian framework. You can estimate the uncertainty of your model (epistemic), the variance in the data (aleatoric) and you know when the model don't know, all of these being are powerful features to evaluate the performance and quality of your model. I think it justifies the slightly lower performance of this models compared to regular neural networks.
+This behavior also implies that if your training dataset (simulations) lacks informativeness or if the model architecture is poorly suited to the observed data, the neural network will explicitly indicate its inability to learn with a large epistemic uncertainty. In such cases, training will fail, typically evidenced by a loss function that decreases only weakly over epochs or exhibits large stochastic fluctuations between epochs—underscoring the importance of closely monitoring training curves. Even when training appears successful, a misspecified model or uninformative simulations will generally lead to extremely high uncertainty estimates and wide credible intervals.
 
+In contrast, the Monte Carlo Dropout and TabNet-ABC methods do not exhibit this "variance" issue and tend to behave similarly to conventional neural networks. The Monte Carlo Dropout approach is simple, not especially high-performing, and offers limited interpretability — estimating only epistemic uncertainty — but it remains useful for quickly testing hypotheses thanks to its ease of training. The TabNet-ABC method follows a similar principle to that described in Åkesson et al. (2022), with the key distinction that the CNN is replaced by a Transformer neural network, which performs better on tabular data. In this framework, a neural network estimates the mean posterior of the parameters, which are then used as summary statistics for a standard ABC procedure. Thus, the Bayesian component is implemented through the ABC algorithm (e.g., using the abc package), rather than being integrated into the neural network itself.
 
-It also means that if your training set (simulations) is not informative or your model is not appropriate to the observed data, the neural network will explicitly tell you that he is not able to learn: the learning will fail, with a loss function weakly decreasing across epochs, or a huge stochastic variation in loss values among epochs (that is why checking the training curve is crucial). Even if learning succeeds, a poorly specified model or non-informative simulations would only produce drastically large uncertainty values and Credible Intervals.
+The TabNet architecture is highly effective for processing tabular data — such as the reference table in ABC — and includes a built-in attention mechanism that provides feature importance scores. Consequently, TabNet-ABC is an excellent alternative if Concrete Dropout and Deep Ensemble prove difficult to apply, or if one seeks to remain closely aligned with a more traditional ABC framework.
 
-
-
-The `Monte Carlo dropout` and `Tabnet-ABC` methods do not suffer from this 'variance' issue, and they should behave similarly to regular neural networks. The `Monte Carlo dropout`  method is a simple approach, not the most performant one, and lacks interpretability (only the epistemic uncertainty is estimated), but it is useful to rapidly test some hypothesis, because it is easier to train. The `Tabnet-ABC` is similar to the approach described in Åkesson et al. (2022), but the CNN is replaced by a Transformer Neural network more performant with tabular data. A neural network is used to estimate the summary statistics, and the estimates are then used as summary statistics in a classical ABC procedure. Hence the Bayesian part is performed only by the ABC procedure (`abc` package) and not integrated in the neural network. The `Tabnet` neural network is a very efficient architecture to process tabular data (as the reference table in ABC) and has a built-in Attention map for feature importance. `Tabnet-ABC` is a good choice if you have trouble to use `Concrete Dropout` and `Deep Ensemble`, or if you want to stay as close as possible to the ABC framework.
-
-
-
-
-```{r, echo=F}
-methods_table = data.frame(Method = c("",
-                                      "",
-                                      "",
-                                      ""),
-                        Advantages = c("",
-                                      "",
-                                      "",
-                                      ""),
-                        Limitations = c("",
-                                      "",
-                                      "",
-                                      ""))
-
-  
-knitr::kable(methods_table, caption = "Summary of the methods in abcnn with their advantages and limitations.")
-```
 
 
 Choosing the appropriate method depends on several factors:
 
 | Method | Strengths | Limitations | Computational Cost |
 |--------|-----------|-------------|-------------------|
-| Concrete Dropout | Principled uncertainty, Bayesian framework | Training complexity, heteroscedastic loss | Medium |
-| Monte Carlo Dropout | Simple implementation, fast inference | Limited uncertainty quantification | Low |
-| Deep Ensemble | Robust, adversarial training | High memory usage | High |
-| TabNet-ABC | Interpretability, ABC integration | Two-stage process | Medium |
+| Concrete Dropout | Principled uncertainty, Bayesian framework, Almost as efficient as Deep Ensemble for predictive performance and Credible Interval | Training complexity, heteroscedastic loss, Sensitive to statistical outliers and large variance in the training dataset (scaling the data is recommended), Epistemic uncertainty estimates can be noisy/too large when overfitting (prefer the overall uncertainty) | Medium |
+| Monte Carlo Dropout | Simple implementation, fast inference | Limited uncertainty quantification (only epistemic), Less efficient than other methods, Larger credible intervals, Requires fine-tuning the dropout rate | Low |
+| Deep Ensemble | Robust, adversarial training, The most efficient in predictive performance and Credible Interval, Smoother uncertainty estimates | High memory usage and training time increases with the number of networks, does not generate a full posterior (only point estimates of mean and variance) | High |
+| TabNet-ABC | Interpretability, ABC integration, The Transformer architecture is designed to handle tabular data, built-in Attention map | Two-stage process, Requires an additional ABC procedure to estimate the full posterior, Only epistemic uncertainty | Medium |
 
 
 
 *3. Should I transform the input data?*
 
-For Neural Networks, pre-processing and scaling the input data is crucial to achieve correct performances. It is even more true with Bayesian Neural Network, as differences in scales between variables can have even more dramatic effects on the variance than the mean. If your model is not learning well or have an unexpected behavior, I advise you to think about the nature of your data and try to find an appropriate scaling function. Scaling the data is very easy, as scaling both the input and target data is directly implemented in the package, through the `scale_input` and `scale_target` arguments. You can choose the `minmax`, `robustscaler` or `normalization` scaling methods, or just `none` if you don't want scaling. Usually `minmax` and `robustscaler` perform well. For the scaling, the scale function learns its parameters on the training set only to avoid data leakage. If you choose to scale the target too (for example if your target is a mix of rates and continuous values), the predictions are transformed back to the original scale.
+Pre-processing and scaling the input data is crucial to achieve good performances with neural networks. It is even more true with Bayesian neural networks (BNN), as large differences in scales within or between variables can have more dramatic effects on the variance than the mean. If your model is not learning well or have an unexpected behavior, I advise you to think about the nature of your data and try to find an appropriate scaling function. Scaling the data is very easy, as scaling both the input and target data is directly implemented in the package, through the `scale_input` and `scale_target` arguments. You can choose the `minmax`, `robustscaler` or `normalization` scaling methods, or just `none` if you don't want scaling. Usually `minmax` and `robustscaler` perform well. For the scaling, the scale function learns its parameters on the training set only to avoid data leakage. If you choose to scale the target too (for example if your target is a mix of rates and continuous values), the predictions are transformed back to the original scale.
 
 
 
-*4. How do I evaluate the performance and quality of my model?*
+*4. How do I evaluate the training performance of my model?*
 
-To evaluate the training of your model (how well it learned), the best approach is simply to look at the learning curves. I will not detail how to interpret these curves, there is a lot of literature about it and it is the same for every neural network. See for example [this post](https://rstudio-conf-2020.github.io/dl-keras-tf/notebooks/learning-curve-diagnostics.nb.html). The package offers all the necessary information to evaluate the learning curve, with three independent training, validation and evaluation sets.
-
-
-
-*5. Which type of uncertainty do I look at?*
+To evaluate the training of your model (how well it learned), the best approach is simply to look at the learning curves. I will not detail how to interpret these curves, there is a lot of literature about it and it is the same for every neural network. See for example [this post](https://rstudio-conf-2020.github.io/dl-keras-tf/notebooks/learning-curve-diagnostics.nb.html). The package offers all the necessary information to evaluate the learning curve, with losses estimated on three independent training, validation and evaluation sets.
 
 
 
-Once your model passes the learning curve diagnostic, you can dig deeper into model validation, by checking and comparing the epistemic and aleatoric uncertainties. The raw epistemic and aleatoric uncertainties provide a particularly useful insight into the performance of the model across samples. It allows you to detect regions where the predictions are accurate with a high confidence (low epistemic uncertainty), and regions where the model don't know, therefore predictions are unreliable. Generally, the epistemic uncertainty is high where you have only few data point and out of the training distribution. It also allows you to evaluate if your performance relies more on the model (epistemic) or on the data (aleatoric). Note that the model performance can be improved with more data, while aleatoric uncertainty cannot be improved with more data, since it measure the random noise in the data. The comparison between the aleatoric and epistemic uncertainties is informative: in general the epistemic uncertainty should be much lower than the aleatoric. If the epistemic uncertainty is similar of higher than the aleatoric, then it means than your model didn't learn from the data.
+*5. Which type of uncertainty must I consider?*
 
 
+Once your model has passed the learning-curve diagnostic, you can move on to deeper validation by examining and comparing the epistemic and aleatoric uncertainties. These raw uncertainty components provide particularly useful insight into model behavior across samples, allowing you to identify regions where predictions are accurate and confident (low epistemic uncertainty) and regions where the model effectively "does not know", making predictions unreliable. In general, epistemic uncertainty is high in areas with few data points or outside the training distribution. This analysis also helps determine whether performance is mainly limited by the model (epistemic) or by the data (aleatoric), noting that epistemic uncertainty can often be reduced with more or better data, whereas aleatoric uncertainty reflects irreducible noise in the data. Typically, epistemic uncertainty should be noticeably lower than aleatoric uncertainty; if epistemic uncertainty is similar to or higher than aleatoric uncertainty, it indicates that the model has not learned the data-generating structure effectively.
 
-For a publication or communicating about the results, the Conformal Credible Interval is more relevant than the raw uncertainty, as it is calibrated to guarantees a certain significance threshold (by default it is the 95% C.I.). Its interpretation is similar to [Bayesian Credible Intervals](https://en.wikipedia.org/wiki/Credible_interval).
-
-
+For publications or reporting, conformal credible intervals are generally more appropriate than raw uncertainty values, because they are calibrated to achieve a specified coverage level (by default, a 95% interval). The interpretation of the Conformal Credible Intervals is similar to that of Bayesian credible intervals, while additionally offering formal coverage guarantees under suitable assumptions.
 
 <!-- Leverage the multi-output feature -> predict on a simulated test set alongside the observed dataset -->
 <!-- You can design your own evaluation procedure and metric to assess the performance of the model -->
@@ -1253,7 +1291,7 @@ For a publication or communicating about the results, the Conformal Credible Int
 
 
 
-*7. How do I choose the hyperparameters of the model?*
+*7. How do I tune the hyperparameters of the model?*
 
 Stick to simple, widely-used standard values. Train simpler models for test purpose, before running larger models in production. Beware than larger models can sometimes require adjustments for the learning hyperparameters when scaling up (learning rate, batch size), as larger sample sizes also have effects on overfitting and on the variance that is estimated by the model. A larger sample size affects the epistemic uncertainty, the uncertainty of the model, while the aleatoric uncertainty, the uncertainty of the data itself, should not be much affected.
 
@@ -1283,7 +1321,7 @@ knitr::kable(hyperparam, caption = "Hyperparameters available in abcnn and stand
 
 
 
-
+<!-- 
 *8. What to do if my model has difficulties to learn?*
 
 Bayesian neural nets can sometimes be harder to train than regular neural nets
@@ -1331,7 +1369,7 @@ The performance of the model is limited, hence a more conservative CI
 Torch can leverage CUDA
 
 
-For faster training, increase batch size, use early stopping
+For faster training, increase batch size, use early stopping -->
 
 
 

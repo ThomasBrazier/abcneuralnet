@@ -14,24 +14,18 @@
 #' @export
 #'
 save_abcnn = function(object, prefix = "") {
-
+  
+  saveRDS(object, paste0(prefix, "_abcnn.Rds"))
+  
   if (object$method == "tabnet-abc") {
     # See https://github.com/mlverse/tabnet/issues/34
-    # # Serialization
-    torch::torch_save(object$fitted$fit, paste0(prefix, "_torch.Rds"))
-
-    fitted = bundle::bundle(object$fitted)
-    saveRDS(fitted, paste0(prefix, "_fitted.Rds"))
+    # Serialization
+    torch::torch_save(object$fitted$fit$network, paste0(prefix, "_model"))
   } else {
     # Save the luz fitted object
     luz::luz_save(object$fitted, paste0(prefix, "_luz.Rds"))
+    # mod = bundle::bundle(object$model)
   }
-
-  mod = bundle::bundle(object$model)
-  saveRDS(mod, paste0(prefix, "_model.Rds"))
-
-  saveRDS(object, paste0(prefix, "_abcnn.Rds"))
-
 }
 
 
@@ -50,20 +44,18 @@ save_abcnn = function(object, prefix = "") {
 #' @return an `abcnn` object
 #'
 load_abcnn = function(prefix = "") {
+  
   object = readRDS(paste0(prefix, "_abcnn.Rds"))
 
   if (object$method == "tabnet-abc") {
     # Loading
-    torch_network = torch::torch_load(paste0(prefix, "_torch.Rds"))
-    bun = readRDS(paste0(prefix, "_fitted.Rds"))
-    object$fitted = bundle::unbundle(bun)
-    object$fitted$fit = torch_network
+    tabnet_network = torch::torch_load(paste0(prefix, "_model"))
+    object$fitted$fit$network = tabnet_network
   } else {
     object$fitted = luz::luz_load(paste0(prefix, "_luz.Rds"))
+    # mod = readRDS(paste0(prefix, "_model.Rds"))
+    # object$model = bundle::unbundle(mod)
   }
-
-  mod = readRDS(paste0(prefix, "_model.Rds"))
-  object$model = bundle::unbundle(mod)
 
   object$device = torch::torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})
 
