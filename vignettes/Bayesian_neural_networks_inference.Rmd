@@ -1091,8 +1091,6 @@ tabnetabc$fit()
 
 
 ```{r, echo = F, eval=T}
-# save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
-
 tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
@@ -1108,13 +1106,9 @@ tabnetabc$predict()
 ```
 
 
+
 ```{r, echo = F, eval=F}
 save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
-```
-
-
-```{r, echo = F, eval=T}
-tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
 
