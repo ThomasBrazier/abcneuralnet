@@ -204,7 +204,8 @@
 #' @import tibble
 #' @import R6
 #' @import RColorBrewer
-#' @import tabnet
+#' @importFrom tabnet tabnet_config
+#' @importFrom tabnet tabnet_fit
 #' @import abc
 #'
 #' @importFrom Rdpack reprompt
@@ -504,6 +505,7 @@ abcnn = R6::R6Class("abcnn",
       self$num_conformal = num_conformal
       self$verbose = verbose
       self$ncores = ncores
+      self$seed = seed
 
       # Init default value for clamping the variance estimate, or let the user set it
       # if (variance_clamping & !is.numeric(variance_clamping)) {
@@ -589,7 +591,8 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------#
       # INIT MODELS
       #-----------------------------------#
-      torch::local_torch_manual_seed(self$seed, .env = .GlobalEnv)
+      torch::torch_manual_seed(self$seed)
+      set.seed(as.integer(self$seed))
       
       if (is.null(model)) {
         # if (self$method == "tabnet-abc") {
