@@ -878,8 +878,9 @@ abcnn = R6::R6Class("abcnn",
           colnames(aleatoric_uncertainty) = colnames(self$theta)
           self$aleatoric_uncertainty = aleatoric_uncertainty
 
-          self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
-
+          self$overall_uncertainty = self$epistemic_uncertainty
+          # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
+          
           posterior_median = as.data.frame(array(posterior_median, dim = c(nsamples, ndim)))
           colnames(posterior_median) = colnames(self$theta)
 
@@ -955,8 +956,9 @@ abcnn = R6::R6Class("abcnn",
           colnames(aleatoric_uncertainty) = colnames(self$theta)
           self$aleatoric_uncertainty = aleatoric_uncertainty
 
-          self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
-
+          self$overall_uncertainty = self$epistemic_uncertainty
+          # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
+          
           posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
           colnames(posterior_median) = colnames(self$theta)
 
