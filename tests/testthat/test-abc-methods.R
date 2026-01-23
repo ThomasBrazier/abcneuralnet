@@ -108,7 +108,7 @@ test_that("Method-specific outputs are correct", {
   # MC dropout doesn't have aleatoric uncertainty
   expect_true(is.na(abc_mc$aleatoric_uncertainty))
   expect_true(!is.na(abc_mc$epistemic_uncertainty))
-  expect_true(is.na(abc_mc$overall_uncertainty))
+  expect_true(!is.na(abc_mc$overall_uncertainty))
 
 
   # Test Concrete Dropout outputs
@@ -145,7 +145,7 @@ test_that("Method-specific outputs are correct", {
 
   expect_true(is.na(abc_tab$aleatoric_uncertainty))
   expect_true(!is.na(abc_tab$epistemic_uncertainty))
-  expect_true(is.na(abc_tab$overall_uncertainty))
+  expect_true(!is.na(abc_tab$overall_uncertainty))
 })
 
 
