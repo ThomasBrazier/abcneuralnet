@@ -358,6 +358,8 @@ abc = abcnn$new(theta,
 
 \item{\code{ncores}}{number of cores for parallel procedures}
 
+\item{\code{seed}}{a random seed when initializing the network}
+
 \item{\code{call}}{the call to the new() initialisation function}
 }
 \if{html}{\out{</div>}}
@@ -418,7 +420,8 @@ Create a new \code{abcnn} object
   dropout_regularizer = 1e-05,
   num_networks = 5,
   epsilon_adversarial = 0,
-  ncores = 1
+  ncores = 1,
+  seed = round(runif(1, 0, 10000), digits = 0)
 )}\if{html}{\out{</div>}}
 }
 
@@ -492,6 +495,8 @@ Create a new \code{abcnn} object
 \item{\code{epsilon_adversarial}}{the amount of perturbation for adversarial training in \verb{deep ensemble} (experimental)}
 
 \item{\code{ncores}}{number of cores for parallelized steps}
+
+\item{\code{seed}}{a random seed}
 
 \item{\code{callbacks}}{custom callbacks}
 }

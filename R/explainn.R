@@ -50,7 +50,6 @@
 #' @import luz
 #' @import ggplot2
 #' @import innsight
-#' @import plotly
 #' @import R6
 #' @import RColorBrewer
 #' @import janitor
