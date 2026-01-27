@@ -56,7 +56,8 @@ Imports:
     devtools,
     assertthat,
     here,
-    kableExtra
+    kableExtra,
+    rminer
 VignetteBuilder: knitr
 RdMacros: Rdpack
 Config/testthat/edition: 3

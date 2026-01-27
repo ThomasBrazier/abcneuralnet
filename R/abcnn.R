@@ -86,6 +86,9 @@
 #' * `plot_training()` to plot the training curves
 #' * `plot_prediction()` to plot all predictions with their credible intervals
 #' * `plot_posterior()` to plot the prior and posterior distributions, with the mean and credible intervals, of a single sample
+#' * `draw_from_posterior()` to draw `n` samples from the posterior distribution (e.g. for posterior predictive check)
+#' * `cross_validation()` to compute cross-validation metrics by comparing ground truth and predictions on unseen pseudo-observed data (i.e. simulations)
+#' * `plot_cross_validation()` to plot the cross-validation scatter plot
 #'
 #'
 #' The hyperparameters of the neural network can be configured in the `new()` method
@@ -348,6 +351,10 @@ abcnn = R6::R6Class("abcnn",
     ncores = NA,
     #' @field seed a random seed when initializing the network
     seed = NA,
+    #' @field cross_validation_data the unseen dataset for cross-validation
+    cross_validation_data = list(param = NA, sumstats = NA),
+    #' @field cross_validation_predictions predictions for the cross-validation dataset
+    cross_validation_predictions = NA,
     #' @field call the call to the new() initialisation function
     call = NULL,
 
@@ -443,17 +450,17 @@ abcnn = R6::R6Class("abcnn",
       if(sum(apply(theta, 2, is.numeric)) != ncol(theta)) stop("'theta' must be numeric.")
       if(sum(apply(sumstat, 2, is.numeric)) != ncol(sumstat)) stop("'sumstat' must be numeric.")
       if(sum(apply(observed, 2, is.numeric)) != ncol(observed)) stop("'observed' must be numeric.")
-      
+
       # Check empty data frames
       if(nrow(theta) < 1) stop("'theta' is empty.")
       if(nrow(sumstat) < 1) stop("'sumstat' is empty.")
       if(nrow(observed) < 1) stop("'observed' is empty.")
-      
+
       # Check mismatched row counts
       if(nrow(theta) != nrow(sumstat)) stop("Mismatch row count between training theta and summary statistics.")
-      
+
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
-      
+
       methods = c("monte carlo dropout",
                   "concrete dropout",
                   "deep ensemble",
@@ -593,7 +600,7 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------#
       torch::torch_manual_seed(self$seed)
       set.seed(as.integer(self$seed))
-      
+
       if (is.null(model)) {
         # if (self$method == "tabnet-abc") {
         #   self$num_conformal = 0
@@ -880,7 +887,7 @@ abcnn = R6::R6Class("abcnn",
 
           self$overall_uncertainty = self$epistemic_uncertainty
           # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
-          
+
           posterior_median = as.data.frame(array(posterior_median, dim = c(nsamples, ndim)))
           colnames(posterior_median) = colnames(self$theta)
 
@@ -958,7 +965,7 @@ abcnn = R6::R6Class("abcnn",
 
           self$overall_uncertainty = self$epistemic_uncertainty
           # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
-          
+
           posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
           colnames(posterior_median) = colnames(self$theta)
 
@@ -1781,6 +1788,111 @@ abcnn = R6::R6Class("abcnn",
 
         p
       }
+
+    },
+
+    #' @description
+    #' Draw random samples from the posterior distribution
+    #'
+    #' @param n the number of samples to draw from posterior
+    #'
+    #' @returns Returns a list with n random samples for each observed sample
+    #'
+    draw_from_posterior = function(n = 1) {
+      set.seed(self$seed)
+
+      if (self$method == "deep ensemble") {
+        mu = self$predictive_mean
+        sigma = self$overall_uncertainty
+      } else {
+        mu = apply(self$posterior_samples, 3, function(x) mean(x))
+        sigma = var(self$posterior_samples)
+      }
+
+      samples = lapply(1:self$n_obs, function(x) rnorm(n, mu[x], sigma[x]))
+
+      return(samples)
+    },
+
+    #' @description
+    #' Compute cross-validation metrics by comparing ground truth
+    #' and predictions on unseen pseudo-observed data (i.e. simulations)
+    #'
+    #' Metrics:
+    #' * `n` number of cross-validation samples
+    #' * `mae` mean absolute error
+    #' * `mse` mean squared error
+    #' * `rmse` root mean squared error
+    #' * `nmae` normalized mean absolute error
+    #' * `cor` Spearman correlation coefficient
+    #' * `cov` covariance
+    #' * `mean_epistemic_interval` mean epistemic conformal credible interval
+    #' * `mean_overall_interval` mean overall conformal credible interval
+    #'
+    #'
+    #' @param cross_validation_param the parameters in unseen simulations on which to compute cross-validation (if `cross_validation_data` is not provided, the function returns the `cross_validation_predictions` already computed)
+    #' @param cross_validation_sumstats the summary stistics of unseen simulations on which to compute cross-validation (if `cross_validation_data` is not provided, the function returns the `cross_validation_predictions` already computed)
+    #'
+    #' @returns Returns metrics computed on the cross-validation dataset
+    #'
+    cross_validation = function(cross_validation_param = NULL,
+                                cross_validation_sumstats = NULL) {
+      set.seed(self$seed)
+
+      # If no data is provided, just return results with existing predictions
+      if (!is.null(cross_validation_param) & !is.null(cross_validation_sumstats)) {
+
+        self$cross_validation_data$param = as_tibble(cross_validation_param)
+        self$cross_validation_data$sumstats = as_tibble(cross_validation_sumstats)
+
+        tmp = self
+        tmp$predict(cross_validation_sumstats)
+        self$cross_validation_predictions = tmp$predictions()
+        rm(tmp)
+      }
+
+      tidy_param = self$cross_validation_data$param %>%
+        pivot_longer(colnames(self$cross_validation_data$param),
+                     names_to = "parameter",
+                     values_to = "true_value")
+
+      metrics = cross_val(tidy_param,
+                          self$cross_validation_predictions)
+
+      return(metrics)
+    },
+
+    #' @description
+    #' Plot the cross-validation scatter plot
+    #'
+    plot_cross_validation = function() {
+
+      pal = RColorBrewer::brewer.pal(8, "Dark2")
+      cols = c("Epistemic" = pal[3],"Overall" = pal[2])
+
+      tidy_param = self$cross_validation_data$param %>%
+        pivot_longer(colnames(self$cross_validation_data$param),
+                     names_to = "parameter",
+                     values_to = "true_value")
+
+      pred = self$cross_validation_predictions
+      pred$true_value = tidy_param$true_value
+
+      pred$ci_overall_upper = pred$predictive_mean + pred$overall_conformal_credible_interval
+      pred$ci_overall_lower = pred$predictive_mean - pred$overall_conformal_credible_interval
+
+      pred$ci_e_upper = pred$predictive_mean + pred$epistemic_conformal_credible_interval
+      pred$ci_e_lower = pred$predictive_mean - pred$epistemic_conformal_credible_interval
+
+
+      ggplot2::ggplot(data = pred, aes(x = true_value)) +
+        facet_wrap(~ parameter, scales = "free") +
+        geom_errorbar(aes(x = true_value, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.1) +
+        geom_errorbar(aes(x = true_value, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.1) +
+        geom_point(aes(x = true_value, y = predictive_mean), color = "black", alpha = 0.2) +
+        xlab("Observed") + ylab("Predicted") +
+        scale_colour_manual(name = "Uncertainty", values = cols) +
+        theme_bw()
 
     }
   )

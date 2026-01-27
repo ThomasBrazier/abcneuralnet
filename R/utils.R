@@ -14,9 +14,9 @@
 #' @export
 #'
 save_abcnn = function(object, prefix = "") {
-  
+
   saveRDS(object, paste0(prefix, "_abcnn.Rds"))
-  
+
   if (object$method == "tabnet-abc") {
     # See https://github.com/mlverse/tabnet/issues/34
     # Serialization
@@ -44,7 +44,7 @@ save_abcnn = function(object, prefix = "") {
 #' @return an `abcnn` object
 #'
 load_abcnn = function(prefix = "") {
-  
+
   object = readRDS(paste0(prefix, "_abcnn.Rds"))
 
   if (object$method == "tabnet-abc") {
@@ -136,6 +136,38 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
 }
 
 
+#' Cross-validation metrics between ground truth and predictions
+#'
+#' @description
+#'
+#' The function computes cross-validation metrics between ground truth and predictions
+#'
+#' @param cross_validation_param a tidy data frame with ground truth simulated parameters
+#' @param cross_validation_predictions a tidy  data frame with predictions
+#'
+#' @return a data frame with cross-validation metrics
+#'
+cross_val = function(cross_validation_param,
+                     cross_validation_predictions) {
+
+  cross_validation_predictions$true_value = cross_validation_param$true_value
+
+  res = cross_validation_predictions %>%
+    group_by(parameter) %>%
+    summarise(n = n(),
+              mae = rminer::mmetric(predictive_mean, true_value, metric = "MAE"),
+              mse = rminer::mmetric(predictive_mean, true_value, metric = "MSE"),
+              rmse = rminer::mmetric(predictive_mean, true_value, metric = "RMSE"),
+              nmae = rminer::mmetric(predictive_mean, true_value, metric = "NMAE"),
+              cor = cor(predictive_mean, true_value, method = "spearman"),
+              cov = cov(predictive_mean, true_value),
+              mean_epistemic_interval = 2 * mean(epistemic_conformal_credible_interval),
+              mean_overall_interval = 2 * mean(overall_conformal_credible_interval))
+
+  return(res)
+}
+
+
 # TODO Sample table
 
 #' Return a data frame with sample sizes of an `abcnn` object
@@ -224,3 +256,7 @@ hyperparams_abcnn = function(object) {
 
   return(hyperparams)
 }
+
+
+
+
