@@ -1,13 +1,14 @@
 Package: abcneuralnet
 Title: Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference
-Version: 0.1
+Version: 0.2
 Authors@R: 
     person("Brazier", "Thomas", , "brazier.thomas@gmail.com", role = c("aut", "cre"))
 Author: Thomas Brazier [aut, cre]
 Maintainer: Thomas Brazier <brazier.thomas@gmail.com>
 Description:
-  This package is designed for parameter inference with ABC and neural networks for population genetics.
-  It implements four different methods mixing ABC and neural networks implemented in R `torch`.
+  The package `abcneuralnet` provides Bayesian Neural Network 
+  and an Approximate Baysesian Computation framework for simulation-based parameter inference.
+  It implements four different methods combining ABC and neural networks implemented in R `torch`.
   The two core methods are `concrete dropout`,
   an implementation of Gal et al. (2017), and `deep ensemble`, an implementation
   of Lakshminarayanan et al. (2017), both allowing to estimate both the aleatoric and epistemic uncertainty
@@ -20,7 +21,7 @@ Description:
   an attention map on features. The `tabnet` neural network is trained to predict summary statistics from the observed summary statistics.
   Then these predictions are used as a supplementary set of summary statistics and regular ABC inference is performed on it.
   Explain methods are specific the `tabnet-abc` model.
-  In addition, the credible interval is calibrated with conformal prediction, as in Baragatti et al. (2024).
+  In addition, Credible Intervals are calibrated with conformal prediction, as in Baragatti et al. (2024).
   As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`,
   `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method).
   The neural networks are implemented with the `torch` R package and support CUDA devices for training.
@@ -29,7 +30,7 @@ Description:
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Suggests: 
     knitr,
     rmarkdown,
@@ -38,7 +39,6 @@ Imports:
     R6,
     RColorBrewer,
     Rdpack,
-    knitr,
     abc,
     bundle,
     dplyr,
@@ -48,14 +48,15 @@ Imports:
     janitor,
     luz,
     plotly,
-    tabnet,
     tibble,
     tidyr,
     tidyverse,
     torch,
+    tabnet,
     devtools,
     assertthat,
-    here
+    here,
+    kableExtra
 VignetteBuilder: knitr
 RdMacros: Rdpack
 Config/testthat/edition: 3

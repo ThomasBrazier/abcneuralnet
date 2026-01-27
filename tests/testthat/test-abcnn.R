@@ -134,8 +134,96 @@ test_that("ABC-NN handle correctly input and output with one or more dimensions"
 
 
 
+# Test random seed when initializing a torch model
+test_that("Test random seed when initializing a torch model always return the same model", {
+  # Make test data
+  set.seed(123)
+  n_samples = 10000
+  theta_training = data.frame(param1 = runif(n_samples, 0, 1))
+  sumstats_training = data.frame(
+    stat1 = theta_training$param1 + rnorm(n_samples, 0, 0.05),
+    stat2 = theta_training$param1^2 + rnorm(n_samples, 0, 0.1)
+  )
+  sumstats_observed = data.frame(stat1 = c(0.4, 0.6), stat2 = c(0.2, 0.7))
 
+  num_posterior_samples = 50
 
+  methods = c("monte carlo dropout",
+              "concrete dropout",
+              "deep ensemble",
+              "tabnet-abc")
+
+  for (m in methods) {
+    # Init an abcnn object with inputs and targets
+    abc = abcnn$new(theta_training,
+                    sumstats_training,
+                    sumstats_observed,
+                    method = m,
+                    scale_input = "none",
+                    scale_target = "none",
+                    num_hidden_layers = 3,
+                    num_hidden_dim = 128,
+                    epochs = 3,
+                    batch_size = 32,
+                    tol = 0.1,
+                    num_posterior_samples = num_posterior_samples,
+                    abc_method = "loclinear",
+                    seed = 42)
+
+    abc$fit()
+    abc$predict()
+
+    pred_1 = abc$predictions()
+
+    # Expect the same results when re-done with same seed
+    abc = abcnn$new(theta_training,
+                    sumstats_training,
+                    sumstats_observed,
+                    method = m,
+                    scale_input = "none",
+                    scale_target = "none",
+                    num_hidden_layers = 3,
+                    num_hidden_dim = 128,
+                    epochs = 3,
+                    batch_size = 32,
+                    tol = 0.1,
+                    num_posterior_samples = num_posterior_samples,
+                    abc_method = "loclinear",
+                    seed = 42)
+
+    abc$fit()
+    abc$predict()
+
+    pred_2 = abc$predictions()
+
+    expect_equal(pred_1, pred_2)
+
+    # Expect a different ouotput with a different seed
+    abc = abcnn$new(theta_training,
+                    sumstats_training,
+                    sumstats_observed,
+                    method = m,
+                    scale_input = "none",
+                    scale_target = "none",
+                    num_hidden_layers = 3,
+                    num_hidden_dim = 128,
+                    epochs = 3,
+                    batch_size = 32,
+                    tol = 0.1,
+                    num_posterior_samples = num_posterior_samples,
+                    abc_method = "loclinear",
+                    seed = 94)
+
+    abc$fit()
+    abc$predict()
+
+    pred_3 = abc$predictions()
+
+    expect_false(isTRUE(all.equal(pred_1, pred_3)))
+
+  }
+
+})
 
 
 

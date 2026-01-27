@@ -8,3 +8,5 @@ inst/extdata/toy_example/
 /doc/
 /Meta/
 .*
+*.Rproj
+.Rbuildignore

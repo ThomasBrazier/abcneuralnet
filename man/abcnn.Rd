@@ -264,7 +264,7 @@ abc = abcnn$new(theta,
 
 \item{\code{early_stopping}}{logical, whether to do early stopping in \code{luz} (not implemented yet for the \verb{deep ensemble} method)}
 
-\item{\code{callbacks}}{list of \code{luz} callbacks (in development)}
+\item{\code{callbacks}}{list of \code{luz} callbacks  (not implemented for the method 'deep ensemble')}
 
 \item{\code{verbose}}{logical, whether to print messages and progress bars for the user}
 
@@ -358,6 +358,8 @@ abc = abcnn$new(theta,
 
 \item{\code{ncores}}{number of cores for parallel procedures}
 
+\item{\code{seed}}{a random seed when initializing the network}
+
 \item{\code{call}}{the call to the new() initialisation function}
 }
 \if{html}{\out{</div>}}
@@ -410,7 +412,7 @@ Create a new \code{abcnn} object
   variance_clamping = c(-1e+15, 1e+15),
   loss = torch::nn_mse_loss(),
   abc_method = "loclinear",
-  tol = NULL,
+  tol = 0.1,
   abc_keep_original_sumstats = FALSE,
   num_posterior_samples = 1000,
   prior_length_scale = 1e-04,
@@ -418,7 +420,8 @@ Create a new \code{abcnn} object
   dropout_regularizer = 1e-05,
   num_networks = 5,
   epsilon_adversarial = 0,
-  ncores = 1
+  ncores = 1,
+  seed = round(runif(1, 0, 10000), digits = 0)
 )}\if{html}{\out{</div>}}
 }
 
@@ -457,7 +460,7 @@ Create a new \code{abcnn} object
 
 \item{\code{epochs}}{number of epochs for training}
 
-\item{\code{early_stopping}}{whether to do early stopping}
+\item{\code{early_stopping}}{whether to do early stopping (not implemented for the method 'deep ensemble')}
 
 \item{\code{verbose}}{whether to print messages}
 
@@ -492,6 +495,8 @@ Create a new \code{abcnn} object
 \item{\code{epsilon_adversarial}}{the amount of perturbation for adversarial training in \verb{deep ensemble} (experimental)}
 
 \item{\code{ncores}}{number of cores for parallelized steps}
+
+\item{\code{seed}}{a random seed}
 
 \item{\code{callbacks}}{custom callbacks}
 }

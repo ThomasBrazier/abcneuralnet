@@ -1,0 +1,231 @@
+
+@article{koenen_interpreting_2024,
+	title = {Interpreting {Deep} {Neural} {Networks} with the {Package} innsight},
+	volume = {111},
+	issn = {1548-7660},
+	url = {http://arxiv.org/abs/2306.10822},
+	doi = {10.18637/jss.v111.i08},
+	abstract = {The R package innsight offers a general toolbox for revealing variable-wise interpretations of deep neural networks’ predictions with so-called feature attribution methods. Aside from the unified and user-friendly framework, the package stands out in three ways: It is generally the first R package implementing feature attribution methods for neural networks. Secondly, it operates independently of the deep learning library allowing the interpretation of models from any R package, including keras, torch, neuralnet, and even custom models. Despite its flexibility, innsight benefits internally from the torch package’s fast and efficient array calculations, which builds on LibTorch – PyTorch’s C++ backend – without a Python dependency. Finally, it offers a variety of visualization tools for tabular, signal, image data or a combination of these. Additionally, the plots can be rendered interactively using the plotly package.},
+	language = {en},
+	number = {8},
+	urldate = {2025-09-02},
+	journal = {Journal of Statistical Software},
+	author = {Koenen, Niklas and Wright, Marvin N.},
+	year = {2024},
+	note = {arXiv:2306.10822 [stat]},
+	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning},
+	file = {PDF:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/8HV6X9NM/Koenen and Wright - 2024 - Interpreting Deep Neural Networks with the Package innsight.pdf:application/pdf},
+}
+
+
+@article{raynal_abc_2017,
+	title = {{ABC} random forests for {Bayesian} parameter inference},
+	issn = {2551668X},
+	url = {http://arxiv.org/abs/1605.05537},
+	doi = {10.24072/pci.evolbiol.100036},
+	abstract = {This preprint has been reviewed and recommended by Peer Community In Evolutionary Biology (http:// dx.doi.org/ 10.24072/ pci.evolbiol.100036). Approximate Bayesian computation (ABC) has grown into a standard methodology that manages Bayesian inference for models associated with intractable likelihood functions. Most ABC implementations require the preliminary selection of a vector of informative statistics summarizing raw data. Furthermore, in almost all existing implementations, the tolerance level that separates acceptance from rejection of simulated parameter values needs to be calibrated. We propose to conduct likelihood-free Bayesian inferences about parameters with no prior selection of the relevant components of the summary statistics and bypassing the derivation of the associated tolerance level. The approach relies on the random forest methodology of Breiman (2001) applied in a (non parametric) regression setting. We advocate the derivation of a new random forest for each component of the parameter vector of interest. When compared with earlier ABC solutions, this method offers signiﬁcant gains in terms of robustness to the choice of the summary statistics, does not depend on any type of tolerance level, and is a good trade-off in term of quality of point estimator precision and credible interval estimations for a given computing time. We illustrate the performance of our methodological proposal and compare it with earlier ABC methods on a Normal toy example and a population genetics example dealing with human population evolution. All methods designed here have been incorporated in the R package abcrf (version 1.7) available on CRAN.},
+	language = {en},
+	urldate = {2019-01-18},
+	journal = {Peer Community in Evolutionary Biology},
+	author = {Raynal, Louis and Marin, Jean-Michel and Pudlo, Pierre and Ribatet, Mathieu and Robert, Christian P. and Estoup, Arnaud},
+	month = nov,
+	year = {2017},
+	note = {arXiv: 1605.05537},
+	keywords = {Statistics - Machine Learning, Statistics - Methodology, Statistics - Computation, pseudorasbora},
+	pages = {100036},
+	annote = {Comment: Main text: 24 pages, 6 figures Supplementary Information: 14 pages, 5 figures},
+	annote = {Comment: Main text: 24 pages, 6 figures Supplementary Information: 14 pages, 5 figures},
+	file = {Raynal et al. - 2017 - ABC random forests for Bayesian parameter inferenc.pdf:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/8P9LVBYM/Raynal et al_2017_ABC random forests for Bayesian parameter inference.pdf:application/pdf},
+}
+
+
+
+
+@article{akesson_convolutional_2022,
+	title = {Convolutional {Neural} {Networks} as {Summary} {Statistics} for {Approximate} {Bayesian} {Computation}},
+	volume = {19},
+	copyright = {https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html},
+	issn = {1545-5963, 1557-9964, 2374-0043},
+	url = {https://ieeexplore.ieee.org/document/9525290/},
+	doi = {10.1109/TCBB.2021.3108695},
+	abstract = {Approximate Bayesian Computation is widely used in systems biology for inferring parameters in stochastic gene regulatory network models. Its performance hinges critically on the ability to summarize high-dimensional system responses such as time series into a few informative, low-dimensional summary statistics. The quality of those statistics acutely impacts the accuracy of the inference task. Existing methods to select the best subset out of a pool of candidate statistics do not scale well with large pools of several tens to hundreds of candidate statistics. Since high quality statistics are imperative for good performance, this becomes a serious bottleneck when performing inference on complex and high-dimensional problems. This paper proposes a convolutional neural network architecture for automatically learning informative summary statistics of temporal responses. We show that the proposed network can effectively circumvent the statistics selection problem of the preprocessing step for ABC inference. The proposed approach is demonstrated on two benchmark problem and one challenging inference problem learning parameters in a high-dimensional stochastic genetic oscillator. We also study the impact of experimental design on network performance by comparing different data richness and data acquisition strategies.},
+	language = {en},
+	number = {6},
+	urldate = {2024-09-04},
+	journal = {IEEE/ACM Transactions on Computational Biology and Bioinformatics},
+	author = {Åkesson, Mattias and Singh, Prashant and Wrede, Fredrik and Hellander, Andreas},
+	month = nov,
+	year = {2022},
+	pages = {3353--3365},
+	file = {PDF:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/GTACW6DW/Åkesson et al. - 2022 - Convolutional Neural Networks as Summary Statistics for Approximate Bayesian Computation.pdf:application/pdf},
+}
+
+@article{jiang_learning_2018,
+	title = {Learning {Summary} {Statistic} for {Approximate} {Bayesian} {Computation} via {Deep} {Neural} {Network}},
+	issn = {10170405},
+	url = {http://arxiv.org/abs/1510.02175},
+	doi = {10.5705/ss.202015.0340},
+	abstract = {Approximate Bayesian Computation (ABC) methods are used to approximate posterior distributions in models with unknown or computationally intractable likelihoods. Both the accuracy and computational eﬃciency of ABC depend on the choice of summary statistic, but outside of special cases where the optimal summary statistics are known, it is unclear which guiding principles can be used to construct eﬀective summary statistics. In this paper we explore the possibility of automating the process of constructing summary statistics by training deep neural networks to predict the parameters from artiﬁcially generated data: the resulting summary statistics are approximately posterior means of the parameters. With minimal model-speciﬁc tuning, our method constructs summary statistics for the Ising model and the moving-average model, which match or exceed theoreticallymotivated summary statistics in terms of the accuracies of the resulting posteriors.},
+	language = {en},
+	urldate = {2024-07-31},
+	journal = {Statistica Sinica},
+	author = {Jiang, Bai and Wu, Tung-yu and Zheng, Charles and Wong, Wing H.},
+	year = {2018},
+	note = {arXiv:1510.02175 [stat]},
+	keywords = {Statistics - Machine Learning, Statistics - Methodology, Statistics - Computation},
+	annote = {Comment: 27 pages, 10 figures},
+	file = {Jiang et al. - 2018 - Learning Summary Statistic for Approximate Bayesia.pdf:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/7IHYD87C/Jiang et al. - 2018 - Learning Summary Statistic for Approximate Bayesia.pdf:application/pdf},
+}
+
+@misc{jia_using_2018,
+	title = {Using {Deep} {Neural} {Network} {Approximate} {Bayesian} {Network}},
+	url = {http://arxiv.org/abs/1801.00282},
+	abstract = {We present a new method to approximate posterior probabilities of Bayesian Network using Deep Neural Network. Experiment results on several public Bayesian Network datasets shows that Deep Neural Network is capable of learning joint probability distri- bution of Bayesian Network by learning from a few observation and posterior probability distribution pairs with high accuracy. Compared with traditional approximate method likelihood weighting sampling algorithm, our method is much faster and gains higher accuracy in medium sized Bayesian Network. Another advantage of our method is that our method can be parallelled much easier in GPU without extra effort. We also ex- plored the connection between the accuracy of our model and the number of training examples. The result shows that our model saturate as the number of training examples grow and we don't need many training examples to get reasonably good result. Another contribution of our work is that we have shown discriminative model like Deep Neural Network can approximate generative model like Bayesian Network.},
+	language = {en},
+	urldate = {2024-07-30},
+	publisher = {arXiv},
+	author = {Jia, Jie and Zhou, Honggang and Li, Yunchun},
+	month = jan,
+	year = {2018},
+	note = {arXiv:1801.00282 [cs, stat]},
+	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning},
+	file = {Jia et al. - 2018 - Using Deep Neural Network Approximate Bayesian Net.pdf:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/47QWA78V/Jia et al. - 2018 - Using Deep Neural Network Approximate Bayesian Net.pdf:application/pdf},
+}
+
+@article{beaumont_approximate_2019,
+	title = {Approximate {Bayesian} {Computation}},
+	abstract = {Many of the statistical models that could provide an accurate, interesting, and testable explanation for the structure of a data set turn out to have intractable likelihood functions. The method of approximate Bayesian computation (ABC) has become a popular approach for tackling such models. This review gives an overview of the method and the main issues and challenges that are the subject of current research.},
+	language = {en},
+	author = {Beaumont, Mark A},
+	year = {2019},
+	file = {Beaumont - 2019 - Approximate Bayesian Computation.pdf:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/QZ9FSDFF/Beaumont - 2019 - Approximate Bayesian Computation.pdf:application/pdf},
+}
+
+@misc{baragatti_approximate_2024,
+	title = {Approximate {Bayesian} {Computation} with {Deep} {Learning} and {Conformal} prediction},
+	url = {http://arxiv.org/abs/2406.04874},
+	abstract = {Approximate Bayesian Computation (ABC) methods are commonly used to approximate posterior distributions in models with unknown or computationally intractable likelihoods. Classical ABC methods are based on nearest neighbor type algorithms and rely on the choice of so-called summary statistics, distances between datasets and a tolerance threshold. Recently, methods combining ABC with more complex machine learning algorithms have been proposed to mitigate the impact of these “user-choices”. In this paper, we propose the first, to our knowledge, ABC method completely free of summary statistics, distance, and tolerance threshold. Moreover, in contrast with usual generalizations of the ABC method, it associates a confidence interval (having a proper frequentist marginal coverage) with the posterior mean estimation (or other moment-type estimates).},
+	language = {en},
+	urldate = {2024-07-30},
+	publisher = {arXiv},
+	author = {Baragatti, Meili and Cloez, Bertrand and Métivier, David and Sanchez, Isabelle},
+	month = jul,
+	year = {2024},
+	note = {arXiv:2406.04874 [stat]},
+	keywords = {Statistics - Methodology},
+	annote = {Comment: 28 pages, 5 figures},
+	file = {Baragatti et al. - 2024 - Approximate Bayesian Computation with Deep Learnin.pdf:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/LP9KG25U/Baragatti et al. - 2024 - Approximate Bayesian Computation with Deep Learnin.pdf:application/pdf},
+}
+
+
+
+
+@misc{lakshminarayanan_simple_2016,
+	title = {Simple and {Scalable} {Predictive} {Uncertainty} {Estimation} using {Deep} {Ensembles}},
+	copyright = {arXiv.org perpetual, non-exclusive license},
+	url = {https://arxiv.org/abs/1612.01474},
+	doi = {10.48550/ARXIV.1612.01474},
+	abstract = {Deep neural networks (NNs) are powerful black box predictors that have recently achieved impressive performance on a wide spectrum of tasks. Quantifying predictive uncertainty in NNs is a challenging and yet unsolved problem. Bayesian NNs, which learn a distribution over weights, are currently the state-of-the-art for estimating predictive uncertainty; however these require significant modifications to the training procedure and are computationally expensive compared to standard (non-Bayesian) NNs. We propose an alternative to Bayesian NNs that is simple to implement, readily parallelizable, requires very little hyperparameter tuning, and yields high quality predictive uncertainty estimates. Through a series of experiments on classification and regression benchmarks, we demonstrate that our method produces well-calibrated uncertainty estimates which are as good or better than approximate Bayesian NNs. To assess robustness to dataset shift, we evaluate the predictive uncertainty on test examples from known and unknown distributions, and show that our method is able to express higher uncertainty on out-of-distribution examples. We demonstrate the scalability of our method by evaluating predictive uncertainty estimates on ImageNet.},
+	urldate = {2026-01-14},
+	publisher = {arXiv},
+	author = {Lakshminarayanan, Balaji and Pritzel, Alexander and Blundell, Charles},
+	year = {2016},
+	note = {Version Number: 3},
+	keywords = {FOS: Computer and information sciences, Machine Learning (cs.LG), Machine Learning (stat.ML)},
+	annote = {Other
+NIPS 2017},
+}
+
+@inproceedings{gal2016dropout,
+  title={Dropout as a bayesian approximation: Representing model uncertainty in deep learning},
+  author={Gal, Yarin and Ghahramani, Zoubin},
+  booktitle={international conference on machine learning},
+  pages={1050--1059},
+  year={2016},
+  organization={PMLR}
+}
+
+@article{gal2015dropout,
+  title={Dropout as a Bayesian approximation},
+  author={Gal, Yarin and Ghahramani, Zoubin},
+  journal={arXiv preprint arXiv:1506.02157},
+  year={2015}
+}
+
+@article{gal2017concrete,
+  title={Concrete dropout},
+  author={Gal, Yarin and Hron, Jiri and Kendall, Alex},
+  journal={Advances in neural information processing systems},
+  volume={30},
+  year={2017}
+}
+
+@inproceedings{collin2020bringing,
+  title={Bringing ABC inference to the machine learning realm: AbcRanger, an optimized random forests library for ABC},
+  author={Collin, Fran{\c{c}}ois-David and Estoup, Arnaud and Marin, Jean-Michel and Raynal, Louis},
+  booktitle={JOBIM 2020},
+  volume={2020},
+  year={2020}
+}
+
+@article{raynal2019abc,
+  title={ABC random forests for Bayesian parameter inference},
+  author={Raynal, Louis and Marin, Jean-Michel and Pudlo, Pierre and Ribatet, Mathieu and Robert, Christian P and Estoup, Arnaud},
+  journal={Bioinformatics},
+  volume={35},
+  number={10},
+  pages={1720--1728},
+  year={2019},
+  publisher={Oxford University Press}
+}
+
+@article{arik_tabnet_2020,
+	title = {{TabNet}: {Attentive} {Interpretable} {Tabular} {Learning}},
+	shorttitle = {{TabNet}},
+	url = {http://arxiv.org/abs/1908.07442},
+	doi = {10.48550/arXiv.1908.07442},
+	abstract = {We propose a novel high-performance and interpretable canonical deep tabular data learning architecture, TabNet. TabNet uses sequential attention to choose which features to reason from at each decision step, enabling interpretability and more efﬁcient learning as the learning capacity is used for the most salient features. We demonstrate that TabNet outperforms other variants on a wide range of non-performance-saturated tabular datasets and yields interpretable feature attributions plus insights into its global behavior. Finally, we demonstrate self-supervised learning for tabular data, signiﬁcantly improving performance when unlabeled data is abundant.},
+	language = {en},
+	urldate = {2025-04-01},
+	publisher = {arXiv},
+	author = {Arik, Sercan O. and Pfister, Tomas},
+	month = dec,
+	year = {2020},
+	note = {arXiv:1908.07442 [cs]},
+	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning},
+	file = {PDF:/home/tbrazier/snap/zotero-snap/common/Zotero/storage/R39KCNDW/Arik et Pfister - 2020 - TabNet Attentive Interpretable Tabular Learning.pdf:application/pdf},
+}
+
+
+@article{joyce2008approximately,
+  title={Approximately sufficient statistics and Bayesian computation},
+  author={Joyce, Paul and Marjoram, Paul},
+  journal={Statistical applications in genetics and molecular biology},
+  volume={7},
+  number={1},
+  year={2008},
+  publisher={De Gruyter}
+}
+
+
+@Manual{torch2025,
+  title = {torch: Tensors and Neural Networks with 'GPU' Acceleration},
+  author = {Daniel Falbel and Javier Luraschi},
+  year = {2025},
+  note = {R package version 0.16.3},
+  url = {https://torch.mlverse.org/docs},
+}
+
+@article{blum2010approximate,
+author = {Michael G. B. Blum},
+title = {Approximate Bayesian Computation: A Nonparametric Perspective},
+journal = {Journal of the American Statistical Association},
+volume = {105},
+number = {491},
+pages = {1178--1187},
+year = {2010},
+publisher = {Taylor \& Francis},
+doi = {10.1198/jasa.2010.tm09448},
+URL = {https://doi.org/10.1198/jasa.2010.tm09448},
+eprint = {https://doi.org/10.1198/jasa.2010.tm09448}
+}

@@ -204,7 +204,8 @@
 #' @import tibble
 #' @import R6
 #' @import RColorBrewer
-#' @import tabnet
+#' @importFrom tabnet tabnet_config
+#' @importFrom tabnet tabnet_fit
 #' @import abc
 #'
 #' @importFrom Rdpack reprompt
@@ -251,7 +252,7 @@ abcnn = R6::R6Class("abcnn",
     epochs=NA,
     #' @field early_stopping logical, whether to do early stopping in `luz` (not implemented yet for the `deep ensemble` method)
     early_stopping=FALSE,
-    #' @field callbacks list of `luz` callbacks (in development)
+    #' @field callbacks list of `luz` callbacks  (not implemented for the method 'deep ensemble')
     callbacks=NULL,
     #' @field verbose logical, whether to print messages and progress bars for the user
     verbose=NULL,
@@ -345,6 +346,8 @@ abcnn = R6::R6Class("abcnn",
     calibration_sumstat = NA,
     #' @field ncores number of cores for parallel procedures
     ncores = NA,
+    #' @field seed a random seed when initializing the network
+    seed = NA,
     #' @field call the call to the new() initialisation function
     call = NULL,
 
@@ -367,7 +370,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param dropout dropout rate
     #' @param batch_size  batch size
     #' @param epochs number of epochs for training
-    #' @param early_stopping whether to do early stopping
+    #' @param early_stopping whether to do early stopping (not implemented for the method 'deep ensemble')
     #' @param patience patience hyperparameter for early stopping. See `luz::luz_callback_early_stopping()` (not implemented yet for `deep ensemble`)
     #' @param callbacks custom callbacks
     #' @param verbose whether to print messages
@@ -386,6 +389,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param num_networks number of networks in `deep ensemble`
     #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble` (experimental)
     #' @param ncores number of cores for parallelized steps
+    #' @param seed a random seed
     #'
     initialize = function(theta,
                           sumstat,
@@ -412,7 +416,7 @@ abcnn = R6::R6Class("abcnn",
                           variance_clamping=c(-1e15, 1e15),
                           loss=torch::nn_mse_loss(),
                           abc_method="loclinear",
-                          tol=NULL,
+                          tol=0.1,
                           abc_keep_original_sumstats = FALSE,
                           num_posterior_samples=1000,
                           prior_length_scale=1e-4,
@@ -420,7 +424,8 @@ abcnn = R6::R6Class("abcnn",
                           dropout_regularizer = 1e-5,
                           num_networks=5,
                           epsilon_adversarial=0,
-                          ncores = 1) {
+                          ncores = 1,
+                          seed = round(runif(1, 0, 1e4), digits = 0)) {
       #-----------------------------------#
       # CHECK INPUTS
       #-----------------------------------#
@@ -430,10 +435,30 @@ abcnn = R6::R6Class("abcnn",
       if(missing(observed)) stop("'observed' is missing")
       if(missing(theta)) stop("'theta' is missing")
       if(missing(sumstat)) stop("'sumstat' is missing")
+      # Check input type
       if(!is.data.frame(theta)) stop("'theta' has to be a data.frame with column names.")
       if(!is.data.frame(sumstat)) stop("'sumstat' has to be a data.frame with column names.")
       if(!is.data.frame(observed)) stop("'observed' has to be a data.frame with column names.")
+      # Check if numeric data
+      if(sum(apply(theta, 2, is.numeric)) != ncol(theta)) stop("'theta' must be numeric.")
+      if(sum(apply(sumstat, 2, is.numeric)) != ncol(sumstat)) stop("'sumstat' must be numeric.")
+      if(sum(apply(observed, 2, is.numeric)) != ncol(observed)) stop("'observed' must be numeric.")
+      
+      # Check empty data frames
+      if(nrow(theta) < 1) stop("'theta' is empty.")
+      if(nrow(sumstat) < 1) stop("'sumstat' is empty.")
+      if(nrow(observed) < 1) stop("'observed' is empty.")
+      
+      # Check mismatched row counts
+      if(nrow(theta) != nrow(sumstat)) stop("Mismatch row count between training theta and summary statistics.")
+      
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
+      
+      methods = c("monte carlo dropout",
+                  "concrete dropout",
+                  "deep ensemble",
+                  "tabnet-abc")
+      if(!(method %in% methods)) stop( paste("Method must be one of:", paste(methods, collapse = ",")))
 
       # Device. Use CUDA if available
       self$device = torch::torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})
@@ -480,6 +505,7 @@ abcnn = R6::R6Class("abcnn",
       self$num_conformal = num_conformal
       self$verbose = verbose
       self$ncores = ncores
+      self$seed = seed
 
       # Init default value for clamping the variance estimate, or let the user set it
       # if (variance_clamping & !is.numeric(variance_clamping)) {
@@ -565,6 +591,9 @@ abcnn = R6::R6Class("abcnn",
       #-----------------------------------#
       # INIT MODELS
       #-----------------------------------#
+      torch::torch_manual_seed(self$seed)
+      set.seed(as.integer(self$seed))
+      
       if (is.null(model)) {
         # if (self$method == "tabnet-abc") {
         #   self$num_conformal = 0
@@ -791,7 +820,7 @@ abcnn = R6::R6Class("abcnn",
           ndim = ncol(self$theta_adj)
           mc_samples = array(0, dim = c(self$num_posterior_samples, nsamples, ndim))
 
-          pb = txtProgressBar(min = 1, max = nrow(self$observed_adj), style = 3)
+          pb = txtProgressBar(min = 0, max = nrow(self$observed_adj), style = 3)
           for (i in 1:nrow(self$observed_adj)) {
             setTxtProgressBar(pb, i)
 
@@ -849,8 +878,9 @@ abcnn = R6::R6Class("abcnn",
           colnames(aleatoric_uncertainty) = colnames(self$theta)
           self$aleatoric_uncertainty = aleatoric_uncertainty
 
-          self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
-
+          self$overall_uncertainty = self$epistemic_uncertainty
+          # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
+          
           posterior_median = as.data.frame(array(posterior_median, dim = c(nsamples, ndim)))
           colnames(posterior_median) = colnames(self$theta)
 
@@ -926,8 +956,9 @@ abcnn = R6::R6Class("abcnn",
           colnames(aleatoric_uncertainty) = colnames(self$theta)
           self$aleatoric_uncertainty = aleatoric_uncertainty
 
-          self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
-
+          self$overall_uncertainty = self$epistemic_uncertainty
+          # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
+          
           posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
           colnames(posterior_median) = colnames(self$theta)
 
