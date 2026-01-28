@@ -212,6 +212,7 @@
 #' @import abc
 #'
 #' @importFrom Rdpack reprompt
+#' @importFrom cli cli_progress_along
 #'
 #' @return an `abcnn` object that can be used to fit(), predict() and plot predictions
 #'
@@ -856,10 +857,10 @@ abcnn = R6::R6Class("abcnn",
           mc_samples = array(0, dim = c(self$num_posterior_samples, nsamples, ndim))
 
           # pb = txtProgressBar(min = 0, max = nrow(self$observed_adj), style = 3)
-          pb = progress_estimated(nrow(self$observed_adj))
-          for (i in 1:nrow(self$observed_adj)) {
+          # pb = progress_estimated(nrow(self$observed_adj))
+          for (i in cli::cli_progress_along(1:nrow(self$observed_adj))) {
             # setTxtProgressBar(pb, i)
-            pb$tick()$print()
+            # pb$tick()$print()
 
             suppressWarnings({abc_res = abc::abc(new_sumstats_observed[i,],
                                self$theta_adj,
@@ -945,11 +946,11 @@ abcnn = R6::R6Class("abcnn",
           # Each observation is a column (axis 2)
           # Mean prediction on axis 3, multiplied by the number of parameters to estimate
           # pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
-          pb = progress_estimated(self$num_posterior_samples)
+          # pb = progress_estimated(self$num_posterior_samples)
           
           mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], self$output_dim))
-          for (k in 1:self$num_posterior_samples) {
-            pb$tick()$print()
+          for (k in cli::cli_progress_along(1:self$num_posterior_samples)) {
+            # pb$tick()$print()
             preds = self$fitted$model(observed)
             mc_samples[k, , 1:self$output_dim] = as.array(preds)
             # setTxtProgressBar(pb, k)
@@ -1015,11 +1016,11 @@ abcnn = R6::R6Class("abcnn",
 
         if (self$method == 'concrete dropout') {
           # pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
-          pb = progress_estimated(self$num_posterior_samples)
+          # pb = progress_estimated(self$num_posterior_samples)
           
           mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
-          for (k in 1:self$num_posterior_samples) {
-            pb$tick()$print()
+          for (k in cli::cli_progress_along(1:self$num_posterior_samples)) {
+            # pb$tick()$print()
             preds = self$fitted$model(observed)
             mc_samples[k, , ] = cbind(as.matrix(preds[1]), as.matrix(preds[2]))
             # setTxtProgressBar(pb, k)
@@ -1104,10 +1105,10 @@ abcnn = R6::R6Class("abcnn",
           out_sig_sample = torch::torch_zeros(c(n_obs, self$output_dim, self$num_networks))
           
           # pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
-          pb = progress_estimated(self$num_networks)
+          # pb = progress_estimated(self$num_networks)
           
-          for (i in 1:self$num_networks) {
-            pb$tick()$print()
+          for (i in cli::cli_progress_along(1:self$num_networks)) {
+            # pb$tick()$print()
             # print(paste("Network", i))
 
             preds = self$fitted$model$model_list[[i]](observed)
@@ -1341,7 +1342,7 @@ abcnn = R6::R6Class("abcnn",
     #' Estimate a calibrated credible interval with Conformal Prediction
     #'
     conformal_prediction = function() {
-      if (self$verbose) {cat("Performing conformal prediction\n\n")}
+      if (self$verbose) {cat("\n\nPerforming conformal prediction\n\n")}
 
       # see https://forgemia.inra.fr/mistea/codes_articles/abcdconformal/-/blob/main/R/GaussianFields/Comparaison_ABCD_conv2d_conformal.Rmd?ref_type=heads
       # Monte Carlo Dropout prediction on the calibration set
@@ -1701,7 +1702,7 @@ abcnn = R6::R6Class("abcnn",
             facet_wrap(~ parameter, scales = "free") +
             geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, fill = "Overall"), alpha = 0.3) +
             geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, fill = "Epistemic"), alpha = 0.3) +
-            xlab("Observed") + ylab("Predicted") +
+            xlab("Summary statistics") + ylab("Predicted parameters") +
             scale_fill_manual(name = "Uncertainty", values = cols) +
             theme_bw()
         } else {
@@ -1711,7 +1712,7 @@ abcnn = R6::R6Class("abcnn",
               geom_errorbar(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.5) +
               geom_errorbar(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.5) +
               geom_point(aes(x = x, y = mean), color = "black") +
-              xlab("Observed") + ylab("Predicted") +
+              xlab("Summary statistics") + ylab("Predicted parameters") +
               scale_colour_manual(name = "Uncertainty", values = cols) +
               theme_bw()
           }
@@ -1886,7 +1887,7 @@ abcnn = R6::R6Class("abcnn",
         self$cross_validation_data$param = as_tibble(cross_validation_param)
         self$cross_validation_data$sumstats = as_tibble(cross_validation_sumstats)
 
-        tmp = self
+        tmp = self$clone(deep = TRUE)
         tmp$predict(cross_validation_sumstats)
         self$cross_validation_predictions = tmp$predictions()
         rm(tmp)
@@ -1924,14 +1925,21 @@ abcnn = R6::R6Class("abcnn",
 
       pred$ci_e_upper = pred$predictive_mean + pred$epistemic_conformal_credible_interval
       pred$ci_e_lower = pred$predictive_mean - pred$epistemic_conformal_credible_interval
-
+      
+      
+      # Sort and index observations
+      # pred = pred %>%
+      #   group_by(.data$param) %>%
+      #   arrange(.data$true_value, .by_group = TRUE)
+      # 
+      # pred$idx = 1:nrow(pred)
 
       ggplot2::ggplot(data = pred, aes(x = true_value)) +
         facet_wrap(~ parameter, scales = "free") +
-        geom_errorbar(aes(x = true_value, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.1) +
-        geom_errorbar(aes(x = true_value, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.1) +
+        geom_errorbar(aes(x = true_value, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.3) +
+        geom_errorbar(aes(x = true_value, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.3) +
         geom_point(aes(x = true_value, y = predictive_mean), color = "black", alpha = 0.2) +
-        xlab("Observed") + ylab("Predicted") +
+        xlab("Expected") + ylab("Predicted") +
         scale_colour_manual(name = "Uncertainty", values = cols) +
         theme_bw()
 
