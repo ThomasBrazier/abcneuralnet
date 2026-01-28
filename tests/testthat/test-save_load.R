@@ -11,10 +11,10 @@ test_that("save_abcnn() and load_abcnn() functions work", {
   
   num_posterior_samples = 50 
 
-  methods = c("monte carlo dropout",
+  methods = c("tabnet-abc",
+              "monte carlo dropout",
               "concrete dropout",
-              "deep ensemble",
-              "tabnet-abc")
+              "deep ensemble")
   
   for (m in methods) {
     # Init an abcnn object with inputs and targets
@@ -36,12 +36,15 @@ test_that("save_abcnn() and load_abcnn() functions work", {
     abc$predict()
 
     save_abcnn(abc, prefix = "../../tests/data/abc_test")
-
+    # save_abcnn(abc, prefix = "abc_test")
+    
     # Is it possible to fit and predict again?
     abc = load_abcnn(prefix = "../../tests/data/abc_test")
+    # abc = load_abcnn(prefix = "abc_test")
     expect_no_error(abc$fit())
 
     abc = load_abcnn(prefix = "../../tests/data/abc_test")
+    # abc = load_abcnn(prefix = "abc_test")
     expect_no_error(abc$predict())
 
     # Other methods work?

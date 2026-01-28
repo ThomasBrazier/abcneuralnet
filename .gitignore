@@ -10,3 +10,5 @@ inst/extdata/toy_example/
 .*
 *.Rproj
 .Rbuildignore
+
+AGENTS.md

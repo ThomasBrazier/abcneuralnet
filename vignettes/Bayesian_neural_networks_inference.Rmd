@@ -122,11 +122,13 @@ The package automatically detects and utilizes CUDA-enabled GPUs through the **l
 
 (3) Assess the quality of the fit, by visually assessing the training curve with `abcnn$plot_training()`.
 
-(4) Predict on test samples with `abcnn$predict()` to evaluate the posterior predictive performance. If necessary, the test samples can be changed at this step with `abcnn$predict(data = new_data)`, so that you can predict for different dataset with the same trained neural network.
+(4) Estimate the cross-validation error with `abcnn$cross_validation(cross_validation_param, cross_validation_sumstats)`, where `cross_validation_param` and `cross_validation_sumstats` are an unseen pseudo-observed dataset (i.e simulations) for which ground truth is known. The function returns a table with performance metrics. Once cross-validation has been computed, you can call it back without arguments (i.e. `abcnn$cross_validation()`) to get the metrics table, or plot the cross-validation scatter plot with `abcnn$plot_cross_validation()`. Alternatively, predict on test samples with `abcnn$predict()` to evaluate the posterior predictive performance with your custom method. If necessary, the test samples can be changed at this step with `abcnn$predict(data = new_data)`, so that you can predict for different dataset with the same trained neural network.
 
-(5) Assess the goodness of fit on test samples with the graphical outputs of `abcnn$plot_prediction()` and `abcnn$plot_posterior()`.
+(5) Assess the goodness-of-fit on test samples with the graphical outputs of `abcnn$plot_cross_validation()`, `abcnn$plot_prediction()` and `abcnn$plot_posterior()`.
 
 (6) Predict on observed samples with `abcnn$predict(data = observed_data)` and look at estimates with `abcnn$plot_posterior()` (figure) and `abcnn$predictions()` (table).
+
+(7) Perform posterior predictive check. Draw parameters for `n` random samples in the posterior distribution with `abcnn$draw_from_posterior(n)`. Re-simulate summary statistics under your generative model with the parameters drawn from the posterior. Compare the fit of the distribution of your observed summary statistics with the distribution of re-simulated summary statistics given the posterior distributions.
 
 
 

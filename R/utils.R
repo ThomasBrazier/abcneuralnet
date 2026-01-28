@@ -57,7 +57,15 @@ load_abcnn = function(prefix = "") {
     # object$model = bundle::unbundle(mod)
   }
 
-  object$device = torch::torch_device(if (torch::cuda_is_available()) {"cuda"} else {"cpu"})
+  dev = ifelse(torch::cuda_is_available(), "cuda", "cpu")
+  object$device = torch::torch_device(dev)
+  if (object$method == "tabnet-abc") {
+    object$fitted$fit$network$to(device = dev)
+    object$fitted$fit$config$device = dev
+  } else {
+    object$fitted$model$to(device = dev)
+  }
+  
 
   return(object)
 }
@@ -99,6 +107,11 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
 
   x = as.data.frame(x)
 
+  # Raise an error if the method is not provided
+  if (!(method %in% c("none", "minmax", "robustscaler", "normalization"))) {
+    stop("The scaling method must be provided.")
+  }
+  
   if (method == "none") {
     # Do nothing
     return(x)
@@ -144,6 +157,9 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
 #'
 #' @param cross_validation_param a tidy data frame with ground truth simulated parameters
 #' @param cross_validation_predictions a tidy  data frame with predictions
+#' 
+#' @importFrom stats cor
+#' @importFrom stats cov
 #'
 #' @return a data frame with cross-validation metrics
 #'
@@ -153,16 +169,16 @@ cross_val = function(cross_validation_param,
   cross_validation_predictions$true_value = cross_validation_param$true_value
 
   res = cross_validation_predictions %>%
-    group_by(parameter) %>%
-    summarise(n = n(),
-              mae = rminer::mmetric(predictive_mean, true_value, metric = "MAE"),
-              mse = rminer::mmetric(predictive_mean, true_value, metric = "MSE"),
-              rmse = rminer::mmetric(predictive_mean, true_value, metric = "RMSE"),
-              nmae = rminer::mmetric(predictive_mean, true_value, metric = "NMAE"),
-              cor = cor(predictive_mean, true_value, method = "spearman"),
-              cov = cov(predictive_mean, true_value),
-              mean_epistemic_interval = 2 * mean(epistemic_conformal_credible_interval),
-              mean_overall_interval = 2 * mean(overall_conformal_credible_interval))
+    dplyr::group_by(.data$parameter) %>%
+    dplyr::summarise(n = n(),
+              mae = rminer::mmetric(.data$predictive_mean, .data$true_value, metric = "MAE"),
+              mse = rminer::mmetric(.data$predictive_mean, .data$true_value, metric = "MSE"),
+              rmse = rminer::mmetric(.data$predictive_mean, .data$true_value, metric = "RMSE"),
+              nmae = rminer::mmetric(.data$predictive_mean, .data$true_value, metric = "NMAE"),
+              cor = stats::cor(.data$predictive_mean, .data$true_value, method = "spearman"),
+              cov = stats::cov(.data$predictive_mean, .data$true_value),
+              mean_epistemic_interval = 2 * mean(.data$epistemic_conformal_credible_interval),
+              mean_overall_interval = 2 * mean(.data$overall_conformal_credible_interval))
 
   return(res)
 }

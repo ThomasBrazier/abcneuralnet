@@ -7,6 +7,10 @@
 A \code{R6::abcnn} object
 
 an \code{abcnn} object that can be used to fit(), predict() and plot predictions
+
+Returns a list with n random samples for each observed sample
+
+Returns metrics computed on the cross-validation dataset
 }
 \description{
 \code{abcnn} constructs a \code{R6} class object for parameter inference with ABC and neural networks.
@@ -49,6 +53,9 @@ The \code{abcnn} object has public methods to perform each inference step and vi
 \item \code{plot_training()} to plot the training curves
 \item \code{plot_prediction()} to plot all predictions with their credible intervals
 \item \code{plot_posterior()} to plot the prior and posterior distributions, with the mean and credible intervals, of a single sample
+\item \code{draw_from_posterior()} to draw \code{n} samples from the posterior distribution (e.g. for posterior predictive check)
+\item \code{cross_validation()} to compute cross-validation metrics by comparing ground truth and predictions on unseen pseudo-observed data (i.e. simulations)
+\item \code{plot_cross_validation()} to plot the cross-validation scatter plot
 }
 
 The hyperparameters of the neural network can be configured in the \code{new()} method
@@ -286,7 +293,10 @@ abc = abcnn$new(theta,
 
 \item{\code{num_posterior_samples}}{number of posterior samples to generate in \verb{monte carlo dropout} and \verb{concrete dropout}}
 
-\item{\code{abc_keep_original_sumstats}}{(logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE)}
+\item{\code{abc_keep_original_sumstats}}{(logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
+If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
+If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
+The variable importances are the one computed with \code{tabnet}.}
 
 \item{\code{prior_length_scale}}{hyperparameter for \verb{concrete dropout}}
 
@@ -360,6 +370,10 @@ abc = abcnn$new(theta,
 
 \item{\code{seed}}{a random seed when initializing the network}
 
+\item{\code{cross_validation_data}}{the unseen dataset for cross-validation}
+
+\item{\code{cross_validation_predictions}}{predictions for the cross-validation dataset}
+
 \item{\code{call}}{the call to the new() initialisation function}
 }
 \if{html}{\out{</div>}}
@@ -377,6 +391,9 @@ abc = abcnn$new(theta,
 \item \href{#method-abcnn-plot_training}{\code{abcnn$plot_training()}}
 \item \href{#method-abcnn-plot_prediction}{\code{abcnn$plot_prediction()}}
 \item \href{#method-abcnn-plot_posterior}{\code{abcnn$plot_posterior()}}
+\item \href{#method-abcnn-draw_from_posterior}{\code{abcnn$draw_from_posterior()}}
+\item \href{#method-abcnn-cross_validation}{\code{abcnn$cross_validation()}}
+\item \href{#method-abcnn-plot_cross_validation}{\code{abcnn$plot_cross_validation()}}
 \item \href{#method-abcnn-clone}{\code{abcnn$clone()}}
 }
 }
@@ -480,7 +497,10 @@ Create a new \code{abcnn} object
 
 \item{\code{tol}}{tolerance rate for \code{abc} functions (only for \code{tabnet-abc})}
 
-\item{\code{abc_keep_original_sumstats}}{(logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value)}
+\item{\code{abc_keep_original_sumstats}}{(logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
+If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
+If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
+The variable importances are the one computed with \code{tabnet}.}
 
 \item{\code{num_posterior_samples}}{number of samples to generate for the posterior distribution}
 
@@ -637,6 +657,69 @@ computed on the distribution of posteriors.}
 }
 \if{html}{\out{</div>}}
 }
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-abcnn-draw_from_posterior"></a>}}
+\if{latex}{\out{\hypertarget{method-abcnn-draw_from_posterior}{}}}
+\subsection{Method \code{draw_from_posterior()}}{
+Draw random samples from the posterior distribution
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{abcnn$draw_from_posterior(n = 1)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{n}}{the number of samples to draw from posterior}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-abcnn-cross_validation"></a>}}
+\if{latex}{\out{\hypertarget{method-abcnn-cross_validation}{}}}
+\subsection{Method \code{cross_validation()}}{
+Compute cross-validation metrics by comparing ground truth
+and predictions on unseen pseudo-observed data (i.e. simulations)
+
+Metrics:
+\itemize{
+\item \code{n} number of cross-validation samples
+\item \code{mae} mean absolute error
+\item \code{mse} mean squared error
+\item \code{rmse} root mean squared error
+\item \code{nmae} normalized mean absolute error
+\item \code{cor} Spearman correlation coefficient
+\item \code{cov} covariance
+\item \code{mean_epistemic_interval} mean epistemic conformal credible interval
+\item \code{mean_overall_interval} mean overall conformal credible interval
+}
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{abcnn$cross_validation(
+  cross_validation_param = NULL,
+  cross_validation_sumstats = NULL
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{cross_validation_param}}{the parameters in unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
+
+\item{\code{cross_validation_sumstats}}{the summary stistics of unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-abcnn-plot_cross_validation"></a>}}
+\if{latex}{\out{\hypertarget{method-abcnn-plot_cross_validation}{}}}
+\subsection{Method \code{plot_cross_validation()}}{
+Plot the cross-validation scatter plot
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_cross_validation()}\if{html}{\out{</div>}}
+}
+
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-clone"></a>}}

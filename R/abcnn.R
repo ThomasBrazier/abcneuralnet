@@ -276,9 +276,12 @@ abcnn = R6::R6Class("abcnn",
     #' @field abc_method `abc` method for `tabnet-abc`
     abc_method=NULL,
     #' @field num_posterior_samples number of posterior samples to generate in `monte carlo dropout` and `concrete dropout`
-    abc_keep_original_sumstats=NULL,
-    #' @field abc_keep_original_sumstats (logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE)
     num_posterior_samples=1000,
+    #' @field abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value). 
+    #' If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
+    #' If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
+    #' The variable importances are the one computed with `tabnet`.
+    abc_keep_original_sumstats=FALSE,
     #' @field prior_length_scale hyperparameter for `concrete dropout`
     prior_length_scale=1e-4,
     #' @field weight_regularizer hyperparameter for `concrete dropout`
@@ -388,7 +391,10 @@ abcnn = R6::R6Class("abcnn",
     #' @param loss `torch` nn loss function
     #' @param abc_method ABC sampling method in `abc` function (only for `tabnet-abc`)
     #' @param tol tolerance rate for `abc` functions (only for `tabnet-abc`)
-    #' @param abc_keep_original_sumstats (logical) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value)
+    #' @param abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value). 
+    #' If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
+    #' If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
+    #' The variable importances are the one computed with `tabnet`.
     #' @param num_posterior_samples number of samples to generate for the posterior distribution
     #' @param prior_length_scale prior length scale hyperparameter value
     #' @param weight_regularizer `concrete dropout` regularization term for weights
@@ -812,24 +818,48 @@ abcnn = R6::R6Class("abcnn",
           tabnet_train = predict(self$fitted, self$sumstat_adj)
           tabnet_observed = predict(self$fitted, self$observed_adj)
 
-          # Whether to keep merge new sumstats with the original ones
-          # Or just keep the new ones
+          # Sort variables by importance
+          importances = self$fitted$fit$importances
+          importances = importances[order(importances$importance, decreasing = TRUE),]
+          importances$relative_importance = importances$importance / max(importances$importance)
+          
+          # Sample the n most important (or relative importance > x if a proportion is given)
+          # where relative importance is importance / max(importance)
+          # if TRUE, keep all sumstats
+          # if FALSE, keep only the posterior means as new sumstats
           if (isTRUE(self$abc_keep_original_sumstats)) {
             new_sumstats_train = cbind(tabnet_train, self$sumstat_adj)
             new_sumstats_observed = cbind(tabnet_observed, self$observed_adj)
           } else {
-            new_sumstats_train = tabnet_train
-            new_sumstats_observed = tabnet_observed
+            if (self$abc_keep_original_sumstats >= 1) {
+              varnames = importances$variables[1:self$abc_keep_original_sumstats]
+              
+              new_sumstats_train = cbind(tabnet_train, self$sumstat_adj[,varnames, drop = F])
+              new_sumstats_observed = cbind(tabnet_observed, self$observed_adj[,varnames, drop = F])
+              
+            } else {
+              if (self$abc_keep_original_sumstats > 0 & self$abc_keep_original_sumstats < 1) {
+                varnames = importances$variables[which(importances$relative_importance >= self$abc_keep_original_sumstats)]
+                
+                new_sumstats_train = cbind(tabnet_train, self$sumstat_adj[,varnames, drop = F])
+                new_sumstats_observed = cbind(tabnet_observed, self$observed_adj[,varnames, drop = F])
+              } else {
+                new_sumstats_train = tabnet_train
+                new_sumstats_observed = tabnet_observed
+              }
+            }
           }
-
+          
           self$num_posterior_samples = nrow(new_sumstats_train) * self$tol
           nsamples = nrow(self$observed_adj)
           ndim = ncol(self$theta_adj)
           mc_samples = array(0, dim = c(self$num_posterior_samples, nsamples, ndim))
 
-          pb = txtProgressBar(min = 0, max = nrow(self$observed_adj), style = 3)
+          # pb = txtProgressBar(min = 0, max = nrow(self$observed_adj), style = 3)
+          pb = progress_estimated(nrow(self$observed_adj))
           for (i in 1:nrow(self$observed_adj)) {
-            setTxtProgressBar(pb, i)
+            # setTxtProgressBar(pb, i)
+            pb$tick()$print()
 
             suppressWarnings({abc_res = abc::abc(new_sumstats_observed[i,],
                                self$theta_adj,
@@ -844,7 +874,7 @@ abcnn = R6::R6Class("abcnn",
             }
 
           }
-          close(pb)
+          # close(pb)
 
           self$posterior_samples = mc_samples
 
@@ -914,15 +944,17 @@ abcnn = R6::R6Class("abcnn",
           # Approximate posterior samples in lines (axis 1)
           # Each observation is a column (axis 2)
           # Mean prediction on axis 3, multiplied by the number of parameters to estimate
-          pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
-
+          # pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
+          pb = progress_estimated(self$num_posterior_samples)
+          
           mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], self$output_dim))
           for (k in 1:self$num_posterior_samples) {
+            pb$tick()$print()
             preds = self$fitted$model(observed)
             mc_samples[k, , 1:self$output_dim] = as.array(preds)
-            setTxtProgressBar(pb, k)
+            # setTxtProgressBar(pb, k)
           }
-          close(pb)
+          # close(pb)
 
           self$posterior_samples = mc_samples
 
@@ -982,15 +1014,17 @@ abcnn = R6::R6Class("abcnn",
         }
 
         if (self$method == 'concrete dropout') {
-          pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
-
+          # pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
+          pb = progress_estimated(self$num_posterior_samples)
+          
           mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
           for (k in 1:self$num_posterior_samples) {
+            pb$tick()$print()
             preds = self$fitted$model(observed)
             mc_samples[k, , ] = cbind(as.matrix(preds[1]), as.matrix(preds[2]))
-            setTxtProgressBar(pb, k)
+            # setTxtProgressBar(pb, k)
           }
-          close(pb)
+          # close(pb)
 
           # the means are in the first output column
           means = mc_samples[, , 1:self$output_dim, drop = F]
@@ -1068,10 +1102,12 @@ abcnn = R6::R6Class("abcnn",
           n_obs = nrow(self$observed_adj)
           out_mu_sample  = torch::torch_zeros(c(n_obs, self$output_dim, self$num_networks))
           out_sig_sample = torch::torch_zeros(c(n_obs, self$output_dim, self$num_networks))
-
+          
+          # pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
+          pb = progress_estimated(self$num_networks)
+          
           for (i in 1:self$num_networks) {
-            pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
-
+            pb$tick()$print()
             # print(paste("Network", i))
 
             preds = self$fitted$model$model_list[[i]](observed)
@@ -1088,9 +1124,9 @@ abcnn = R6::R6Class("abcnn",
             out_mu_sample[,,i]  = mu_sample
             out_sig_sample[,,i] = sig_sample
 
-            setTxtProgressBar(pb, i)
+            # setTxtProgressBar(pb, i)
           }
-          close(pb)
+          # close(pb)
 
           # print("Compute predictive mean")
 
@@ -1602,6 +1638,11 @@ abcnn = R6::R6Class("abcnn",
     #'
     plot_prediction = function(uncertainty_type = "conformal",
                               plot_type = "line") {
+      
+      # if only few samples, force the type of plot = errorbar
+      if (self$n_obs < 3) {
+        plot_type = "errorbar"
+      }
 
       pal = RColorBrewer::brewer.pal(8, "Dark2")
       cols = c("Epistemic" = pal[3],"Overall" = pal[2])
