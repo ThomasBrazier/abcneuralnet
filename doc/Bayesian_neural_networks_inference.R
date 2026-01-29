@@ -25,7 +25,7 @@ library(tidyverse)
 library(kableExtra)
 
 ## ----toy_data_1, echo = F-----------------------------------------------------
-n_train = 2000 # Number of data points
+n_train = 100000 # Number of data points
 n_obs = 1000 # Validation size
 
 gen_data_1d = function(n) {
@@ -48,7 +48,7 @@ Y_obs = XY$Y[(n_train + 1):(n_train + n_obs)]
 # Predict Y when X is observed
 theta = data.frame(y1 = Y_train)
 sumstats = data.frame(x1 = X_train)
-observed = data.frame(X1 = X_obs)
+observed = data.frame(x1 = X_obs)
 
 df_concrete = list(X_train = X_train,
                    Y_train = Y_train,
@@ -72,7 +72,7 @@ Y_obs = df_concrete$Y_obs
 
 theta = data.frame(y1 = Y_train)
 sumstats = data.frame(x1 = X_train)
-observed = data.frame(X1 = X_obs)
+observed = data.frame(x1 = X_obs)
 
 ## ----echo = T-----------------------------------------------------------------
 # Init an abcnn object with inputs and targets
@@ -83,11 +83,12 @@ abc = abcnn$new(theta,
             scale_input = "none",
             scale_target = "none",
             num_hidden_layers = 3,
-            num_hidden_dim = 256,
-            epochs = 30,
-            batch_size = 32,
+            num_hidden_dim = 128,
+            epochs = 10,
+            batch_size = 128,
             l2_weight_decay = 1e-5,
-            learning_rate = 1e-4)
+            learning_rate = 0.001,
+            seed = 6295)
 
 ## ----echo = T-----------------------------------------------------------------
 abc$summary()
@@ -120,8 +121,29 @@ abc$plot_training()
 # 
 # abc = load_abcnn(prefix = "../path/abc_concrete")
 
+## ----toy_data_2, echo = F, eval = F-------------------------------------------
+# n_crossval = 1000 # Validation size
+# 
+# crossval = gen_data_1d(n_crossval)
+# 
+# theta_crossval = data.frame(y1 = crossval$Y)
+# sumstats_crossval = data.frame(x1 = crossval$X)
+
+## ----echo = T, eval = F-------------------------------------------------------
+# abc$cross_validation(theta_crossval,
+#                      sumstats_crossval)
+
+## ----echo = T-----------------------------------------------------------------
+abc$cross_validation()
+
+## ----echo = T-----------------------------------------------------------------
+abc$plot_cross_validation()
+
 ## ----echo = T, eval = F-------------------------------------------------------
 # abc$predict()
+
+## ----echo=F, eval=F-----------------------------------------------------------
+# save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
 
 ## ----echo = T, message=F------------------------------------------------------
 head(abc$predictions())
@@ -148,7 +170,7 @@ df_training = data.frame(x = X_train,
                          y = Y_train)
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the Conformal Credible Interval based on the overall unvertainty."----
-ggplot(data = df_training, aes(x = x, y = y)) +
+ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
   geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
@@ -159,7 +181,7 @@ ggplot(data = df_training, aes(x = x, y = y)) +
   theme_bw()
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameters. The epistemic uncertainty (red) and aleatoric uncertainty (blue) were estimated with Concrete Dropout (Gal et 2017)."----
-ggplot(data = df_training, aes(x = x, y = y)) +
+ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "grey", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
   geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
@@ -174,6 +196,9 @@ abc$plot_prediction(uncertainty_type = "uncertainty")
 
 ## ----concrete_conformal, echo = T, fig.height = 4, fig.width = 8, fig.cap="Conformal credible intervals (green) compared to epistemic uncertainty intervals (purple). Conformal intervals provide calibrated coverage guarantees."----
 abc$plot_prediction(uncertainty_type = "conformal")
+
+## ----echo = T-----------------------------------------------------------------
+abc$plot_cross_validation()
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
@@ -304,6 +329,7 @@ ggpubr::ggarrange(p1, p2, ncol = 2)
 theta = train_y
 sumstats = train_x
 observed = observed_x
+true_param = observed_y
 
 abc_ensemble = abcnn$new(theta,
             sumstats,
@@ -312,10 +338,11 @@ abc_ensemble = abcnn$new(theta,
             num_networks = 5,
             scale_input = "minmax",
             scale_target = "none",
-            epochs = 30,
+            epochs = 20,
             num_hidden_layers = 3,
             num_hidden_dim = 512,
-            batch_size = 128)
+            batch_size = 128,
+            seed = 4722)
 
 ## ----echo = T, eval = F-------------------------------------------------------
 # abc_ensemble$fit()
@@ -328,13 +355,17 @@ abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 abc_ensemble$plot_training()
 
+## ----echo = T-----------------------------------------------------------------
+abc_ensemble$cross_validation(true_param[1:100,],
+                              observed[1:100,])
+
+abc_ensemble$plot_cross_validation()
+
 ## ----echo = T, eval = F-------------------------------------------------------
 # abc_ensemble$predict()
 
-## ----echo = F-----------------------------------------------------------------
+## ----echo = F, eval = F-------------------------------------------------------
 # save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
-
-abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
@@ -376,9 +407,9 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 # alpha = 4
 # beta = 3
 # # Training set sample size
-# N = 10000
+# N = 20000
 # # Test set sample size
-# p = 100
+# p = 1000
 # # offset for the out-of-dist data
 # offset = 0
 # 
@@ -576,7 +607,7 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 # }
 # 
 # 
-# dataset = homoscedastic_normal()
+# dataset = homoscedastic_normal(alpha, beta, n, N, p, offset)
 # 
 # saveRDS(dataset, "../inst/extdata/normal_toy_model.Rds")
 
@@ -608,10 +639,10 @@ deepensemble_highdim = abcnn$new(theta.train,
             method = 'deep ensemble',
             scale_input = "minmax",
             scale_target = "minmax",
-            epochs = 60,
+            epochs = 20,
             batch_size = 128,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.1)
+            epsilon_adversarial = 0.01)
 
 
 deepensemble_highdim$summary()
@@ -625,17 +656,22 @@ deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 deepensemble_highdim$plot_training()
 
-## ----eval = F, message=FALSE, results = FALSE, include=FALSE------------------
-# deepensemble_highdim$predict()
+## ----echo = T-----------------------------------------------------------------
+true.theta = data.frame(theta1 = theta.exact$mean.theta1,
+                        theta2 = theta.exact$mean.theta2)
+
+deepensemble_highdim$cross_validation(true.theta,
+                                      sumstats.test)
+
+deepensemble_highdim$plot_cross_validation()
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."----
+deepensemble_highdim$predict()
+
+deepensemble_highdim$plot_prediction()
 
 ## ----echo = F, eval=F---------------------------------------------------------
 # save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim")
-
-## ----echo = F, eval=F---------------------------------------------------------
-# deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
-
-## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."----
-deepensemble_highdim$plot_prediction()
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."----
 df = deepensemble_highdim$predictions() %>%
@@ -665,21 +701,22 @@ exp$plot()
 exp$plot(type = "steps")
 
 ## ----echo = T-----------------------------------------------------------------
-head(exp$get_result())
+exp$get_result()[1:5,1:5,]
 
 ## -----------------------------------------------------------------------------
-tabnetabc = abcnn$new(theta.train,
-            sumstats.train,
+tabnetabc = abcnn$new(theta.train[1:10000,],
+            sumstats.train[1:10000,],
             sumstats.test[1:1000,],
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 60,
-            batch_size = 256,
+            epochs = 30,
+            batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_keep_original_sumstats = FALSE,
-            abc_method = "ridge")
+            abc_method = "ridge",
+            seed = 4242)
 
 
 tabnetabc$summary()
@@ -727,6 +764,64 @@ exp$plot()
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 exp$plot(type = "steps")
+
+## -----------------------------------------------------------------------------
+tabnetabc_performance = abcnn$new(theta.train[1:10000,],
+            sumstats.train[1:10000,],
+            sumstats.test[1:1000,],
+            method = 'tabnet-abc',
+            scale_input = "none",
+            scale_target = "none",
+            epochs = 30,
+            batch_size = 256,
+            l2_weight_decay = 1e-3,
+            tol = 0.1,
+            abc_keep_original_sumstats = 0.3,
+            abc_method = "ridge",
+            seed = 4242)
+
+
+tabnetabc_performance$summary()
+
+## ----echo = F, eval=T---------------------------------------------------------
+tabnetabc_performance = load_abcnn(prefix = "../inst/extdata/tabnetabc_performance")
+
+## ----eval = F-----------------------------------------------------------------
+# tabnetabc_performance$fit()
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
+tabnetabc_performance$plot_training()
+
+## ----eval = F-----------------------------------------------------------------
+# tabnetabc_performance$cross_validation(theta.test[1:1000,],
+#                                        sumstats.test[1:1000,])
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
+tabnetabc_performance$plot_cross_validation()
+
+## ----eval = F, message=FALSE, results = FALSE, include=FALSE------------------
+# tabnetabc_performance$predict()
+
+## ----echo = F, eval=F---------------------------------------------------------
+# save_abcnn(tabnetabc_performance, prefix = "../inst/extdata/tabnetabc_performance")
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."----
+tabnetabc_performance$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
+
+## ----tabnet_accuracy_2, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."----
+df = tabnetabc_performance$predictions() %>%
+  filter(parameter == "theta1")
+
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "TabNet-ABC Predictive check") +
+  theme_bw()
 
 ## ----echo=F-------------------------------------------------------------------
 hyperparam = data.frame(Hyperparameter = c("Number of hidden dimensions (i.e. neurons) in one layer",

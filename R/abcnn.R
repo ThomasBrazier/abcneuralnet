@@ -1873,7 +1873,7 @@ abcnn = R6::R6Class("abcnn",
     #'
     #'
     #' @param cross_validation_param the parameters in unseen simulations on which to compute cross-validation (if `cross_validation_data` is not provided, the function returns the `cross_validation_predictions` already computed)
-    #' @param cross_validation_sumstats the summary stistics of unseen simulations on which to compute cross-validation (if `cross_validation_data` is not provided, the function returns the `cross_validation_predictions` already computed)
+    #' @param cross_validation_sumstats the summary statistics of unseen simulations on which to compute cross-validation (if `cross_validation_data` is not provided, the function returns the `cross_validation_predictions` already computed)
     #'
     #' @returns Returns metrics computed on the cross-validation dataset
     #'
@@ -1896,7 +1896,8 @@ abcnn = R6::R6Class("abcnn",
       tidy_param = self$cross_validation_data$param %>%
         pivot_longer(colnames(self$cross_validation_data$param),
                      names_to = "parameter",
-                     values_to = "true_value")
+                     values_to = "true_value") %>%
+        arrange(.data$parameter)
 
       metrics = cross_val(tidy_param,
                           self$cross_validation_predictions)
@@ -1915,7 +1916,8 @@ abcnn = R6::R6Class("abcnn",
       tidy_param = self$cross_validation_data$param %>%
         pivot_longer(colnames(self$cross_validation_data$param),
                      names_to = "parameter",
-                     values_to = "true_value")
+                     values_to = "true_value") %>%
+        arrange(.data$parameter)
 
       pred = self$cross_validation_predictions
       pred$true_value = tidy_param$true_value

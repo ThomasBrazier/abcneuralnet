@@ -706,7 +706,7 @@ Metrics:
 \describe{
 \item{\code{cross_validation_param}}{the parameters in unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
 
-\item{\code{cross_validation_sumstats}}{the summary stistics of unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
+\item{\code{cross_validation_sumstats}}{the summary statistics of unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
 }
 \if{html}{\out{</div>}}
 }

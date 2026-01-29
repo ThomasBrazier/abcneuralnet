@@ -150,7 +150,7 @@ I simulated 2,000 training samples and 1,000 test samples with a simple linear f
 
 
 ```{r toy_data_1, echo = F}
-n_train = 10000 # Number of data points
+n_train = 100000 # Number of data points
 n_obs = 1000 # Validation size
 
 gen_data_1d = function(n) {
@@ -225,7 +225,7 @@ abc = abcnn$new(theta,
             scale_target = "none",
             num_hidden_layers = 3,
             num_hidden_dim = 128,
-            epochs = 30,
+            epochs = 10,
             batch_size = 128,
             l2_weight_decay = 1e-5,
             learning_rate = 0.001,
@@ -308,7 +308,7 @@ abc = load_abcnn(prefix = "../path/abc_concrete")
 Re-use the generative model to generate a new dataset of unseen simulations with ground truth:
 
 
-```{r toy_data_1, echo = F, eval = F}
+```{r toy_data_2, echo = F, eval = F}
 n_crossval = 1000 # Validation size
 
 crossval = gen_data_1d(n_crossval)
@@ -316,6 +316,7 @@ crossval = gen_data_1d(n_crossval)
 theta_crossval = data.frame(y1 = crossval$Y)
 sumstats_crossval = data.frame(x1 = crossval$X)
 ```
+
 
 Compute the cross-validation error metrics:
 
@@ -332,7 +333,7 @@ abc$cross_validation()
 ```
 
 
-Plot the cross-validation scatter plot (predicted ~ ground truth):
+Plot the cross-validation scatter plot (predicted ~ ground truth) with Conformal Credible Intervals:
 
 ```{r, echo = T}
 abc$plot_cross_validation()
@@ -390,7 +391,7 @@ df_training = data.frame(x = X_train,
 ```
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the Conformal Credible Interval based on the overall unvertainty."}
-ggplot(data = df_training, aes(x = x, y = y)) +
+ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
   geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
@@ -406,7 +407,7 @@ There are different Credible Intervals and uncertainty measures provided. I reco
 
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameters. The epistemic uncertainty (red) and aleatoric uncertainty (blue) were estimated with Concrete Dropout (Gal et 2017)."}
-ggplot(data = df_training, aes(x = x, y = y)) +
+ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "grey", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
   geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
@@ -622,7 +623,7 @@ ggpubr::ggarrange(p1, p2, ncol = 2)
 
 
 
-### Deep Ensemble Training
+## Deep Ensemble Training
 
 Deep Ensemble trains multiple networks with different random initialization and random batches (adversarial training not implemented yet) [@lakshminarayanan_simple_2016]:
 
@@ -633,6 +634,7 @@ Deep Ensemble trains multiple networks with different random initialization and 
 theta = train_y
 sumstats = train_x
 observed = observed_x
+true_param = observed_y
 
 abc_ensemble = abcnn$new(theta,
             sumstats,
@@ -668,9 +670,27 @@ abc_ensemble$plot_training()
 ```
 
 
+
+
+
+```{r, echo = T}
+abc_ensemble$cross_validation(true_param[1:100,],
+                              observed[1:100,])
+
+abc_ensemble$plot_cross_validation()
+```
+
+
+
+
 ```{r, echo = T, eval = F}
 abc_ensemble$predict()
 ```
+
+```{r, echo = F, eval = F}
+save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
+```
+
 
 
 
@@ -749,9 +769,9 @@ n = 10
 alpha = 4
 beta = 3
 # Training set sample size
-N = 10000
+N = 20000
 # Test set sample size
-p = 100
+p = 1000
 # offset for the out-of-dist data
 offset = 0
 
@@ -949,7 +969,7 @@ homoscedastic_normal = function(alpha = 4,
 }
 
 
-dataset = homoscedastic_normal()
+dataset = homoscedastic_normal(alpha, beta, n, N, p, offset)
 
 saveRDS(dataset, "../inst/extdata/normal_toy_model.Rds")
 ```
@@ -994,10 +1014,10 @@ deepensemble_highdim = abcnn$new(theta.train,
             method = 'deep ensemble',
             scale_input = "minmax",
             scale_target = "minmax",
-            epochs = 60,
+            epochs = 20,
             batch_size = 128,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.1)
+            epsilon_adversarial = 0.01)
 
 
 deepensemble_highdim$summary()
@@ -1022,10 +1042,6 @@ deepensemble_highdim$plot_training()
 ```
 
 
-```{r, echo = F, eval=T}
-deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
-```
-
 
 ## Model performance
 
@@ -1034,7 +1050,10 @@ Evaluate performance with cross-validation (here we re-use the previous observed
 
 
 ```{r, echo = T}
-deepensemble_highdim$cross_validation(theta.test,
+true.theta = data.frame(theta1 = theta.exact$mean.theta1,
+                        theta2 = theta.exact$mean.theta2)
+
+deepensemble_highdim$cross_validation(true.theta,
                                       sumstats.test)
 
 deepensemble_highdim$plot_cross_validation()
@@ -1126,18 +1145,19 @@ TabNet-ABC [@arik_tabnet_2020; @akesson_convolutional_2022] combines interpretab
 
 
 ```{r}
-tabnetabc = abcnn$new(theta.train,
-            sumstats.train,
+tabnetabc = abcnn$new(theta.train[1:10000,],
+            sumstats.train[1:10000,],
             sumstats.test[1:1000,],
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 60,
-            batch_size = 256,
+            epochs = 30,
+            batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_keep_original_sumstats = FALSE,
-            abc_method = "ridge")
+            abc_method = "ridge",
+            seed = 4242)
 
 
 tabnetabc$summary()
@@ -1249,18 +1269,19 @@ exp$plot(type = "steps")
 
 
 ```{r}
-tabnetabc_performance = abcnn$new(theta.train,
-            sumstats.train,
+tabnetabc_performance = abcnn$new(theta.train[1:10000,],
+            sumstats.train[1:10000,],
             sumstats.test[1:1000,],
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 60,
+            epochs = 30,
             batch_size = 256,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_keep_original_sumstats = 0.3,
-            abc_method = "ridge")
+            abc_method = "ridge",
+            seed = 4242)
 
 
 tabnetabc_performance$summary()
@@ -1282,7 +1303,8 @@ tabnetabc_performance$plot_training()
 ```
 
 ```{r, eval = F}
-tabnetabc_performance$cross_validation()
+tabnetabc_performance$cross_validation(theta.test[1:1000,],
+                                       sumstats.test[1:1000,])
 ```
 
 
@@ -1306,6 +1328,26 @@ save_abcnn(tabnetabc_performance, prefix = "../inst/extdata/tabnetabc_performanc
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
 tabnetabc_performance$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
 ```
+
+
+```{r tabnet_accuracy_2, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+df = tabnetabc_performance$predictions() %>%
+  filter(parameter == "theta1")
+
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "TabNet-ABC Predictive check") +
+  theme_bw()
+```
+
+
+
 
 
 

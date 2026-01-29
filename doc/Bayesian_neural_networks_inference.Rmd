@@ -122,11 +122,13 @@ The package automatically detects and utilizes CUDA-enabled GPUs through the **l
 
 (3) Assess the quality of the fit, by visually assessing the training curve with `abcnn$plot_training()`.
 
-(4) Predict on test samples with `abcnn$predict()` to evaluate the posterior predictive performance. If necessary, the test samples can be changed at this step with `abcnn$predict(data = new_data)`, so that you can predict for different dataset with the same trained neural network.
+(4) Estimate the cross-validation error with `abcnn$cross_validation(cross_validation_param, cross_validation_sumstats)`, where `cross_validation_param` and `cross_validation_sumstats` are an unseen pseudo-observed dataset (i.e simulations) for which ground truth is known. The function returns a table with performance metrics. Once cross-validation has been computed, you can call it back without arguments (i.e. `abcnn$cross_validation()`) to get the metrics table, or plot the cross-validation scatter plot with `abcnn$plot_cross_validation()`. Alternatively, predict on test samples with `abcnn$predict()` to evaluate the posterior predictive performance with your custom method. If necessary, the test samples can be changed at this step with `abcnn$predict(data = new_data)`, so that you can predict for different dataset with the same trained neural network.
 
-(5) Assess the goodness of fit on test samples with the graphical outputs of `abcnn$plot_prediction()` and `abcnn$plot_posterior()`.
+(5) Assess the goodness-of-fit on test samples with the graphical outputs of `abcnn$plot_cross_validation()`, `abcnn$plot_prediction()` and `abcnn$plot_posterior()`.
 
 (6) Predict on observed samples with `abcnn$predict(data = observed_data)` and look at estimates with `abcnn$plot_posterior()` (figure) and `abcnn$predictions()` (table).
+
+(7) Perform posterior predictive check. Draw parameters for `n` random samples in the posterior distribution with `abcnn$draw_from_posterior(n)`. Re-simulate summary statistics under your generative model with the parameters drawn from the posterior. Compare the fit of the distribution of your observed summary statistics with the distribution of re-simulated summary statistics given the posterior distributions.
 
 
 
@@ -148,7 +150,7 @@ I simulated 2,000 training samples and 1,000 test samples with a simple linear f
 
 
 ```{r toy_data_1, echo = F}
-n_train = 2000 # Number of data points
+n_train = 100000 # Number of data points
 n_obs = 1000 # Validation size
 
 gen_data_1d = function(n) {
@@ -171,7 +173,7 @@ Y_obs = XY$Y[(n_train + 1):(n_train + n_obs)]
 # Predict Y when X is observed
 theta = data.frame(y1 = Y_train)
 sumstats = data.frame(x1 = X_train)
-observed = data.frame(X1 = X_obs)
+observed = data.frame(x1 = X_obs)
 
 df_concrete = list(X_train = X_train,
                    Y_train = Y_train,
@@ -201,11 +203,11 @@ Y_obs = df_concrete$Y_obs
 
 theta = data.frame(y1 = Y_train)
 sumstats = data.frame(x1 = X_train)
-observed = data.frame(X1 = X_obs)
+observed = data.frame(x1 = X_obs)
 ```
 
 
-### Fit a model with **Concrete Dropout**
+## Fit a model with **Concrete Dropout**
 
 I used a Concrete Dropout regression model described in [@gal2017concrete] and applied conformal prediction as in [@baragatti_approximate_2024]. You can read an interesting discussion on the Concrete Dropout model on this [blog post](https://blogs.rstudio.com/ai/posts/2018-11-12-uncertainty_estimates_dropout/) for more details.
 
@@ -222,11 +224,12 @@ abc = abcnn$new(theta,
             scale_input = "none",
             scale_target = "none",
             num_hidden_layers = 3,
-            num_hidden_dim = 256,
-            epochs = 30,
-            batch_size = 32,
+            num_hidden_dim = 128,
+            epochs = 10,
+            batch_size = 128,
             l2_weight_decay = 1e-5,
-            learning_rate = 1e-4)
+            learning_rate = 0.001,
+            seed = 6295)
 ```
 
 
@@ -257,7 +260,7 @@ abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
 
 The `abcnn` object is a `R6Class` object, providing a modern Object-Oriented Programming (OOP) approach. All the settings and data of an `abcnn` object can be accessed in public slots. For example, the `torch` model can be accessed with `abcnn$fitted$model`, and the `luz` fitted model can be accessed with `abcnn$fitted`. It means that `abcnn` objects allows very flexible approaches, where you can plot and visualize data and outputs, and define new functions easily. For example, I could wish to plot the evolution of the loss value at each iteration (epoch) during the training. This is the regular training curve used to assess training quality in every deep learning model.
 
-The abcnn object is an R6 class that uses a modern object‑oriented design in R. All its settings and data are stored in public fields that you can access directly. For instance, the underlying torch model is in `abcnn$fitted$model`, and the **luz** fitted model is in `abcnn$fitted`. This structure makes `abcnn` objects very flexible, so you can easily visualize data and outputs or write new helper functions, such as plotting the loss value at each training epoch to inspect the training curve of the deep learning model.
+The `abcnn` object is an R6 class that uses a modern object‑oriented design in R. All its settings and data are stored in public fields that you can access directly. For instance, the underlying torch model is in `abcnn$fitted$model`, and the **luz** fitted model is in `abcnn$fitted`. This structure makes `abcnn` objects very flexible, so you can easily visualize data and outputs or write new helper functions, such as plotting the loss value at each training epoch to inspect the training curve of the deep learning model.
 
 
 ```{r, echo = T}
@@ -299,7 +302,45 @@ abc = load_abcnn(prefix = "../path/abc_concrete")
 ```
 
 
-### Estimates and uncertainty with the **Concrete Dropout** method
+## Cross-validation
+
+
+Re-use the generative model to generate a new dataset of unseen simulations with ground truth:
+
+
+```{r toy_data_2, echo = F, eval = F}
+n_crossval = 1000 # Validation size
+
+crossval = gen_data_1d(n_crossval)
+
+theta_crossval = data.frame(y1 = crossval$Y)
+sumstats_crossval = data.frame(x1 = crossval$X)
+```
+
+
+Compute the cross-validation error metrics:
+
+```{r, echo = T, eval = F}
+abc$cross_validation(theta_crossval,
+                     sumstats_crossval)
+```
+
+
+Print the already computed cross-validation error metrics:
+
+```{r, echo = T}
+abc$cross_validation()
+```
+
+
+Plot the cross-validation scatter plot (predicted ~ ground truth) with Conformal Credible Intervals:
+
+```{r, echo = T}
+abc$plot_cross_validation()
+```
+
+
+## Estimates and uncertainty with the **Concrete Dropout** method
 
 
 After the model is efficiently trained and the training quality has been assessed, parameter estimates can be predicted with `abc$predict()`. I predicted parameters for 1,000 simulated samples (summary statistics):
@@ -310,7 +351,14 @@ abc$predict()
 ```
 
 
-You can get predictions with their associated uncertainty and Credibility Intervals as a tidy data frame:
+```{r, echo=F, eval=F}
+save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
+```
+
+
+
+
+You can get predictions with their associated uncertainty and Conformal Credibility Intervals as a tidy data frame:
 
 ```{r, echo = T, message=F}
 head(abc$predictions())
@@ -343,7 +391,7 @@ df_training = data.frame(x = X_train,
 ```
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the Conformal Credible Interval based on the overall unvertainty."}
-ggplot(data = df_training, aes(x = x, y = y)) +
+ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
   geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
@@ -359,7 +407,7 @@ There are different Credible Intervals and uncertainty measures provided. I reco
 
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameters. The epistemic uncertainty (red) and aleatoric uncertainty (blue) were estimated with Concrete Dropout (Gal et 2017)."}
-ggplot(data = df_training, aes(x = x, y = y)) +
+ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "grey", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
   geom_line(data = df_predicted, aes(x = x, y = predictive_mean), color = "Red") +
@@ -394,6 +442,12 @@ The epistemic Conformal Credible Intervals, based on the epistemic uncertainty a
 
 On the contrary, the overall Conformal Credible Intervals, based on both the aleatoric and epistemic uncertainties a proxy of the whole uncertainty, is smoother and less impacted by local variance in epistemic uncertainty. It is a good choice if you are searching for a reliable and well-calibrated C.I.
 
+Interestingly, the epistemic uncertainty increases in regions where the cross-validation plot shows higher error rates (compare the plots above and below):
+
+```{r, echo = T}
+abc$plot_cross_validation()
+```
+
 
 
 
@@ -407,6 +461,7 @@ abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
 
 
 ## Plotting posteriors for individual observations
+
 
 For specific observations, we can examine the approximate posterior distribution:
 
@@ -568,7 +623,7 @@ ggpubr::ggarrange(p1, p2, ncol = 2)
 
 
 
-### Deep Ensemble Training
+## Deep Ensemble Training
 
 Deep Ensemble trains multiple networks with different random initialization and random batches (adversarial training not implemented yet) [@lakshminarayanan_simple_2016]:
 
@@ -579,6 +634,7 @@ Deep Ensemble trains multiple networks with different random initialization and 
 theta = train_y
 sumstats = train_x
 observed = observed_x
+true_param = observed_y
 
 abc_ensemble = abcnn$new(theta,
             sumstats,
@@ -587,10 +643,11 @@ abc_ensemble = abcnn$new(theta,
             num_networks = 5,
             scale_input = "minmax",
             scale_target = "none",
-            epochs = 30,
+            epochs = 20,
             num_hidden_layers = 3,
             num_hidden_dim = 512,
-            batch_size = 128)
+            batch_size = 128,
+            seed = 4722)
 ```
 
 
@@ -614,21 +671,31 @@ abc_ensemble$plot_training()
 
 
 
+
+
+```{r, echo = T}
+abc_ensemble$cross_validation(true_param[1:100,],
+                              observed[1:100,])
+
+abc_ensemble$plot_cross_validation()
+```
+
+
+
+
 ```{r, echo = T, eval = F}
 abc_ensemble$predict()
 ```
+
+```{r, echo = F, eval = F}
+save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
+```
+
 
 
 
 ## Variation in Uncertainty Quantification across different regions
 
-
-
-```{r, echo = F}
-# save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
-
-abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
-```
 
 Deep Ensembles provide particularly insightful uncertainty estimates across different data regions:
 
@@ -702,9 +769,9 @@ n = 10
 alpha = 4
 beta = 3
 # Training set sample size
-N = 10000
+N = 20000
 # Test set sample size
-p = 100
+p = 1000
 # offset for the out-of-dist data
 offset = 0
 
@@ -902,7 +969,7 @@ homoscedastic_normal = function(alpha = 4,
 }
 
 
-dataset = homoscedastic_normal()
+dataset = homoscedastic_normal(alpha, beta, n, N, p, offset)
 
 saveRDS(dataset, "../inst/extdata/normal_toy_model.Rds")
 ```
@@ -947,10 +1014,10 @@ deepensemble_highdim = abcnn$new(theta.train,
             method = 'deep ensemble',
             scale_input = "minmax",
             scale_target = "minmax",
-            epochs = 60,
+            epochs = 20,
             batch_size = 128,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.1)
+            epsilon_adversarial = 0.01)
 
 
 deepensemble_highdim$summary()
@@ -975,8 +1042,30 @@ deepensemble_highdim$plot_training()
 ```
 
 
-```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
+
+## Model performance
+
+
+Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience):
+
+
+```{r, echo = T}
+true.theta = data.frame(theta1 = theta.exact$mean.theta1,
+                        theta2 = theta.exact$mean.theta2)
+
+deepensemble_highdim$cross_validation(true.theta,
+                                      sumstats.test)
+
+deepensemble_highdim$plot_cross_validation()
+```
+
+
+Plot the predictions on the observed summary statistics:
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
 deepensemble_highdim$predict()
+
+deepensemble_highdim$plot_prediction()
 ```
 
 
@@ -985,17 +1074,7 @@ save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim"
 ```
 
 
-```{r, echo = F, eval=F}
-deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
-```
 
-
-## Model performance
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
-deepensemble_highdim$plot_prediction()
-```
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
 df = deepensemble_highdim$predictions() %>%
@@ -1045,7 +1124,7 @@ The individual contributions of input variables to each prediction:
 
 
 ```{r, echo = T}
-head(exp$get_result())
+exp$get_result()[1:5,1:5,]
 ```
 
 
@@ -1066,18 +1145,19 @@ TabNet-ABC [@arik_tabnet_2020; @akesson_convolutional_2022] combines interpretab
 
 
 ```{r}
-tabnetabc = abcnn$new(theta.train,
-            sumstats.train,
+tabnetabc = abcnn$new(theta.train[1:10000,],
+            sumstats.train[1:10000,],
             sumstats.test[1:1000,],
             method = 'tabnet-abc',
             scale_input = "none",
             scale_target = "none",
-            epochs = 60,
-            batch_size = 256,
+            epochs = 30,
+            batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
             abc_keep_original_sumstats = FALSE,
-            abc_method = "ridge")
+            abc_method = "ridge",
+            seed = 4242)
 
 
 tabnetabc$summary()
@@ -1161,6 +1241,8 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 <!-- ``` -->
 
 
+
+
 ## Tabnet attention maps for model explanation
 
 
@@ -1180,6 +1262,90 @@ exp$plot()
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 exp$plot(type = "steps")
 ```
+
+
+## Improve model performance by keeping the most important summary statistics
+
+
+
+```{r}
+tabnetabc_performance = abcnn$new(theta.train[1:10000,],
+            sumstats.train[1:10000,],
+            sumstats.test[1:1000,],
+            method = 'tabnet-abc',
+            scale_input = "none",
+            scale_target = "none",
+            epochs = 30,
+            batch_size = 256,
+            l2_weight_decay = 1e-3,
+            tol = 0.1,
+            abc_keep_original_sumstats = 0.3,
+            abc_method = "ridge",
+            seed = 4242)
+
+
+tabnetabc_performance$summary()
+```
+
+
+```{r, echo = F, eval=T}
+tabnetabc_performance = load_abcnn(prefix = "../inst/extdata/tabnetabc_performance")
+```
+
+
+```{r, eval = F}
+tabnetabc_performance$fit()
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
+tabnetabc_performance$plot_training()
+```
+
+```{r, eval = F}
+tabnetabc_performance$cross_validation(theta.test[1:1000,],
+                                       sumstats.test[1:1000,])
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
+tabnetabc_performance$plot_cross_validation()
+```
+
+
+```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
+tabnetabc_performance$predict()
+```
+
+
+
+```{r, echo = F, eval=F}
+save_abcnn(tabnetabc_performance, prefix = "../inst/extdata/tabnetabc_performance")
+```
+
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
+tabnetabc_performance$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
+```
+
+
+```{r tabnet_accuracy_2, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+df = tabnetabc_performance$predictions() %>%
+  filter(parameter == "theta1")
+
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "TabNet-ABC Predictive check") +
+  theme_bw()
+```
+
 
 
 
@@ -1250,8 +1416,8 @@ Choosing the appropriate method depends on several factors:
 |--------|-----------|-------------|-------------------|
 | Concrete Dropout | Principled uncertainty, Bayesian framework, Almost as efficient as Deep Ensemble for predictive performance and Credible Interval | Training complexity, heteroscedastic loss, Sensitive to statistical outliers and large variance in the training dataset (scaling the data is recommended), Epistemic uncertainty estimates can be noisy/too large when overfitting (prefer the overall uncertainty) | Medium |
 | Monte Carlo Dropout | Simple implementation, fast inference | Limited uncertainty quantification (only epistemic), Less efficient than other methods, Larger credible intervals, Requires fine-tuning the dropout rate | Low |
-| Deep Ensemble | Robust, adversarial training, The most efficient in predictive performance and Credible Interval, Smoother uncertainty estimates | High memory usage and training time increases with the number of networks, does not generate a full posterior (only point estimates of mean and variance) | High |
-| TabNet-ABC | Interpretability, ABC integration, The Transformer architecture is designed to handle tabular data, built-in Attention map | Two-stage process, Requires an additional ABC procedure to estimate the full posterior, Only epistemic uncertainty | Medium |
+| Deep Ensemble | Robust, adversarial training, The most efficient in predictive performance and Credible Interval, Smoother uncertainty estimates | High memory usage and training time increases with the number of networks, but inference is very fast, does not generate a full posterior (only point estimates of mean and variance) | Medium |
+| TabNet-ABC | Interpretability, ABC integration, The Transformer architecture is designed to handle tabular data, built-in Attention map | Two-stage process, Requires an additional ABC procedure to estimate the full posterior, Only epistemic uncertainty | High |
 
 
 
