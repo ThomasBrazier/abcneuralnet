@@ -149,7 +149,7 @@ where $w = 2$, $b = 8$, and $\sigma = 1$. This controlled setting allows us to v
 I simulated 2,000 training samples and 1,000 test samples with a simple linear function. There is only one parameter to estimate, and one input variable.
 
 
-```{r toy_data_1, echo = F}
+```{r toy_data_1, echo = F, eval=T}
 n_train = 100000 # Number of data points
 n_obs = 1000 # Validation size
 
@@ -251,7 +251,7 @@ abc$fit()
 ```
 
 
-```{r, echo=F}
+```{r, echo=F, eval= T}
 # save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
 
 abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
@@ -358,7 +358,7 @@ save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
 
 
 
-You can get predictions with their associated uncertainty and Conformal Credibility Intervals as a tidy data frame:
+You can get predictions with their associated uncertainties and Conformal Credibility Intervals as a tidy data frame:
 
 ```{r, echo = T, message=F}
 head(abc$predictions())
@@ -390,7 +390,7 @@ df_training = data.frame(x = X_train,
                          y = Y_train)
 ```
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the Conformal Credible Interval based on the overall unvertainty."}
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The green ribbon is the Conformal Credible Interval based on the overall unvertainty."}
 ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +

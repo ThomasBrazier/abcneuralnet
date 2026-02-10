@@ -24,7 +24,7 @@ library(torch)
 library(tidyverse)
 library(kableExtra)
 
-## ----toy_data_1, echo = F-----------------------------------------------------
+## ----toy_data_1, echo = F, eval=T---------------------------------------------
 n_train = 100000 # Number of data points
 n_obs = 1000 # Validation size
 
@@ -97,7 +97,7 @@ abc$summary()
 # # Use the fit() method to train the neural network
 # abc$fit()
 
-## ----echo=F-------------------------------------------------------------------
+## ----echo=F, eval= T----------------------------------------------------------
 # save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
 
 abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
@@ -169,7 +169,7 @@ df_predicted$y_true = Y_obs
 df_training = data.frame(x = X_train,
                          y = Y_train)
 
-## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the Conformal Credible Interval based on the overall unvertainty."----
+## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The green ribbon is the Conformal Credible Interval based on the overall unvertainty."----
 ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
