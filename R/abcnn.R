@@ -845,8 +845,8 @@ abcnn = R6::R6Class("abcnn",
                 new_sumstats_train = cbind(tabnet_train, self$sumstat_adj[,varnames, drop = F])
                 new_sumstats_observed = cbind(tabnet_observed, self$observed_adj[,varnames, drop = F])
               } else {
-                new_sumstats_train = tabnet_train
-                new_sumstats_observed = tabnet_observed
+                new_sumstats_train = as.data.frame(tabnet_train)
+                new_sumstats_observed = as.data.frame(tabnet_observed)
               }
             }
           }
