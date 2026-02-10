@@ -225,8 +225,8 @@ abc = abcnn$new(theta,
             scale_target = "none",
             num_hidden_layers = 3,
             num_hidden_dim = 128,
-            epochs = 10,
-            batch_size = 128,
+            epochs = 20,
+            batch_size = 32,
             l2_weight_decay = 1e-5,
             learning_rate = 0.001,
             seed = 6295)
@@ -742,11 +742,13 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 ## Gaussian Toy Model
 
-We demonstrate this approach on a homoscedastic normal model, where $\text{Inv-Gamma}(\alpha, \beta)$ denotes an inverse Gamma distribution with shape parameter $\alpha$ and scale parameter $\beta$.:
+We demonstrate this approach on a homoscedastic normal model, where $\text{Inv-Gamma}(\alpha, \beta)$ denotes an inverse Gamma distribution with shape parameter $\alpha$ and scale parameter $\beta$:
 
 $$y \sim \mathcal{N}(\mu, \sigma^2), \quad \mu \sim \mathcal{N}(0, \sigma^2), \quad \sigma^2 \sim \text{Inv-Gamma}(\alpha, \beta)$$
 
 It is straightforward to derive the exact values of $E(θ1 | y)$, $Var(θ1 | y)$, $E(θ2 | y)$, $Var(θ2 | y)$ and posterior quantiles for the two parameters from the above expressions and for a given sample y (see [@raynal2019abc] for details on the method).
+
+In addition we add 50 noisy random summary statistics simulated according to a uniform(0,1) distribution to see how the model can handle noise in high dimensional dataset. Hence there are a total of 61 summary statistics, and only 11 of these are informative.
 
 
 
@@ -1017,7 +1019,8 @@ deepensemble_highdim = abcnn$new(theta.train,
             epochs = 20,
             batch_size = 128,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.01)
+            epsilon_adversarial = 0.001,
+            seed = 42)
 
 
 deepensemble_highdim$summary()
@@ -1144,6 +1147,9 @@ TabNet-ABC [@arik_tabnet_2020; @akesson_convolutional_2022] combines interpretab
 ## TabNet-ABC Implementation
 
 
+Tabnet is trained to predict the mean parameter, which is re-used during inference as a new informative summary statistics. We leverage the Tabnet Attention map and feature importance to subset only the most informative summary statistics for the ABC inference step. They are then concatenated to the Tabnet predicted mean.
+
+
 ```{r}
 tabnetabc = abcnn$new(theta.train[1:10000,],
             sumstats.train[1:10000,],
@@ -1155,7 +1161,7 @@ tabnetabc = abcnn$new(theta.train[1:10000,],
             batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
-            abc_keep_original_sumstats = FALSE,
+            abc_keep_original_sumstats = 11,
             abc_method = "ridge",
             seed = 4242)
 

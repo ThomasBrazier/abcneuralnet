@@ -84,8 +84,8 @@ abc = abcnn$new(theta,
             scale_target = "none",
             num_hidden_layers = 3,
             num_hidden_dim = 128,
-            epochs = 10,
-            batch_size = 128,
+            epochs = 20,
+            batch_size = 32,
             l2_weight_decay = 1e-5,
             learning_rate = 0.001,
             seed = 6295)
@@ -642,7 +642,8 @@ deepensemble_highdim = abcnn$new(theta.train,
             epochs = 20,
             batch_size = 128,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.01)
+            epsilon_adversarial = 0.001,
+            seed = 42)
 
 
 deepensemble_highdim$summary()
@@ -714,7 +715,7 @@ tabnetabc = abcnn$new(theta.train[1:10000,],
             batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
-            abc_keep_original_sumstats = FALSE,
+            abc_keep_original_sumstats = 11,
             abc_method = "ridge",
             seed = 4242)
 
