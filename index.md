@@ -1,0 +1,93 @@
+# ABCNeuralNet
+
+![license](https://badgen.net/badge/license/GPL-3.0/blue)![release](https://badgen.net/badge/release/0.2.0/blue?icon=github)![R-CMD-check](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/R-CMD-check.yaml/badge.svg)
+
+## Installation
+
+`ABCNeuralNet` requires some dependencies before to be installed. If you
+want to use the `gpu` to accelerate the training and inferences, you
+must install `CUDA` on a system with a compatible `gpu`.
+
+### Install `CUDA` for GPU usage
+
+The list of CUDA-compatible
+[GPUs](https://developer.nvidia.com/cuda-gpus#compute)
+
+[CUDA toolkit](https://docs.nvidia.com/cuda/archive/11.7.0/)
+
+Instructions to install [cudnn](https://developer.nvidia.com/cudnn) \#
+\### Install `Torch`
+
+See the mlverse
+[Torch](https://torch.mlverse.org/docs/articles/installation)
+documentation for installing the `torch` R package.
+
+    install.packages("torch")
+    library(torch) # Will install all libraries necessary (lantern, torch)
+    # Alternatively, to install C/C++ dependencies
+    torch::install_torch()
+
+    # Check if CUDA installed
+    cuda_is_available()
+
+### Install `ABCNeuralNet`
+
+So far, `abcneuralnet` is still in development and not available from
+CRAN.
+
+You can install the development version with:
+
+    devtools::install_github("ThomasBrazier/abcneuralnet")
+
+## How to use ABCNeuralNet
+
+You can see a detailed example on how to use the `abcneuralnet` package
+in the vignettes. A basic example is:
+
+    library(abcneuralnet)
+
+    # Initialize an acbnn R6 object
+    abc = abcnn$new(parameters_training_sims,
+                sumstats_training_sims,
+                sumstats_observed,
+                method = "concrete dropout",
+                scale_input = "none",
+                scale_target = "none",
+                num_hidden_layers = 3,
+                num_hidden_dim = 256,
+                epochs = 30,
+                batch_size = 32,
+                l2_weight_decay = 1e-5)
+
+    # Fit the neural network
+    abc$fit()
+    # Assess training quality
+    abc$plot_training()
+
+    # Predict on observed summary statistics
+    abc$predict()
+    # Plot the predictions
+    abc$plot_prediction()
+    # Plot the posterior for a single sample
+    abc$plot_posterior()
+
+    # Explainable methods - Feature importance
+    # Init the `explainn` object
+    exp = explainn$new(tabnetabc)
+    # Run the selected method to compute Feature Importance
+    exp$run(data = sumstats.test)
+
+    # Plot the results
+    exp$plot()
+
+    # The individual contributions of input variables to each prediction:
+    exp$get_result()
+
+## Contributing
+
+No matter your current skills it’s possible to contribute to
+`abcneuralnet` development (contact me for details).
+
+It is important for me to have comments and feature requests. Feel free
+to open an issue if you find a typo or a bug, if you have a question how
+to use the package, or to submit a feature request.
