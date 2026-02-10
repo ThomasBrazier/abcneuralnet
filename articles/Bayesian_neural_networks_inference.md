@@ -249,8 +249,8 @@ abc = abcnn$new(theta,
             scale_target = "none",
             num_hidden_layers = 3,
             num_hidden_dim = 128,
-            epochs = 10,
-            batch_size = 128,
+            epochs = 20,
+            batch_size = 32,
             l2_weight_decay = 1e-5,
             learning_rate = 0.001,
             seed = 6295)
@@ -283,7 +283,7 @@ abc$summary()
 #> 
 #> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "concrete dropout", 
 #>     scale_input = "none", scale_target = "none", num_hidden_layers = 3, 
-#>     num_hidden_dim = 128, batch_size = 128, epochs = 10, learning_rate = 0.001, 
+#>     num_hidden_dim = 128, batch_size = 32, epochs = 20, learning_rate = 0.001, 
 #>     l2_weight_decay = 1e-05, seed = 6295)
 ```
 
@@ -294,8 +294,8 @@ abc$summary()
 | Scaling for targets (theta)                                   | none             |
 | Number hidden layers                                          | 3                |
 | Number hidden dimensions                                      | 128              |
-| Batch size                                                    | 128              |
-| Epochs                                                        | 10               |
+| Batch size                                                    | 32               |
+| Epochs                                                        | 20               |
 | Early stopping callback                                       | FALSE            |
 | Patience for early stopping                                   | 4                |
 | Learning rate                                                 | 0.001            |
@@ -349,14 +349,14 @@ abc$fitted$model
 abc$fitted
 #> A `luz_module_fitted`
 #> ── Time ────────────────────────────────────────────────────────────────────────
-#> • Total time: 3m 20.9s
-#> • Avg time per training epoch: 18.4s
+#> • Total time: 13.1s
+#> • Avg time per training epoch: 522ms
 #> 
 #> ── Results ─────────────────────────────────────────────────────────────────────
 #> Metrics observed in the last epoch.
 #> 
 #> ℹ Training:
-#> loss: 139.9125
+#> loss: 51.0977
 #> 
 #> ── Model ───────────────────────────────────────────────────────────────────────
 #> An `nn_module` containing 33,543 parameters.
@@ -435,7 +435,7 @@ abc$cross_validation()
 #> # A tibble: 1 × 10
 #>   parameter     n   mae   mse  rmse  nmae   cor   cov mean_epistemic_interval
 #>   <chr>     <int> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl>                   <dbl>
-#> 1 y1         1000 0.792 0.968 0.984  6.74 0.897  4.07                    4.84
+#> 1 y1         1000 0.802  1.02  1.01  6.79 0.890  4.07                    4.74
 #> # ℹ 1 more variable: mean_overall_interval <dbl>
 ```
 
@@ -458,40 +458,40 @@ predicted parameters for 1,000 simulated samples (summary statistics):
 abc$predict()
 ```
 
-You can get predictions with their associated uncertainty and Conformal
-Credibility Intervals as a tidy data frame:
+You can get predictions with their associated uncertainties and
+Conformal Credibility Intervals as a tidy data frame:
 
 ``` r
 head(abc$predictions())
 #> Back-transform scaled parameters with method: none
 #>   sample parameter predictive_mean epistemic_uncertainty aleatoric_uncertainty
-#> 1      1        y1        9.422489             0.2462378             1.0083136
-#> 2      2        y1        7.698149             0.1400310             1.2051425
-#> 3      3        y1        4.728304             0.2932296             1.0007773
-#> 4      4        y1       10.390363             0.3215604             1.0114727
-#> 5      5        y1        6.871421             0.1384672             1.0007375
-#> 6      6        y1        6.512708             0.1676400             0.9966978
+#> 1      1        y1       10.309218             1.0675313              1.283543
+#> 2      2        y1        7.451776             0.5612965              1.340128
+#> 3      3        y1        6.436447             0.6559056              1.215488
+#> 4      4        y1       10.219753             1.1048015              1.289174
+#> 5      5        y1        4.910246             0.9696648              1.091763
+#> 6      6        y1        9.790845             0.9883168              1.296825
 #>   overall_uncertainty epistemic_conformal_credible_interval
-#> 1            1.254551                              2.872170
-#> 2            1.345173                              1.633351
-#> 3            1.294007                              3.420293
-#> 4            1.333033                              3.750749
-#> 5            1.139205                              1.615111
-#> 6            1.164338                              1.955389
+#> 1            2.351074                              3.103068
+#> 2            1.901425                              1.631560
+#> 3            1.871393                              1.906567
+#> 4            2.393975                              3.211404
+#> 5            2.061428                              2.818593
+#> 6            2.285142                              2.872810
 #>   overall_conformal_credible_interval posterior_median posterior_lower_ci
-#> 1                            2.020011         9.464022           8.948027
-#> 2                            2.165925         7.721524           7.359309
-#> 3                            2.083540         4.712549           4.478880
-#> 4                            2.146378        10.436827           9.956742
-#> 5                            1.834286         6.884790           6.572408
-#> 6                            1.874754         6.518779           6.245114
+#> 1                            2.342507        10.385820           7.560987
+#> 2                            1.894496         7.469801           6.283964
+#> 3                            1.864574         6.371157           5.279931
+#> 4                            2.385252        10.391239           7.434653
+#> 5                            2.053916         4.697867           3.732350
+#> 6                            2.276815         9.918343           7.429564
 #>   posterior_upper_ci
-#> 1           9.685002
-#> 2           7.889037
-#> 3           4.885924
-#> 4          10.683664
-#> 5           7.037892
-#> 6           6.652590
+#> 1          11.994395
+#> 2           8.480160
+#> 3           8.033218
+#> 4          11.961211
+#> 5           7.971181
+#> 6          11.352325
 ```
 
 The trained model provides separate estimates of aleatoric and epistemic
@@ -513,13 +513,13 @@ ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
 
 ![Predictions as a function of simulated parameter. The purple ribbon is
 the Conformal Credible Interval based on the epistemic unvertainty
-alone. The gree ribbon is the Conformal Credible Interval based on the
+alone. The green ribbon is the Conformal Credible Interval based on the
 overall
 unvertainty.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-16-1.png)
 
 Predictions as a function of simulated parameter. The purple ribbon is
 the Conformal Credible Interval based on the epistemic unvertainty
-alone. The gree ribbon is the Conformal Credible Interval based on the
+alone. The green ribbon is the Conformal Credible Interval based on the
 overall unvertainty.
 
 There are different Credible Intervals and uncertainty measures
@@ -660,7 +660,7 @@ abc$plot_posterior(sample = 700, prior = TRUE, uncertainty_type = "uncertainty")
 Y_obs[700]
 #> [1] 6.906046
 abc$predictive_mean$y1[700]
-#> [1] 8.304394
+#> [1] 6.173774
 ```
 
 ``` r
@@ -683,7 +683,7 @@ and credible intervals. The prior distribution is plotted underneath
 Y_obs[501]
 #> [1] 5.541102
 abc$predictive_mean$y1[501]
-#> [1] 9.389206
+#> [1] 6.058429
 ```
 
 ## Case study 2: Nonlinear multivariate regression with **Deep Ensemble**
@@ -911,7 +911,7 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 We demonstrate this approach on a homoscedastic normal model, where
 $\text{Inv-Gamma}(\alpha,\beta)$ denotes an inverse Gamma distribution
-with shape parameter $\alpha$ and scale parameter $\beta$.:
+with shape parameter $\alpha$ and scale parameter $\beta$:
 
 $$y \sim \mathcal{N}\left( \mu,\sigma^{2} \right),\quad\mu \sim \mathcal{N}\left( 0,\sigma^{2} \right),\quad\sigma^{2} \sim \text{Inv-Gamma}(\alpha,\beta)$$
 
@@ -921,6 +921,11 @@ $E\left( \theta 2|y \right)$, $Var\left( \theta 2|y \right)$ and
 posterior quantiles for the two parameters from the above expressions
 and for a given sample y (see (Raynal et al. 2019) for details on the
 method).
+
+In addition we add 50 noisy random summary statistics simulated
+according to a uniform(0,1) distribution to see how the model can handle
+noise in high dimensional dataset. Hence there are a total of 61 summary
+statistics, and only 11 of these are informative.
 
 ``` r
 # For training
@@ -955,7 +960,8 @@ deepensemble_highdim = abcnn$new(theta.train,
             epochs = 20,
             batch_size = 128,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.01)
+            epsilon_adversarial = 0.001,
+            seed = 42)
 
 
 deepensemble_highdim$summary()
@@ -981,7 +987,8 @@ deepensemble_highdim$summary()
 #> 
 #> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", 
 #>     scale_input = "minmax", scale_target = "minmax", batch_size = 128, 
-#>     epochs = 20, l2_weight_decay = 1e-04, epsilon_adversarial = 0.01)
+#>     epochs = 20, l2_weight_decay = 1e-04, epsilon_adversarial = 0.001, 
+#>     seed = 42)
 ```
 
 | Hyperparameter                                                | Value         |
@@ -1039,8 +1046,8 @@ deepensemble_highdim$cross_validation(true.theta,
 #> # A tibble: 2 × 10
 #>   parameter     n    mae     mse   rmse  nmae   cor   cov mean_epistemic_inter…¹
 #>   <chr>     <int>  <dbl>   <dbl>  <dbl> <dbl> <dbl> <dbl>                  <dbl>
-#> 1 theta1     1000 0.0385 0.00275 0.0525 0.443 0.999 0.920                 -15.4 
-#> 2 theta2     1000 0.0873 0.0209  0.144  0.800 0.972 0.326                   1.97
+#> 1 theta1     1000 0.0910 0.00960 0.0980 1.11  0.999 0.927                 -15.7 
+#> 2 theta2     1000 0.0722 0.0108  0.104  0.607 0.973 0.356                   1.80
 #> # ℹ abbreviated name: ¹​mean_epistemic_interval
 #> # ℹ 1 more variable: mean_overall_interval <dbl>
 
@@ -1140,20 +1147,20 @@ exp$get_result()[1:5,1:5,]
 #> , , theta1
 #> 
 #>      expectation     variance          mad            x1            x2
-#> [1,]  0.13588594 -0.004810072 -0.009731983 -3.024816e-04 -3.058505e-04
-#> [2,]  0.14055677 -0.006854333 -0.006386250 -8.877286e-05  1.960651e-04
-#> [3,]  0.12691690 -0.007393442 -0.018343683 -1.032707e-03  4.926450e-04
-#> [4,]  0.09949932 -0.001462967 -0.008124752 -6.786888e-04  6.830212e-05
-#> [5,]  0.11651845 -0.009662617 -0.016280660 -2.445480e-04 -3.118181e-04
+#> [1,]  0.13939764 -0.005528343 -0.011031813 -2.718738e-04  0.0002245442
+#> [2,]  0.13864557 -0.007662447 -0.006938589 -9.785448e-05  0.0017960890
+#> [3,]  0.12243646 -0.008154956 -0.019311881 -2.157032e-03  0.0015383026
+#> [4,]  0.09265181 -0.001660031 -0.008828047  8.128163e-04 -0.0006999970
+#> [5,]  0.11007319 -0.010815562 -0.016901638 -3.653254e-04 -0.0002756446
 #> 
 #> , , theta2
 #> 
-#>      expectation    variance          mad            x1            x2
-#> [1,] -0.01545276 0.004633793 0.0007885198 -6.942095e-04  4.504252e-04
-#> [2,] -0.01483522 0.006611125 0.0004152385 -4.203431e-05 -3.282267e-05
-#> [3,] -0.01762450 0.006987210 0.0019803599 -2.729139e-04 -2.785338e-04
-#> [4,] -0.01403098 0.001410423 0.0008352886 -2.190715e-04  1.118761e-04
-#> [5,] -0.01595949 0.009367231 0.0016494729 -6.970998e-04  1.694307e-04
+#>       expectation    variance          mad            x1            x2
+#> [1,] -0.010520771 0.004662550 0.0013277162  1.235024e-04 -0.0008466211
+#> [2,] -0.010149574 0.006539856 0.0008564434 -3.398316e-06 -0.0017407431
+#> [3,] -0.009252016 0.006832849 0.0020587661  1.261098e-03 -0.0020976958
+#> [4,] -0.012709047 0.001366228 0.0015878682  9.869615e-04 -0.0007174442
+#> [5,] -0.008702752 0.008908791 0.0017522310 -1.233444e-05 -0.0005339017
 ```
 
 ## ABC Integration with TabNet
@@ -1168,6 +1175,12 @@ learned features.
 
 ### TabNet-ABC Implementation
 
+Tabnet is trained to predict the mean parameter, which is re-used during
+inference as a new informative summary statistics. We leverage the
+Tabnet Attention map and feature importance to subset only the most
+informative summary statistics for the ABC inference step. They are then
+concatenated to the Tabnet predicted mean.
+
 ``` r
 tabnetabc = abcnn$new(theta.train[1:10000,],
             sumstats.train[1:10000,],
@@ -1179,7 +1192,7 @@ tabnetabc = abcnn$new(theta.train[1:10000,],
             batch_size = 128,
             l2_weight_decay = 1e-3,
             tol = 0.1,
-            abc_keep_original_sumstats = FALSE,
+            abc_keep_original_sumstats = 11,
             abc_method = "ridge",
             seed = 4242)
 
@@ -1208,7 +1221,7 @@ tabnetabc$summary()
 #> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "tabnet-abc", 
 #>     scale_input = "none", scale_target = "none", batch_size = 128, 
 #>     epochs = 30, l2_weight_decay = 0.001, abc_method = "ridge", 
-#>     tol = 0.1, abc_keep_original_sumstats = FALSE, seed = 4242)
+#>     tol = 0.1, abc_keep_original_sumstats = 11, seed = 4242)
 ```
 
 | Hyperparameter                                                | Value      |
