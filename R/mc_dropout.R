@@ -25,7 +25,7 @@ mc_dropout_model = torch::nn_module(
   initialize = function(num_input_dim = 1,
                         num_hidden_dim = 1024,
                         num_output_dim = 1,
-                        num_hidden_layers = 3,
+                        num_hidden_layers = 1,
                         dropout_hidden = 0.5) {
     # Set a minimal model with a single layer and dropout on inputs (facultative)
     self$mc_dropout = torch::nn_sequential(
@@ -33,7 +33,7 @@ mc_dropout_model = torch::nn_module(
       nn_mc_dropout(p = dropout_hidden),
       torch::nn_leaky_relu())
 
-    for (i in 2:num_hidden_layers) {
+    for (i in 2:(num_hidden_layers + 2)) {
       self$mc_dropout$add_module(paste0("linear_", i), torch::nn_linear(num_hidden_dim, num_hidden_dim))
       self$mc_dropout$add_module(paste0("dropout_", i), nn_mc_dropout(p = dropout_hidden))
       self$mc_dropout$add_module(paste0("relu_", i), torch::nn_leaky_relu())
@@ -55,7 +55,7 @@ build_mcdropout_model = function(optimizer = optim_adam,
                                  input_dim = 1,
                                  num_hidden_dim = 1024,
                                  output_dim = 1,
-                                 num_hidden_layers = 3,
+                                 num_hidden_layers = 1,
                                  dropout = 0.5,
                                  learning_rate = 0.001,
                                  L2_weigth_decay = 1e-5) {

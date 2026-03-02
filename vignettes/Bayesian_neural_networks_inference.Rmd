@@ -265,7 +265,7 @@ The `abcnn` object is an R6 class that uses a modern object‑oriented design in
 
 ```{r, echo = T}
 # The torch model
-abc$fitted$model
+# abc$fitted$model
 
 # The luz fitted model
 abc$fitted
@@ -663,7 +663,7 @@ abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
 ```
 
 
-Checking the model fit:
+Checking the model training:
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 abc_ensemble$plot_training()
@@ -673,14 +673,20 @@ abc_ensemble$plot_training()
 
 
 
-```{r, echo = T}
-abc_ensemble$cross_validation(true_param[1:100,],
-                              observed[1:100,])
+<!-- ```{r, echo = T} -->
+<!-- abc_ensemble$cross_validation(true_param[1:100,], -->
+<!--                               observed[1:100,]) -->
 
-abc_ensemble$plot_cross_validation()
-```
+<!-- abc_ensemble$plot_cross_validation() -->
+<!-- ``` -->
 
 
+
+
+
+
+
+## Variation in Uncertainty Quantification across different regions
 
 
 ```{r, echo = T, eval = F}
@@ -691,10 +697,6 @@ abc_ensemble$predict()
 save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
 ```
 
-
-
-
-## Variation in Uncertainty Quantification across different regions
 
 
 Deep Ensembles provide particularly insightful uncertainty estimates across different data regions:
@@ -1078,15 +1080,35 @@ save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim"
 
 
 
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."}
 df = deepensemble_highdim$predictions() %>%
   filter(parameter == "theta1")
 
 df$true.theta = theta.exact[1:1000,"mean.theta1"]
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
+  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
+                  ymax = predictive_mean + overall_conformal_credible_interval), 
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "Deep Ensemble Predictive check") +
+  theme_bw()
+```
+
+
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+df = deepensemble_highdim$predictions() %>%
+  filter(parameter == "theta2")
+
+df$true.theta = theta.exact[1:1000,"mean.theta2"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
+                  ymax = predictive_mean + overall_conformal_credible_interval), 
               fill = "lightgrey", alpha = 0.5) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, color = "red") +
@@ -1103,7 +1125,13 @@ Understanding which summary statistics drive parameter estimates is crucial for 
 
 ## The `explainn()` class and methods for model explanation
 
-The [https://bips-hb.github.io/innsight/](**innsight**) package backend provides ten different explainability methods to interpret feature importance within an **explainn** object.
+
+
+The [https://bips-hb.github.io/innsight/](**innsight**) package backend provides twelve different explainability methods to interpret feature importance within an **explainn** object. Both local and global methods are provided, to interpret feature importance for a focal prediction (a single output/sample) or summarize importances across a whole dataset (multiple samples).
+
+
+DeepLift (deep learning important features) is an algorithm introduced by Shrikumar et al. (2017). It's a local method for interpreting a single element output prediction $x$, given a reference $x'$, returning the contribution of each input feature from the difference of the output $y = f(x)$ and the reference output $y' = f(x')$ prediction.
+
 
 
 ```{r, echo = T, eval = T}
@@ -1113,21 +1141,64 @@ exp$run(data = sumstats.test[1:1000,],
         method = "deeplift")
 ```
 
-```{r explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
+
+
+```{r explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods, for the first sample output prediction. Colors indicate the contribution of each feature to the final prediction."}
 exp$plot()
 ```
 
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-exp$plot(type = "steps")
+Even if DeepLift is a local method, multiple samples can be passed and importance scores summarizzed across all samples' predictions.
+
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods, summarized across the 1,000 smaples. Colors indicate the contribution of each feature to the final prediction."}
+exp$plot_global()
 ```
 
 
-The individual contributions of input variables to each prediction:
+
+The individual contributions of input variables to the subject prediction:
 
 
 ```{r, echo = T}
-exp$get_result()[1:5,1:5,]
+# Three dimension outpout:
+# - First sample
+# - 10 first summary statistics
+# - the two output parameters
+exp$get_result()[1,1:10,1:2]
+```
+
+
+
+
+SmoothGrad is another method, which can also be interpreted as local and global feature importance scores. SmoothGrad was introduced by D. Smilkov et al. (2017) and is an extension to the classical Vanilla Gradient method (see [SmoothGrad](https://bips-hb.github.io/innsight/reference/SmoothGrad.html) for more details).
+
+
+
+```{r, echo = T, eval = T}
+exp = explainn$new(deepensemble_highdim)
+
+exp$run(data = sumstats.test[1:1000,],
+        method = "smoothgrad")
+```
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
+exp$plot()
+```
+
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
+exp$plot_global()
+```
+
+
+The individual contributions of input variables to individual predictions:
+
+
+```{r, echo = T}
+exp$get_result()[1:5,1:10,1]
 ```
 
 
@@ -1261,13 +1332,17 @@ exp = explainn$new(tabnetabc)
 exp$run(data = sumstats.test)
 ```
 
+
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 exp$plot()
 ```
 
+
+
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 exp$plot(type = "steps")
 ```
+
 
 
 ## Improve model performance by keeping the most important summary statistics

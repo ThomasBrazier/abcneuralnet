@@ -6,10 +6,10 @@
 #' @param method either `monte carlo dropout`, `concrete dropout`, `tabnet-abc` or `deep ensemble`, See `details`
 #' @param scale_input the method to scale summary statistics before training (`none` (default), `minmax` or `robustscaler`)
 #' @param scale_target the method to scale the parameter to estimate before training (`none` (default), `minmax` or `robustscaler`)
-#' @param num_hidden_layers the number of hidden layers in the Neural Network (default = 3)
-#' @param num_hidden_dim the dimension of hidden layers (i.e. number of neurons) in each layer of the Neural Network (default=128)
-#' @param validation_split the proportion of samples retained for validation in `luz
-#' @param test_split the proportion of samples retained for evaluation in `luz
+#' @param num_hidden_layers the number of hidden layers in the Neural Network (default = 3), excluding the input and output layers
+#' @param num_hidden_dim the dimension of layers (i.e. number of neurons) in each layer of the Neural Network (default=128)
+#' @param validation_split the proportion of samples retained for validation in `luz`
+#' @param test_split the proportion of samples retained for evaluation in `luz`
 #' @param dropout the dropout rate for `monte carlo dropout`, i.e. the proportion of neurons dropped in each layer (must be between 0.1 and 0.5)
 #' @param batch_size the mini-batch size
 #' @param learning_rate the learning rate
@@ -120,7 +120,7 @@
 #'                 method = "concrete dropout",
 #'                 scale_input = "none",
 #'                 scale_target = "none",
-#'                 num_hidden_layers = 3,
+#'                 num_hidden_layers = 1,
 #'                 num_hidden_dim = 128,
 #'                 epochs = 30,
 #'                 batch_size = 32)
@@ -139,7 +139,7 @@
 #' @slot scale_input the scaling method for summary statistics
 #' @slot scale_target the scaling method for targets (i.e. theta)
 #' @slot num_hidden_layers number of hidden layers in the neural network
-#' @slot num_hidden_dim number of hidden dimensions (neurons) in each hidden layer
+#' @slot num_hidden_dim number of dimensions (neurons) in each layer
 #' @slot validation_split proportion of samples retained for validation at the end of training
 #' @slot num_conformal number of samples retained for conformal prediction
 #' @slot credible_interval_p significance level for the credible interval, between 0 and 1
