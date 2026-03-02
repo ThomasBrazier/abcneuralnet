@@ -1233,7 +1233,7 @@ tabnetabc = abcnn$new(theta.train[1:10000,],
             epochs = 30,
             batch_size = 64,
             tol = 0.1,
-            abc_keep_original_sumstats = 8,
+            abc_keep_original_sumstats = 10,
             abc_method = "loclinear",
             seed = 4567)
 
@@ -1351,91 +1351,6 @@ exp$plot(type = "mask_agg")
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 exp$plot(type = "steps")
 ```
-
-
-
-## Improve model performance by keeping the most important summary statistics
-
-
-
-```{r}
-tabnetabc_performance = abcnn$new(theta.train[1:10000,],
-            sumstats.train[1:10000,],
-            sumstats.test[1:1000,],
-            method = 'tabnet-abc',
-            scale_input = "none",
-            scale_target = "none",
-            epochs = 30,
-            batch_size = 256,
-            l2_weight_decay = 1e-3,
-            tol = 0.1,
-            abc_keep_original_sumstats = 0.3,
-            abc_method = "ridge",
-            seed = 4242)
-
-
-tabnetabc_performance$summary()
-```
-
-
-```{r, echo = F, eval=T}
-tabnetabc_performance = load_abcnn(prefix = "../inst/extdata/tabnetabc_performance")
-```
-
-
-```{r, eval = F}
-tabnetabc_performance$fit()
-```
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-tabnetabc_performance$plot_training()
-```
-
-```{r, eval = F}
-tabnetabc_performance$cross_validation(theta.test[1:1000,],
-                                       sumstats.test[1:1000,])
-```
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-tabnetabc_performance$plot_cross_validation()
-```
-
-
-```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
-tabnetabc_performance$predict()
-```
-
-
-
-```{r, echo = F, eval=F}
-save_abcnn(tabnetabc_performance, prefix = "../inst/extdata/tabnetabc_performance")
-```
-
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
-tabnetabc_performance$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
-```
-
-
-```{r tabnet_accuracy_2, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
-df = tabnetabc_performance$predictions() %>%
-  filter(parameter == "theta1")
-
-df$true.theta = theta.exact[1:1000,"mean.theta1"]
-
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "TabNet-ABC Predictive check") +
-  theme_bw()
-```
-
 
 
 
