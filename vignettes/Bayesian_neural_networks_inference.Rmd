@@ -1018,8 +1018,10 @@ deepensemble_highdim = abcnn$new(theta.train,
             method = 'deep ensemble',
             scale_input = "minmax",
             scale_target = "minmax",
+            num_hidden_layers = 3,
+            num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 128,
+            batch_size = 64,
             l2_weight_decay = 1e-4,
             epsilon_adversarial = 0.001,
             seed = 42)
@@ -1070,7 +1072,7 @@ Plot the predictions on the observed summary statistics:
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
 deepensemble_highdim$predict()
 
-deepensemble_highdim$plot_prediction()
+deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
 ```
 
 
@@ -1229,12 +1231,11 @@ tabnetabc = abcnn$new(theta.train[1:10000,],
             scale_input = "none",
             scale_target = "none",
             epochs = 30,
-            batch_size = 128,
-            l2_weight_decay = 1e-3,
+            batch_size = 64,
             tol = 0.1,
-            abc_keep_original_sumstats = 11,
-            abc_method = "ridge",
-            seed = 4242)
+            abc_keep_original_sumstats = 8,
+            abc_method = "loclinear",
+            seed = 4567)
 
 
 tabnetabc$summary()
@@ -1335,6 +1336,11 @@ exp$run(data = sumstats.test)
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 exp$plot()
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
+exp$plot(type = "mask_agg")
 ```
 
 

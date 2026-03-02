@@ -683,7 +683,9 @@ abcnn = R6::R6Class("abcnn",
                                batch_size = self$batch_size,
                                verbose = self$verbose,
                                drop_last = TRUE,
-                               early_stopping_patience = self$patience)
+                               early_stopping_patience = self$patience,
+                               decision_width = 32,
+                               attention_width = 32)
 
         self$fitted = tabnet::tabnet_fit(sumstat,
                                  theta,
@@ -1635,9 +1637,11 @@ abcnn = R6::R6Class("abcnn",
     #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
     #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
     #' computed on the distribution of posteriors.
+    #' @param epistemic_uncertainty logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.
     #' @param plot_type The type of plot, whether a `line` or `errorbar` around points
     #'
     plot_prediction = function(uncertainty_type = "conformal",
+                               epistemic_uncertainty = TRUE,
                               plot_type = "line") {
       
       # if only few samples, force the type of plot = errorbar
@@ -1697,24 +1701,42 @@ abcnn = R6::R6Class("abcnn",
         df_predicted$x = x_pos
 
         if (plot_type == "line") {
-          ggplot2::ggplot(data = df_predicted, aes(x = x)) +
+          p = ggplot2::ggplot(data = df_predicted, aes(x = x)) +
             geom_line(aes(x = x, y = mean), color = "black") +
             facet_wrap(~ parameter, scales = "free") +
-            geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, fill = "Overall"), alpha = 0.3) +
-            geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, fill = "Epistemic"), alpha = 0.3) +
+            geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, fill = "Overall"), alpha = 0.3)
+          
+          if (isTRUE(epistemic_uncertainty)) {
+            p = p +
+              geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
+              geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic"))
+          }
+          
+          p = p + geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, fill = "Epistemic"), alpha = 0.3) +
             xlab("Summary statistics") + ylab("Predicted parameters") +
             scale_fill_manual(name = "Uncertainty", values = cols) +
             theme_bw()
+          
+          return(p)
+          
         } else {
           if (plot_type == "errorbar") {
-            ggplot2::ggplot(data = df_predicted, aes(x = x)) +
+            p = ggplot2::ggplot(data = df_predicted, aes(x = x)) +
               facet_wrap(~ parameter, scales = "free") +
-              geom_errorbar(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.5) +
-              geom_errorbar(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.5) +
-              geom_point(aes(x = x, y = mean), color = "black") +
+              geom_errorbar(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.5)
+            
+            if (isTRUE(epistemic_uncertainty)) {
+              p = p +
+                geom_errorbar(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.5)
+            }
+            
+            p = p + geom_point(aes(x = x, y = mean), color = "black") +
               xlab("Summary statistics") + ylab("Predicted parameters") +
               scale_colour_manual(name = "Uncertainty", values = cols) +
               theme_bw()
+            
+            return(p)
+              
           }
         }
 
@@ -1730,10 +1752,12 @@ abcnn = R6::R6Class("abcnn",
     #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
     #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
     #' computed on the distribution of posteriors.
+    #' @param epistemic_uncertainty logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.
     #'
     plot_posterior = function(sample = 1,
                               prior = TRUE,
-                              uncertainty_type = "conformal") {
+                              uncertainty_type = "conformal",
+                              epistemic_uncertainty = TRUE) {
       # Dim 1 is number of MC samples (predictions)
       # Dim 2 is number of observations
       # Dim 3 is parameters (mu + sigma)
@@ -1808,9 +1832,15 @@ abcnn = R6::R6Class("abcnn",
 
         p = p +
           geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "black")) +
-          geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
-          geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic")) +
+          geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1)
+        
+        if (isTRUE(epistemic_uncertainty)) {
+          p = p +
+            geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
+            geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic"))
+        }
+        
+        p = p +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
           # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_lower, colour = "Overall conformal")) +

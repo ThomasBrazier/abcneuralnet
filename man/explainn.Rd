@@ -57,7 +57,7 @@ See \verb{https://bips-hb.github.io/innsight/} for details.
 \describe{
 \item{\code{x}}{an \code{abcnn} object}
 
-\item{\code{method}}{the \code{innsight} method to apply}
+\item{\code{method}}{the \code{innsight} method to apply: \code{grad}, \code{cw}, \code{smoothgrad}, \code{intgrad}, \code{expgrad}, \code{lrp}, \code{deeplift}, \code{deepshap}, \code{shap}, \code{lime}}
 
 \item{\code{converter}}{the torch/luz model converted to an \code{innsight} object}
 
@@ -179,7 +179,7 @@ Note that when the \code{abcnn} model is \code{tabnet-abc}, \code{get_result()} 
 Plot the results of the Feature Attribution method
 for single data points
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{explainn$plot(as_plotly = FALSE, type = "mask_agg", output_label = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{explainn$plot(as_plotly = FALSE, type = "barplot", output_label = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -187,7 +187,11 @@ for single data points
 \describe{
 \item{\code{as_plotly}}{If \code{TRUE}, plot the figure as a plotly object (default = \code{FALSE})}
 
-\item{\code{type}}{a character value. Passed to the Tabnet autoplot method. Either \code{mask_agg} the default, for a single heatmap of aggregated mask importance per predictor along the dataset, or \code{steps} for one heatmap at each mask step.}
+\item{\code{type}}{a character value. The type of plot for \code{Tabnet},
+passed to the Tabnet autoplot method.
+Either \code{barplot} for importance scores averaged across masks,
+\code{mask_agg}, for a single heatmap of aggregated mask importance per predictor along the dataset,
+or \code{steps} for one heatmap at each mask step.}
 
 \item{\code{output_label}}{character, the names of the variables to plot (if NULL, all variables are plotted)}
 }
