@@ -1712,7 +1712,8 @@ abcnn = R6::R6Class("abcnn",
               geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic"))
           }
           
-          p = p + geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, fill = "Epistemic"), alpha = 0.3) +
+          p = p +
+            geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, fill = "Epistemic"), alpha = 0.3) +
             xlab("Summary statistics") + ylab("Predicted parameters") +
             scale_fill_manual(name = "Uncertainty", values = cols) +
             theme_bw()

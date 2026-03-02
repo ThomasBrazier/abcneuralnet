@@ -1274,8 +1274,11 @@ save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
 
 
 ```{r tabnet_performance, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
-tabnetabc$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
+tabnetabc$plot_prediction(uncertainty_type = "posterior quantile",
+                          plot_type = "errorbar")
 ```
+
+
 
 ```{r tabnet_accuracy, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."}
 df = tabnetabc$predictions() %>%
