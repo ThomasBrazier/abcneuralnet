@@ -130,7 +130,7 @@ or modified directly in the corresponding public <code>slot</code>.</p>
 
 
 <dt><code>num_hidden_dim</code></dt>
-<dd><p>number of hidden dimensions (neurons) in each hidden layer</p></dd>
+<dd><p>number of dimensions (neurons) in each layer</p></dd>
 
 
 <dt><code>validation_split</code></dt>
@@ -967,7 +967,11 @@ Conformal prediction is also performed at this step on an independent calibratio
 <h3 id="method-plot-prediction-">Method <code>plot_prediction()</code><a class="anchor" aria-label="anchor" href="#method-plot-prediction-"></a></h3>
 <p>Plot predicted values and their credible intervals</p><div class="section">
 <h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">abcnn</span><span class="op">$</span><span class="fu">plot_prediction</span><span class="op">(</span>uncertainty_type <span class="op">=</span> <span class="st">"conformal"</span>, plot_type <span class="op">=</span> <span class="st">"line"</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">abcnn</span><span class="op">$</span><span class="fu">plot_prediction</span><span class="op">(</span></span>
+<span>  uncertainty_type <span class="op">=</span> <span class="st">"conformal"</span>,</span>
+<span>  epistemic_uncertainty <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  plot_type <span class="op">=</span> <span class="st">"line"</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
@@ -976,6 +980,10 @@ Conformal prediction is also performed at this step on an independent calibratio
 <dd><p>The type of uncertainty to plot, whether <code>conformal</code> credible intervals (default),
 the <code>uncertainty</code> estimated (square root of the variance) or the <code>posterior quantile</code>, that are credible intervals
 computed on the distribution of posteriors.</p></dd>
+
+
+<dt><code>epistemic_uncertainty</code></dt>
+<dd><p>logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.</p></dd>
 
 
 <dt><code>plot_type</code></dt>
@@ -989,7 +997,12 @@ computed on the distribution of posteriors.</p></dd>
 <h3 id="method-plot-posterior-">Method <code>plot_posterior()</code><a class="anchor" aria-label="anchor" href="#method-plot-posterior-"></a></h3>
 <p>Plot the distributions of estimates and predictions</p><div class="section">
 <h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">abcnn</span><span class="op">$</span><span class="fu">plot_posterior</span><span class="op">(</span>sample <span class="op">=</span> <span class="fl">1</span>, prior <span class="op">=</span> <span class="cn">TRUE</span>, uncertainty_type <span class="op">=</span> <span class="st">"conformal"</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">abcnn</span><span class="op">$</span><span class="fu">plot_posterior</span><span class="op">(</span></span>
+<span>  sample <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  prior <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  uncertainty_type <span class="op">=</span> <span class="st">"conformal"</span>,</span>
+<span>  epistemic_uncertainty <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
@@ -1006,6 +1019,10 @@ computed on the distribution of posteriors.</p></dd>
 <dd><p>The type of uncertainty to plot, whether <code>conformal</code> credible intervals (default),
 the <code>uncertainty</code> estimated (square root of the variance) or the <code>posterior quantile</code>, that are credible intervals
 computed on the distribution of posteriors.</p></dd>
+
+
+<dt><code>epistemic_uncertainty</code></dt>
+<dd><p>logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.</p></dd>
 
 
 </dl><p></p></div>
@@ -1106,7 +1123,7 @@ and predictions on unseen pseudo-observed data (i.e. simulations)</p>
 <span class="r-in"><span>                method <span class="op">=</span> <span class="st">"concrete dropout"</span>,</span></span>
 <span class="r-in"><span>                scale_input <span class="op">=</span> <span class="st">"none"</span>,</span></span>
 <span class="r-in"><span>                scale_target <span class="op">=</span> <span class="st">"none"</span>,</span></span>
-<span class="r-in"><span>                num_hidden_layers <span class="op">=</span> <span class="fl">3</span>,</span></span>
+<span class="r-in"><span>                num_hidden_layers <span class="op">=</span> <span class="fl">1</span>,</span></span>
 <span class="r-in"><span>                num_hidden_dim <span class="op">=</span> <span class="fl">128</span>,</span></span>
 <span class="r-in"><span>                epochs <span class="op">=</span> <span class="fl">30</span>,</span></span>
 <span class="r-in"><span>                batch_size <span class="op">=</span> <span class="fl">32</span><span class="op">)</span></span></span>

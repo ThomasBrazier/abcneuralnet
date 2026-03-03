@@ -83,7 +83,8 @@ See `https://bips-hb.github.io/innsight/` for details.
 
 - `method`:
 
-  the `innsight` method to apply
+  the `innsight` method to apply: `grad`, `cw`, `smoothgrad`, `intgrad`,
+  `expgrad`, `lrp`, `deeplift`, `deepshap`, `shap`, `lime`
 
 - `converter`:
 
@@ -244,7 +245,7 @@ points
 
 #### Usage
 
-    explainn$plot(as_plotly = FALSE, type = "mask_agg", output_label = NULL)
+    explainn$plot(as_plotly = FALSE, type = "barplot", output_label = NULL)
 
 #### Arguments
 
@@ -254,8 +255,9 @@ points
 
 - `type`:
 
-  a character value. Passed to the Tabnet autoplot method. Either
-  `mask_agg` the default, for a single heatmap of aggregated mask
+  a character value. The type of plot for `Tabnet`, passed to the Tabnet
+  autoplot method. Either `barplot` for importance scores averaged
+  across masks, `mask_agg`, for a single heatmap of aggregated mask
   importance per predictor along the dataset, or `steps` for one heatmap
   at each mask step.
 

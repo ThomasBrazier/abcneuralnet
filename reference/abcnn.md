@@ -125,7 +125,7 @@ The hyperparameters of the neural network can be configured in the
 
 - `num_hidden_dim`:
 
-  number of hidden dimensions (neurons) in each hidden layer
+  number of dimensions (neurons) in each layer
 
 - `validation_split`:
 
@@ -1012,7 +1012,11 @@ Plot predicted values and their credible intervals
 
 #### Usage
 
-    abcnn$plot_prediction(uncertainty_type = "conformal", plot_type = "line")
+    abcnn$plot_prediction(
+      uncertainty_type = "conformal",
+      epistemic_uncertainty = TRUE,
+      plot_type = "line"
+    )
 
 #### Arguments
 
@@ -1022,6 +1026,11 @@ Plot predicted values and their credible intervals
   intervals (default), the `uncertainty` estimated (square root of the
   variance) or the `posterior quantile`, that are credible intervals
   computed on the distribution of posteriors.
+
+- `epistemic_uncertainty`:
+
+  logical. Whether to plot the epistemic uncertainty in addition to
+  overall uncertainty.
 
 - `plot_type`:
 
@@ -1035,7 +1044,12 @@ Plot the distributions of estimates and predictions
 
 #### Usage
 
-    abcnn$plot_posterior(sample = 1, prior = TRUE, uncertainty_type = "conformal")
+    abcnn$plot_posterior(
+      sample = 1,
+      prior = TRUE,
+      uncertainty_type = "conformal",
+      epistemic_uncertainty = TRUE
+    )
 
 #### Arguments
 
@@ -1054,6 +1068,11 @@ Plot the distributions of estimates and predictions
   intervals (default), the `uncertainty` estimated (square root of the
   variance) or the `posterior quantile`, that are credible intervals
   computed on the distribution of posteriors.
+
+- `epistemic_uncertainty`:
+
+  logical. Whether to plot the epistemic uncertainty in addition to
+  overall uncertainty.
 
 ------------------------------------------------------------------------
 
@@ -1163,7 +1182,7 @@ abc = abcnn$new(theta,
                 method = "concrete dropout",
                 scale_input = "none",
                 scale_target = "none",
-                num_hidden_layers = 3,
+                num_hidden_layers = 1,
                 num_hidden_dim = 128,
                 epochs = 30,
                 batch_size = 32)

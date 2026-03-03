@@ -114,7 +114,7 @@ and to interpret properly the output of the model.</p>
 
 
 <dt><code>method</code></dt>
-<dd><p>the <code>innsight</code> method to apply</p></dd>
+<dd><p>the <code>innsight</code> method to apply: <code>grad</code>, <code>cw</code>, <code>smoothgrad</code>, <code>intgrad</code>, <code>expgrad</code>, <code>lrp</code>, <code>deeplift</code>, <code>deepshap</code>, <code>shap</code>, <code>lime</code></p></dd>
 
 
 <dt><code>converter</code></dt>
@@ -254,7 +254,7 @@ Note: For the model-agnostic methods, only models with a single input and output
 <p>Plot the results of the Feature Attribution method
 for single data points</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span>as_plotly <span class="op">=</span> <span class="cn">FALSE</span>, type <span class="op">=</span> <span class="st">"mask_agg"</span>, output_label <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span>as_plotly <span class="op">=</span> <span class="cn">FALSE</span>, type <span class="op">=</span> <span class="st">"barplot"</span>, output_label <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
@@ -264,7 +264,11 @@ for single data points</p><div class="section">
 
 
 <dt><code>type</code></dt>
-<dd><p>a character value. Passed to the Tabnet autoplot method. Either <code>mask_agg</code> the default, for a single heatmap of aggregated mask importance per predictor along the dataset, or <code>steps</code> for one heatmap at each mask step.</p></dd>
+<dd><p>a character value. The type of plot for <code>Tabnet</code>,
+passed to the Tabnet autoplot method.
+Either <code>barplot</code> for importance scores averaged across masks,
+<code>mask_agg</code>, for a single heatmap of aggregated mask importance per predictor along the dataset,
+or <code>steps</code> for one heatmap at each mask step.</p></dd>
 
 
 <dt><code>output_label</code></dt>
