@@ -80,7 +80,7 @@ or modified directly in the corresponding public \code{slot}.
 
 \item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
 
-\item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
+\item{\code{num_hidden_dim}}{number of dimensions (neurons) in each layer}
 
 \item{\code{validation_split}}{proportion of samples retained for validation at the end of training}
 
@@ -209,7 +209,7 @@ abc = abcnn$new(theta,
                 method = "concrete dropout",
                 scale_input = "none",
                 scale_target = "none",
-                num_hidden_layers = 3,
+                num_hidden_layers = 1,
                 num_hidden_dim = 128,
                 epochs = 30,
                 batch_size = 32)
@@ -620,7 +620,11 @@ Plot the training curves (training/validation)
 \subsection{Method \code{plot_prediction()}}{
 Plot predicted values and their credible intervals
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_prediction(uncertainty_type = "conformal", plot_type = "line")}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_prediction(
+  uncertainty_type = "conformal",
+  epistemic_uncertainty = TRUE,
+  plot_type = "line"
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -629,6 +633,8 @@ Plot predicted values and their credible intervals
 \item{\code{uncertainty_type}}{The type of uncertainty to plot, whether \code{conformal} credible intervals (default),
 the \code{uncertainty} estimated (square root of the variance) or the \verb{posterior quantile}, that are credible intervals
 computed on the distribution of posteriors.}
+
+\item{\code{epistemic_uncertainty}}{logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.}
 
 \item{\code{plot_type}}{The type of plot, whether a \code{line} or \code{errorbar} around points}
 }
@@ -641,7 +647,12 @@ computed on the distribution of posteriors.}
 \subsection{Method \code{plot_posterior()}}{
 Plot the distributions of estimates and predictions
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_posterior(sample = 1, prior = TRUE, uncertainty_type = "conformal")}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_posterior(
+  sample = 1,
+  prior = TRUE,
+  uncertainty_type = "conformal",
+  epistemic_uncertainty = TRUE
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -654,6 +665,8 @@ Plot the distributions of estimates and predictions
 \item{\code{uncertainty_type}}{The type of uncertainty to plot, whether \code{conformal} credible intervals (default),
 the \code{uncertainty} estimated (square root of the variance) or the \verb{posterior quantile}, that are credible intervals
 computed on the distribution of posteriors.}
+
+\item{\code{epistemic_uncertainty}}{logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.}
 }
 \if{html}{\out{</div>}}
 }

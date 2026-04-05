@@ -56,7 +56,7 @@ library(abcneuralnet)
 abc = abcnn$new(parameters_training_sims,
             sumstats_training_sims,
             sumstats_observed,
-            method = 'concrete dropout',
+            method = "concrete dropout",
             scale_input = "none",
             scale_target = "none",
             num_hidden_layers = 3,
@@ -76,6 +76,18 @@ abc$predict()
 abc$plot_prediction()
 # Plot the posterior for a single sample
 abc$plot_posterior()
+
+# Explainable methods - Feature importance
+# Init the `explainn` object
+exp = explainn$new(tabnetabc)
+# Run the selected method to compute Feature Importance
+exp$run(data = sumstats.test)
+
+# Plot the results
+exp$plot()
+
+# The individual contributions of input variables to each prediction:
+exp$get_result()
 ```
 
 

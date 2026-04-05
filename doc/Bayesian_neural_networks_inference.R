@@ -24,7 +24,7 @@ library(torch)
 library(tidyverse)
 library(kableExtra)
 
-## ----toy_data_1, echo = F-----------------------------------------------------
+## ----toy_data_1, echo = F, eval=T---------------------------------------------
 n_train = 100000 # Number of data points
 n_obs = 1000 # Validation size
 
@@ -84,8 +84,8 @@ abc = abcnn$new(theta,
             scale_target = "none",
             num_hidden_layers = 3,
             num_hidden_dim = 128,
-            epochs = 10,
-            batch_size = 128,
+            epochs = 20,
+            batch_size = 32,
             l2_weight_decay = 1e-5,
             learning_rate = 0.001,
             seed = 6295)
@@ -97,14 +97,14 @@ abc$summary()
 # # Use the fit() method to train the neural network
 # abc$fit()
 
-## ----echo=F-------------------------------------------------------------------
+## ----echo=F, eval= T----------------------------------------------------------
 # save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
 
 abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
 
 ## ----echo = T-----------------------------------------------------------------
 # The torch model
-abc$fitted$model
+# abc$fitted$model
 
 # The luz fitted model
 abc$fitted
@@ -169,7 +169,7 @@ df_predicted$y_true = Y_obs
 df_training = data.frame(x = X_train,
                          y = Y_train)
 
-## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The gree ribbon is the Conformal Credible Interval based on the overall unvertainty."----
+## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center", fig.cap="Predictions as a function of simulated parameter. The purple ribbon is the Conformal Credible Interval based on the epistemic unvertainty alone. The green ribbon is the Conformal Credible Interval based on the overall unvertainty."----
 ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_point(color = "blue", alpha = 0.3) +
   # geom_point(data = df_predicted, aes(x = x, y = y_true), color = "green", alpha = 0.3) +
@@ -354,12 +354,6 @@ abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 abc_ensemble$plot_training()
-
-## ----echo = T-----------------------------------------------------------------
-abc_ensemble$cross_validation(true_param[1:100,],
-                              observed[1:100,])
-
-abc_ensemble$plot_cross_validation()
 
 ## ----echo = T, eval = F-------------------------------------------------------
 # abc_ensemble$predict()
@@ -639,10 +633,13 @@ deepensemble_highdim = abcnn$new(theta.train,
             method = 'deep ensemble',
             scale_input = "minmax",
             scale_target = "minmax",
+            num_hidden_layers = 3,
+            num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 128,
+            batch_size = 64,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.01)
+            epsilon_adversarial = 0.001,
+            seed = 42)
 
 
 deepensemble_highdim$summary()
@@ -668,19 +665,36 @@ deepensemble_highdim$plot_cross_validation()
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."----
 deepensemble_highdim$predict()
 
-deepensemble_highdim$plot_prediction()
+deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
 
 ## ----echo = F, eval=F---------------------------------------------------------
 # save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim")
 
-## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."----
+## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."----
 df = deepensemble_highdim$predictions() %>%
   filter(parameter == "theta1")
 
 df$true.theta = theta.exact[1:1000,"mean.theta1"]
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
+  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
+                  ymax = predictive_mean + overall_conformal_credible_interval), 
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "Deep Ensemble Predictive check") +
+  theme_bw()
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."----
+df = deepensemble_highdim$predictions() %>%
+  filter(parameter == "theta2")
+
+df$true.theta = theta.exact[1:1000,"mean.theta2"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
+                  ymax = predictive_mean + overall_conformal_credible_interval), 
               fill = "lightgrey", alpha = 0.5) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, color = "red") +
@@ -694,14 +708,33 @@ exp = explainn$new(deepensemble_highdim)
 exp$run(data = sumstats.test[1:1000,],
         method = "deeplift")
 
-## ----explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."----
+## ----explainn_plot, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods, for the first sample output prediction. Colors indicate the contribution of each feature to the final prediction."----
 exp$plot()
 
-## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
-exp$plot(type = "steps")
+## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods, summarized across the 1,000 smaples. Colors indicate the contribution of each feature to the final prediction."----
+exp$plot_global()
 
 ## ----echo = T-----------------------------------------------------------------
-exp$get_result()[1:5,1:5,]
+# Three dimension outpout:
+# - First sample
+# - 10 first summary statistics
+# - the two output parameters
+exp$get_result()[1,1:10,1:2]
+
+## ----echo = T, eval = T-------------------------------------------------------
+exp = explainn$new(deepensemble_highdim)
+
+exp$run(data = sumstats.test[1:1000,],
+        method = "smoothgrad")
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."----
+exp$plot()
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."----
+exp$plot_global()
+
+## ----echo = T-----------------------------------------------------------------
+exp$get_result()[1:5,1:10,1]
 
 ## -----------------------------------------------------------------------------
 tabnetabc = abcnn$new(theta.train[1:10000,],
@@ -711,12 +744,11 @@ tabnetabc = abcnn$new(theta.train[1:10000,],
             scale_input = "none",
             scale_target = "none",
             epochs = 30,
-            batch_size = 128,
-            l2_weight_decay = 1e-3,
+            batch_size = 64,
             tol = 0.1,
-            abc_keep_original_sumstats = FALSE,
-            abc_method = "ridge",
-            seed = 4242)
+            abc_keep_original_sumstats = 10,
+            abc_method = "loclinear",
+            seed = 4567)
 
 
 tabnetabc$summary()
@@ -737,7 +769,8 @@ tabnetabc$plot_training()
 # save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
 
 ## ----tabnet_performance, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."----
-tabnetabc$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
+tabnetabc$plot_prediction(uncertainty_type = "posterior quantile",
+                          plot_type = "errorbar")
 
 ## ----tabnet_accuracy, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."----
 df = tabnetabc$predictions() %>%
@@ -763,65 +796,10 @@ exp$run(data = sumstats.test)
 exp$plot()
 
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
+exp$plot(type = "mask_agg")
+
+## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 exp$plot(type = "steps")
-
-## -----------------------------------------------------------------------------
-tabnetabc_performance = abcnn$new(theta.train[1:10000,],
-            sumstats.train[1:10000,],
-            sumstats.test[1:1000,],
-            method = 'tabnet-abc',
-            scale_input = "none",
-            scale_target = "none",
-            epochs = 30,
-            batch_size = 256,
-            l2_weight_decay = 1e-3,
-            tol = 0.1,
-            abc_keep_original_sumstats = 0.3,
-            abc_method = "ridge",
-            seed = 4242)
-
-
-tabnetabc_performance$summary()
-
-## ----echo = F, eval=T---------------------------------------------------------
-tabnetabc_performance = load_abcnn(prefix = "../inst/extdata/tabnetabc_performance")
-
-## ----eval = F-----------------------------------------------------------------
-# tabnetabc_performance$fit()
-
-## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
-tabnetabc_performance$plot_training()
-
-## ----eval = F-----------------------------------------------------------------
-# tabnetabc_performance$cross_validation(theta.test[1:1000,],
-#                                        sumstats.test[1:1000,])
-
-## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
-tabnetabc_performance$plot_cross_validation()
-
-## ----eval = F, message=FALSE, results = FALSE, include=FALSE------------------
-# tabnetabc_performance$predict()
-
-## ----echo = F, eval=F---------------------------------------------------------
-# save_abcnn(tabnetabc_performance, prefix = "../inst/extdata/tabnetabc_performance")
-
-## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."----
-tabnetabc_performance$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar")
-
-## ----tabnet_accuracy_2, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing TabNet-ABC predictions to exact posterior means. The shaded region represents 95% credible intervals."----
-df = tabnetabc_performance$predictions() %>%
-  filter(parameter == "theta1")
-
-df$true.theta = theta.exact[1:1000,"mean.theta1"]
-
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "TabNet-ABC Predictive check") +
-  theme_bw()
 
 ## ----echo=F-------------------------------------------------------------------
 hyperparam = data.frame(Hyperparameter = c("Number of hidden dimensions (i.e. neurons) in one layer",
