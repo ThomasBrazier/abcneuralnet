@@ -21,6 +21,7 @@
 #' @param l2_weight_decay the L2 weigth decay value for L2 regularization
 #' @param tol the tolerance rate in `abc` for the `tabnet-abc` method (`tolerance`). The required proportion of points accepted nearest the target values.
 #' @param abc_method a character string indicating the type of ABC algorithm to be applied. Possible values are "rejection", "loclinear", "neuralnet" and "ridge".
+#' @param abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value). 
 #' @param num_posterior_samples the number of posterior samples to predict with the `concrete dropout` and `monte carlo dropout` methods
 #' @param credible_interval_p the alpha value for the quantile credible interval (default=0.95, with alpha/2 and 1 - alpha/2 quantiles)
 #' @param num_conformal the number of training samples retained for Conformal Prediction (default=1,000)

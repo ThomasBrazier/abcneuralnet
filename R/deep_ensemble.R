@@ -3,7 +3,7 @@ single_model = torch::nn_module(
   "Model",
   initialize = function(num_input_dim = 1,
                         num_output_dim = 1,
-                        num_hidden_layers = 1,
+                        num_hidden_layers = 3,
                         num_hidden_dim = 512,
                         clamp = c(1e-6, 1e6)) {
 
@@ -13,7 +13,7 @@ single_model = torch::nn_module(
     self$mlp = torch::nn_sequential(torch::nn_linear(num_input_dim, num_hidden_dim),
                                     torch::nn_leaky_relu())
 
-    for (i in 2:(num_hidden_layers + 2)) {
+    for (i in 2:(num_hidden_layers)) {
       self$mlp$add_module(paste0("hidden_layer", i), torch::nn_linear(num_hidden_dim,
                                                                     num_hidden_dim))
       # self$mlp$add_module(paste0("batch_norm", i), nn_batch_norm1d(num_hidden_dim))
@@ -105,7 +105,7 @@ nn_ensemble = torch::nn_module(
                         num_input_dim = 1,
                         num_output_dim = 1,
                         num_hidden_dim = 128,
-                        num_hidden_layers = 1,
+                        num_hidden_layers = 3,
                         epsilon = 0,
                         clamp = c(1e-6, 1e6)) {
     # print("Init")

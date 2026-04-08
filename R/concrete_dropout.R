@@ -100,7 +100,7 @@ concrete_model = torch::nn_module(
   initialize = function(num_input_dim = 1,
                         num_hidden_dim = 1024,
                         num_output_dim = 1,
-                        num_hidden_layers = 1,
+                        num_hidden_layers = 3,
                         weight_regularizer = 1e-6,
                         dropout_regularizer = 1e-5,
                         clamp = c(-1e25, 1e25)) {
@@ -114,7 +114,7 @@ concrete_model = torch::nn_module(
                                                                       weight_regularizer=weight_regularizer,
                                                                       dropout_regularizer=dropout_regularizer))
 
-    for (i in 2:(num_hidden_layers + 2)) {
+    for (i in 2:(num_hidden_layers)) {
       self$concrete_dropout$add_module(paste0("conc_drop", i), nn_concrete_linear(num_hidden_dim,
                                                                                   num_hidden_dim,
                                                                                   weight_regularizer=weight_regularizer,
@@ -148,7 +148,7 @@ concrete_model = torch::nn_module(
                           max = log(self$clamp[2]))
 
     # Regularization terms
-    conc_drop_layers = paste0("concrete_dropout.conc_drop", c(1:(self$num_hidden_layers + 2)))
+    conc_drop_layers = paste0("concrete_dropout.conc_drop", c(1:(self$num_hidden_layers)))
     regularization = torch::torch_empty(length(conc_drop_layers) + 2, device=x$device)
 
     for (i in 1:length(conc_drop_layers)) {

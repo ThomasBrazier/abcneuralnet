@@ -63,7 +63,7 @@ explainn = R6::R6Class("explainn",
                     public = list(
                       #' @field x an `abcnn` object
                       x = NULL,
-                      #' @field method the `innsight` method to apply: `grad`, `cw`, `smoothgrad`, `intgrad`, `expgrad`, `lrp`, `deeplift`, `deepshap`, `shap`, `lime` 
+                      #' @field method the `innsight` method to apply: `grad`, `cw`, `smoothgrad`, `intgrad`, `expgrad`, `lrp`, `deeplift`, `deepshap`, `shap`, `lime`
                       method = NULL,
                       #' @field converter the torch/luz model converted to an `innsight` object
                       converter = NULL,
@@ -112,7 +112,7 @@ explainn = R6::R6Class("explainn",
 
                             model_sequential = torch::nn_sequential(model_mc[[1]])
 
-                            for (i in 2:(x$num_hidden_layers + 2)) {
+                            for (i in 2:(x$num_hidden_layers)) {
                               mod = model_mc[[(i -1) * 3 + 1]]
                               model_sequential$add_module(name = i - 1, module = mod)
                             }
@@ -132,7 +132,7 @@ explainn = R6::R6Class("explainn",
 
                             model_sequential = torch::nn_sequential(model_concrete[[1]]$linear)
 
-                            for (i in 2:(x$num_hidden_layers + 2)) {
+                            for (i in 2:(x$num_hidden_layers)) {
                               mod = model_concrete[[i]]$linear
                               model_sequential$add_module(name = i - 1, module = mod)
                             }
@@ -285,8 +285,8 @@ explainn = R6::R6Class("explainn",
                       #' @param as_plotly If `TRUE`, plot the figure as a plotly object (default = `FALSE`)
                       #' @param type a character value. The type of plot for `Tabnet`,
                       #' passed to the Tabnet autoplot method.
-                      #' Either `barplot` for importance scores averaged across masks, 
-                      #' `mask_agg`, for a single heatmap of aggregated mask importance per predictor along the dataset, 
+                      #' Either `barplot` for importance scores averaged across masks,
+                      #' `mask_agg`, for a single heatmap of aggregated mask importance per predictor along the dataset,
                       #' or `steps` for one heatmap at each mask step.
                       #' @param output_label character, the names of the variables to plot (if NULL, all variables are plotted)
                       #'
@@ -301,7 +301,7 @@ explainn = R6::R6Class("explainn",
                             mask_importance = lapply(self$result$masks, colMeans)
                             mask_importance = dplyr::bind_rows(mask_importance)
                             mask_importance = as.data.frame(colMeans(mask_importance))
-                            
+
                             colnames(mask_importance) = "Importance"
                             mask_importance$variable = rownames(mask_importance)
 
@@ -309,9 +309,9 @@ explainn = R6::R6Class("explainn",
                               geom_col(aes(fill = Importance)) +
                               xlab("Feature") + ylab("Importance") +
                               scale_fill_viridis_c()
-                            
+
                             return(p)
-                            
+
                           } else {
                             autoplot(self$result, type = type)
                           }
@@ -343,15 +343,15 @@ explainn = R6::R6Class("explainn",
                           mask_importance = lapply(self$result$masks, colMeans)
                           mask_importance = dplyr::bind_rows(mask_importance)
                           mask_importance = as.data.frame(colMeans(mask_importance))
-                          
+
                           colnames(mask_importance) = "Importance"
                           mask_importance$variable = rownames(mask_importance)
-                          
+
                           p = ggplot2::ggplot(mask_importance, aes(x = variable, y = Importance)) +
                             geom_col(aes(fill = importance)) +
                             xlab("Feature") + ylab("Importance") +
                             scale_fill_viridis_c()
-                          
+
                           return(p)
                         } else {
 
