@@ -1018,9 +1018,8 @@ statistics, and only 11 of these are informative.</p>
 <span>            num_hidden_layers <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>            num_hidden_dim <span class="op">=</span> <span class="fl">256</span>,</span>
 <span>            epochs <span class="op">=</span> <span class="fl">20</span>,</span>
-<span>            batch_size <span class="op">=</span> <span class="fl">128</span>,</span>
+<span>            batch_size <span class="op">=</span> <span class="fl">64</span>,</span>
 <span>            l2_weight_decay <span class="op">=</span> <span class="fl">1e-4</span>,</span>
-<span>            epsilon_adversarial <span class="op">=</span> <span class="fl">0.001</span>,</span>
 <span>            seed <span class="op">=</span> <span class="fl">42</span><span class="op">)</span></span>
 <span></span>
 <span></span>
@@ -1031,15 +1030,15 @@ statistics, and only 11 of these are informative.</p>
 <span><span class="co">#&gt; ABC parameter inference with the method: deep ensemble </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; |Sample           |  Size|</span></span>
-<span><span class="co">#&gt; |:----------------|-----:|</span></span>
-<span><span class="co">#&gt; |Training         | 9e+04|</span></span>
-<span><span class="co">#&gt; |Testing split    | 1e-01|</span></span>
-<span><span class="co">#&gt; |Testing          | 9e+03|</span></span>
-<span><span class="co">#&gt; |Evaluation split | 1e-01|</span></span>
-<span><span class="co">#&gt; |Evaluation       | 1e+04|</span></span>
-<span><span class="co">#&gt; |Conformal        | 1e+03|</span></span>
-<span><span class="co">#&gt; |Observed         | 1e+03|</span></span>
+<span><span class="co">#&gt; |Sample           |    Size|</span></span>
+<span><span class="co">#&gt; |:----------------|-------:|</span></span>
+<span><span class="co">#&gt; |Training         | 18000.0|</span></span>
+<span><span class="co">#&gt; |Testing split    |     0.1|</span></span>
+<span><span class="co">#&gt; |Testing          |  1800.0|</span></span>
+<span><span class="co">#&gt; |Evaluation split |     0.1|</span></span>
+<span><span class="co">#&gt; |Evaluation       |  2000.0|</span></span>
+<span><span class="co">#&gt; |Conformal        |  1000.0|</span></span>
+<span><span class="co">#&gt; |Observed         |  1000.0|</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Is CUDA available? [1] FALSE</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -1047,8 +1046,8 @@ statistics, and only 11 of these are informative.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", </span></span>
 <span><span class="co">#&gt;     scale_input = "minmax", scale_target = "minmax", num_hidden_layers = 3, </span></span>
-<span><span class="co">#&gt;     num_hidden_dim = 256, batch_size = 128, epochs = 20, l2_weight_decay = 1e-04, </span></span>
-<span><span class="co">#&gt;     epsilon_adversarial = 0.001, seed = 42)</span></span></code></pre></div>
+<span><span class="co">#&gt;     num_hidden_dim = 256, batch_size = 64, epochs = 20, l2_weight_decay = 1e-04, </span></span>
+<span><span class="co">#&gt;     seed = 42)</span></span></code></pre></div>
 <table class="table">
 <colgroup>
 <col width="81%">
@@ -1081,7 +1080,7 @@ statistics, and only 11 of these are informative.</p>
 </tr>
 <tr class="even">
 <td align="left">Batch size</td>
-<td align="left">128</td>
+<td align="left">64</td>
 </tr>
 <tr class="odd">
 <td align="left">Epochs</td>
@@ -1128,10 +1127,7 @@ dropout)</td>
 </table>
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">fit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>With adversarial training, the training and validation losses are
-different (adversarial perturbation is applied on training only), yet
-the training curve is smoother after a strong perturbation at the
-beginning:</p>
+<!-- With adversarial training, the training and validation losses are different (adversarial perturbation is applied on training only), yet the training curve is smoother after a strong perturbation at the beginning: -->
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">plot_training</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-44-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
@@ -1245,16 +1241,16 @@ prediction:</p>
 <span><span class="co"># - the two output parameters</span></span>
 <span><span class="va">exp</span><span class="op">$</span><span class="fu">get_result</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">10</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                    theta1        theta2</span></span>
-<span><span class="co">#&gt; expectation  0.1460142732 -5.027594e-02</span></span>
-<span><span class="co">#&gt; variance    -0.0065255184  8.956507e-03</span></span>
-<span><span class="co">#&gt; mad         -0.0113766696  1.351331e-03</span></span>
-<span><span class="co">#&gt; x1           0.0004650040 -9.684055e-05</span></span>
-<span><span class="co">#&gt; x2          -0.0007771448 -3.409701e-04</span></span>
-<span><span class="co">#&gt; x3           0.0017208772 -6.854113e-04</span></span>
-<span><span class="co">#&gt; x4           0.0009468492 -1.750268e-03</span></span>
-<span><span class="co">#&gt; x5          -0.0013936884  1.411439e-03</span></span>
-<span><span class="co">#&gt; x6          -0.0004466020  1.980743e-04</span></span>
-<span><span class="co">#&gt; x7          -0.0000228984 -2.658666e-04</span></span></code></pre></div>
+<span><span class="co">#&gt; expectation  0.1581784040 -0.0293746460</span></span>
+<span><span class="co">#&gt; variance    -0.0067209438  0.0051860819</span></span>
+<span><span class="co">#&gt; mad         -0.0113320518  0.0022572633</span></span>
+<span><span class="co">#&gt; x1          -0.0002234270 -0.0007863209</span></span>
+<span><span class="co">#&gt; x2          -0.0014728967  0.0008869882</span></span>
+<span><span class="co">#&gt; x3          -0.0044262144 -0.0004459003</span></span>
+<span><span class="co">#&gt; x4          -0.0021220690 -0.0012857376</span></span>
+<span><span class="co">#&gt; x5          -0.0008280979 -0.0002281855</span></span>
+<span><span class="co">#&gt; x6          -0.0034867853  0.0039487351</span></span>
+<span><span class="co">#&gt; x7          -0.0011872391  0.0017892555</span></span></code></pre></div>
 <p>SmoothGrad is another method, which can also be interpreted as local
 and global feature importance scores. SmoothGrad was introduced by D.
 Smilkov et al. (2017) and is an extension to the classical Vanilla
@@ -1287,18 +1283,18 @@ prediction.
 predictions:</p>
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">get_result</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">10</span>,<span class="fl">1</span><span class="op">]</span></span>
-<span><span class="co">#&gt;      expectation   variance         mad            x1            x2</span></span>
-<span><span class="co">#&gt; [1,]   0.3255743 -0.3050727 -0.09064770 -0.0013809617  0.0010920103</span></span>
-<span><span class="co">#&gt; [2,]   0.3329250 -0.2718877 -0.09537423 -0.0002339264  0.0010713534</span></span>
-<span><span class="co">#&gt; [3,]   0.3276761 -0.3135173 -0.09169979 -0.0008421264 -0.0013861365</span></span>
-<span><span class="co">#&gt; [4,]   0.3265152 -0.3029364 -0.09186912 -0.0005627453  0.0019531704</span></span>
-<span><span class="co">#&gt; [5,]   0.3331444 -0.3012623 -0.09207514 -0.0008558772  0.0002431661</span></span>
-<span><span class="co">#&gt;                 x3            x4            x5            x6            x7</span></span>
-<span><span class="co">#&gt; [1,] -8.995859e-05 -0.0010456606 -0.0011938943  0.0002980323 -0.0002025143</span></span>
-<span><span class="co">#&gt; [2,]  1.799968e-03 -0.0025958740  0.0017612416  0.0027715405  0.0011652763</span></span>
-<span><span class="co">#&gt; [3,] -4.617441e-04 -0.0018017567 -0.0013031620 -0.0014219709 -0.0019077504</span></span>
-<span><span class="co">#&gt; [4,] -2.938703e-06 -0.0022597241 -0.0008649514 -0.0002333858 -0.0003632023</span></span>
-<span><span class="co">#&gt; [5,] -7.953043e-04 -0.0007909555 -0.0020508503 -0.0013334239 -0.0004314916</span></span></code></pre></div>
+<span><span class="co">#&gt;      expectation   variance         mad            x1           x2</span></span>
+<span><span class="co">#&gt; [1,]   0.2736825 -0.2361407 -0.10348824  0.0008184963 -0.005054448</span></span>
+<span><span class="co">#&gt; [2,]   0.2612956 -0.2012542 -0.09363259 -0.0063137538 -0.003924967</span></span>
+<span><span class="co">#&gt; [3,]   0.2704200 -0.2463815 -0.10075986 -0.0051730182 -0.004306838</span></span>
+<span><span class="co">#&gt; [4,]   0.2605524 -0.2452051 -0.09112358  0.0055238158 -0.009021315</span></span>
+<span><span class="co">#&gt; [5,]   0.2594152 -0.2264047 -0.09708515  0.0009386177 -0.002489848</span></span>
+<span><span class="co">#&gt;                 x3           x4            x5            x6            x7</span></span>
+<span><span class="co">#&gt; [1,] -0.0048971558 -0.000363975 -0.0021883326 -0.0024726717 -0.0017994770</span></span>
+<span><span class="co">#&gt; [2,]  0.0005236256 -0.004372850 -0.0037100802 -0.0025572935  0.0018177561</span></span>
+<span><span class="co">#&gt; [3,]  0.0022181931 -0.001485463 -0.0036594709  0.0008888189  0.0003675274</span></span>
+<span><span class="co">#&gt; [4,]  0.0011710153 -0.003444058 -0.0035113934  0.0026196539  0.0001059127</span></span>
+<span><span class="co">#&gt; [5,] -0.0029001101 -0.001197621  0.0008689022  0.0004568154  0.0016093889</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">

@@ -929,9 +929,8 @@ deepensemble_highdim = abcnn$new(theta.train,
             num_hidden_layers = 3,
             num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 128,
+            batch_size = 64,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.001,
             seed = 42)
 
 
@@ -942,15 +941,15 @@ deepensemble_highdim$summary()
 #> ABC parameter inference with the method: deep ensemble 
 #> 
 #> 
-#> |Sample           |  Size|
-#> |:----------------|-----:|
-#> |Training         | 9e+04|
-#> |Testing split    | 1e-01|
-#> |Testing          | 9e+03|
-#> |Evaluation split | 1e-01|
-#> |Evaluation       | 1e+04|
-#> |Conformal        | 1e+03|
-#> |Observed         | 1e+03|
+#> |Sample           |    Size|
+#> |:----------------|-------:|
+#> |Training         | 18000.0|
+#> |Testing split    |     0.1|
+#> |Testing          |  1800.0|
+#> |Evaluation split |     0.1|
+#> |Evaluation       |  2000.0|
+#> |Conformal        |  1000.0|
+#> |Observed         |  1000.0|
 #> 
 #> Is CUDA available? [1] FALSE
 #> 
@@ -958,8 +957,8 @@ deepensemble_highdim$summary()
 #> 
 #> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", 
 #>     scale_input = "minmax", scale_target = "minmax", num_hidden_layers = 3, 
-#>     num_hidden_dim = 256, batch_size = 128, epochs = 20, l2_weight_decay = 1e-04, 
-#>     epsilon_adversarial = 0.001, seed = 42)
+#>     num_hidden_dim = 256, batch_size = 64, epochs = 20, l2_weight_decay = 1e-04, 
+#>     seed = 42)
 ```
 
 | Hyperparameter                                                | Value         |
@@ -969,7 +968,7 @@ deepensemble_highdim$summary()
 | Scaling for targets (theta)                                   | minmax        |
 | Number hidden layers                                          | 3             |
 | Number hidden dimensions                                      | 256           |
-| Batch size                                                    | 128           |
+| Batch size                                                    | 64            |
 | Epochs                                                        | 20            |
 | Early stopping callback                                       | FALSE         |
 | Patience for early stopping                                   | 4             |
@@ -984,11 +983,6 @@ deepensemble_highdim$summary()
 ``` r
 deepensemble_highdim$fit()
 ```
-
-With adversarial training, the training and validation losses are
-different (adversarial perturbation is applied on training only), yet
-the training curve is smoother after a strong perturbation at the
-beginning:
 
 ``` r
 deepensemble_highdim$plot_training()
@@ -1065,16 +1059,16 @@ prediction:
 # - the two output parameters
 exp$get_result()[1,1:10,1:2]
 #>                    theta1        theta2
-#> expectation  0.1460142732 -5.027594e-02
-#> variance    -0.0065255184  8.956507e-03
-#> mad         -0.0113766696  1.351331e-03
-#> x1           0.0004650040 -9.684055e-05
-#> x2          -0.0007771448 -3.409701e-04
-#> x3           0.0017208772 -6.854113e-04
-#> x4           0.0009468492 -1.750268e-03
-#> x5          -0.0013936884  1.411439e-03
-#> x6          -0.0004466020  1.980743e-04
-#> x7          -0.0000228984 -2.658666e-04
+#> expectation  0.1581784040 -0.0293746460
+#> variance    -0.0067209438  0.0051860819
+#> mad         -0.0113320518  0.0022572633
+#> x1          -0.0002234270 -0.0007863209
+#> x2          -0.0014728967  0.0008869882
+#> x3          -0.0044262144 -0.0004459003
+#> x4          -0.0021220690 -0.0012857376
+#> x5          -0.0008280979 -0.0002281855
+#> x6          -0.0034867853  0.0039487351
+#> x7          -0.0011872391  0.0017892555
 ```
 
 SmoothGrad is another method, which can also be interpreted as local and
@@ -1120,18 +1114,18 @@ predictions:
 
 ``` r
 exp$get_result()[1:5,1:10,1]
-#>      expectation   variance         mad            x1            x2
-#> [1,]   0.3255743 -0.3050727 -0.09064770 -0.0013809617  0.0010920103
-#> [2,]   0.3329250 -0.2718877 -0.09537423 -0.0002339264  0.0010713534
-#> [3,]   0.3276761 -0.3135173 -0.09169979 -0.0008421264 -0.0013861365
-#> [4,]   0.3265152 -0.3029364 -0.09186912 -0.0005627453  0.0019531704
-#> [5,]   0.3331444 -0.3012623 -0.09207514 -0.0008558772  0.0002431661
-#>                 x3            x4            x5            x6            x7
-#> [1,] -8.995859e-05 -0.0010456606 -0.0011938943  0.0002980323 -0.0002025143
-#> [2,]  1.799968e-03 -0.0025958740  0.0017612416  0.0027715405  0.0011652763
-#> [3,] -4.617441e-04 -0.0018017567 -0.0013031620 -0.0014219709 -0.0019077504
-#> [4,] -2.938703e-06 -0.0022597241 -0.0008649514 -0.0002333858 -0.0003632023
-#> [5,] -7.953043e-04 -0.0007909555 -0.0020508503 -0.0013334239 -0.0004314916
+#>      expectation   variance         mad            x1           x2
+#> [1,]   0.2736825 -0.2361407 -0.10348824  0.0008184963 -0.005054448
+#> [2,]   0.2612956 -0.2012542 -0.09363259 -0.0063137538 -0.003924967
+#> [3,]   0.2704200 -0.2463815 -0.10075986 -0.0051730182 -0.004306838
+#> [4,]   0.2605524 -0.2452051 -0.09112358  0.0055238158 -0.009021315
+#> [5,]   0.2594152 -0.2264047 -0.09708515  0.0009386177 -0.002489848
+#>                 x3           x4            x5            x6            x7
+#> [1,] -0.0048971558 -0.000363975 -0.0021883326 -0.0024726717 -0.0017994770
+#> [2,]  0.0005236256 -0.004372850 -0.0037100802 -0.0025572935  0.0018177561
+#> [3,]  0.0022181931 -0.001485463 -0.0036594709  0.0008888189  0.0003675274
+#> [4,]  0.0011710153 -0.003444058 -0.0035113934  0.0026196539  0.0001059127
+#> [5,] -0.0029001101 -0.001197621  0.0008689022  0.0004568154  0.0016093889
 ```
 
 ## ABC Integration with TabNet
