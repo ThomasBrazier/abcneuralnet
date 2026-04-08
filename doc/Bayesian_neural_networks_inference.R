@@ -401,7 +401,7 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 # alpha = 4
 # beta = 3
 # # Training set sample size
-# N = 20000
+# N = 100000
 # # Test set sample size
 # p = 1000
 # # offset for the out-of-dist data
@@ -636,7 +636,7 @@ deepensemble_highdim = abcnn$new(theta.train,
             num_hidden_layers = 3,
             num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 64,
+            batch_size = 128,
             l2_weight_decay = 1e-4,
             epsilon_adversarial = 0.001,
             seed = 42)
@@ -653,54 +653,8 @@ deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim
 ## ----echo = T, fig.height = 4, fig.width = 8, fig.align="center"--------------
 deepensemble_highdim$plot_training()
 
-## ----echo = T-----------------------------------------------------------------
-true.theta = data.frame(theta1 = theta.exact$mean.theta1,
-                        theta2 = theta.exact$mean.theta2)
-
-deepensemble_highdim$cross_validation(true.theta,
-                                      sumstats.test)
-
-deepensemble_highdim$plot_cross_validation()
-
-## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."----
-deepensemble_highdim$predict()
-
-deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
-
 ## ----echo = F, eval=F---------------------------------------------------------
 # save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim")
-
-## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."----
-df = deepensemble_highdim$predictions() %>%
-  filter(parameter == "theta1")
-
-df$true.theta = theta.exact[1:1000,"mean.theta1"]
-
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
-                  ymax = predictive_mean + overall_conformal_credible_interval), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "Deep Ensemble Predictive check") +
-  theme_bw()
-
-## ----echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."----
-df = deepensemble_highdim$predictions() %>%
-  filter(parameter == "theta2")
-
-df$true.theta = theta.exact[1:1000,"mean.theta2"]
-
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
-                  ymax = predictive_mean + overall_conformal_credible_interval), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "Deep Ensemble Predictive check") +
-  theme_bw()
 
 ## ----echo = T, eval = T-------------------------------------------------------
 exp = explainn$new(deepensemble_highdim)

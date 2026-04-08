@@ -740,7 +740,7 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 
 
-# Case Study 3: A high-dimensional dataset
+# Case Study 3: Model Interpretability and Feature Importance in a high-dimensional dataset
 
 ## Gaussian Toy Model
 
@@ -773,7 +773,7 @@ n = 10
 alpha = 4
 beta = 3
 # Training set sample size
-N = 20000
+N = 100000
 # Test set sample size
 p = 1000
 # offset for the out-of-dist data
@@ -1008,7 +1008,7 @@ ggplot(theta.train, aes(x = theta1, y = theta2)) +
 
 
 
-## Training a Deep Ensemble model with adversarial training
+## Training a Deep Ensemble model
 
 
 ```{r}
@@ -1021,7 +1021,7 @@ deepensemble_highdim = abcnn$new(theta.train,
             num_hidden_layers = 3,
             num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 64,
+            batch_size = 128,
             l2_weight_decay = 1e-4,
             epsilon_adversarial = 0.001,
             seed = 42)
@@ -1050,30 +1050,30 @@ deepensemble_highdim$plot_training()
 
 
 
-## Model performance
+<!-- ## Model performance -->
 
 
-Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience):
+<!-- Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience): -->
 
 
-```{r, echo = T}
-true.theta = data.frame(theta1 = theta.exact$mean.theta1,
-                        theta2 = theta.exact$mean.theta2)
+<!-- ```{r, echo = T} -->
+<!-- true.theta = data.frame(theta1 = theta.exact$mean.theta1, -->
+<!--                         theta2 = theta.exact$mean.theta2) -->
 
-deepensemble_highdim$cross_validation(true.theta,
-                                      sumstats.test)
+<!-- deepensemble_highdim$cross_validation(true.theta, -->
+<!--                                       sumstats.test) -->
 
-deepensemble_highdim$plot_cross_validation()
-```
+<!-- deepensemble_highdim$plot_cross_validation() -->
+<!-- ``` -->
 
 
-Plot the predictions on the observed summary statistics:
+<!-- Plot the predictions on the observed summary statistics: -->
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
-deepensemble_highdim$predict()
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."} -->
+<!-- deepensemble_highdim$predict() -->
 
-deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
-```
+<!-- deepensemble_highdim$plot_prediction(uncertainty_type = "conformal") -->
+<!-- ``` -->
 
 
 ```{r, echo = F, eval=F}
@@ -1082,45 +1082,53 @@ save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim"
 
 
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."}
-df = deepensemble_highdim$predictions() %>%
-  filter(parameter == "theta1")
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."} -->
+<!-- df = deepensemble_highdim$predictions() %>% -->
+<!--   filter(parameter == "theta1") -->
 
-df$true.theta = theta.exact[1:1000,"mean.theta1"]
+<!-- df$true.theta = theta.exact[1:1000,"mean.theta1"] -->
 
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
-                  ymax = predictive_mean + overall_conformal_credible_interval), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "Deep Ensemble Predictive check") +
-  theme_bw()
-```
-
-
+<!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
+<!--   geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval, -->
+<!--                   ymax = predictive_mean + overall_conformal_credible_interval),  -->
+<!--               fill = "lightgrey", alpha = 0.5) + -->
+<!--   geom_point(alpha = 0.6) + -->
+<!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->
+<!--   labs(x = "True Posterior Mean", y = "Predicted Mean", -->
+<!--        title = "Deep Ensemble Predictive check Theta 1") + -->
+<!--   theme_bw() -->
+<!-- ``` -->
 
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."}
-df = deepensemble_highdim$predictions() %>%
-  filter(parameter == "theta2")
-
-df$true.theta = theta.exact[1:1000,"mean.theta2"]
-
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
-                  ymax = predictive_mean + overall_conformal_credible_interval), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "Deep Ensemble Predictive check") +
-  theme_bw()
-```
 
 
-# Model Interpretability and Feature Importance
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."} -->
+<!-- df = deepensemble_highdim$predictions() %>% -->
+<!--   filter(parameter == "theta2") -->
+
+<!-- df$true.theta = theta.exact[1:1000,"mean.theta2"] -->
+
+<!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
+<!--   geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval, -->
+<!--                   ymax = predictive_mean + overall_conformal_credible_interval),  -->
+<!--               fill = "lightgrey", alpha = 0.5) + -->
+<!--   geom_point(alpha = 0.6) + -->
+<!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->
+<!--   labs(x = "True Posterior Mean", y = "Predicted Mean", -->
+<!--        title = "Deep Ensemble Predictive check Theta 2") + -->
+<!--   theme_bw() -->
+<!-- ``` -->
+
+
+
+
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Prediction for a single point."} -->
+<!-- deepensemble_highdim$plot_posterior(100) -->
+<!-- ``` -->
+
+
+
+## Model Interpretability and Feature Importance
 
 Understanding which summary statistics drive parameter estimates is crucial for scientific interpretation. The **explainn** class implements a suite of methods to provide interpretable feature attributions. 
 
@@ -1202,10 +1210,6 @@ The individual contributions of input variables to individual predictions:
 ```{r, echo = T}
 exp$get_result()[1:5,1:10,1]
 ```
-
-
-
-
 
 
 
