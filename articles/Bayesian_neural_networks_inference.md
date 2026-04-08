@@ -341,20 +341,20 @@ curve of the deep learning model.
 abc$fitted
 #> A `luz_module_fitted`
 #> ── Time ────────────────────────────────────────────────────────────────────────
-#> • Total time: 18.3s
-#> • Avg time per training epoch: 731ms
+#> • Total time: 12.1s
+#> • Avg time per training epoch: 487ms
 #> 
 #> ── Results ─────────────────────────────────────────────────────────────────────
 #> Metrics observed in the last epoch.
 #> 
 #> ℹ Training:
-#> loss: 51.6446
+#> loss: 51.0977
 #> 
 #> ── Model ───────────────────────────────────────────────────────────────────────
-#> An `nn_module` containing 66,569 parameters.
+#> An `nn_module` containing 33,543 parameters.
 #> 
 #> ── Modules ─────────────────────────────────────────────────────────────────────
-#> • concrete_dropout: <nn_sequential> #66,309 parameters
+#> • concrete_dropout: <nn_sequential> #33,283 parameters
 #> • linear_mu: <nn_linear> #129 parameters
 #> • linear_logvar: <nn_linear> #129 parameters
 #> • conc_drop_mu: <nn_concrete_dropout> #1 parameters
@@ -427,7 +427,7 @@ abc$cross_validation()
 #> # A tibble: 1 × 10
 #>   parameter     n   mae   mse  rmse  nmae   cor   cov mean_epistemic_interval
 #>   <chr>     <int> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl>                   <dbl>
-#> 1 y1         1000 0.786 0.986 0.993  6.93 0.889  3.76                    4.34
+#> 1 y1         1000 0.843  1.11  1.05  7.05 0.882  3.84                    4.72
 #> # ℹ 1 more variable: mean_overall_interval <dbl>
 ```
 
@@ -457,33 +457,33 @@ Conformal Credibility Intervals as a tidy data frame:
 head(abc$predictions())
 #> Back-transform scaled parameters with method: none
 #>   sample parameter predictive_mean epistemic_uncertainty aleatoric_uncertainty
-#> 1      1        y1       10.358264             1.1372202              1.489817
-#> 2      2        y1        7.753262             0.7212800              1.354244
-#> 3      3        y1        6.867565             0.7468763              1.292604
-#> 4      4        y1       10.372236             1.1735570              1.491724
-#> 5      5        y1        5.393135             0.9776782              1.209312
-#> 6      6        y1        9.894000             1.0858852              1.463703
+#> 1      1        y1       10.309218             1.0675313              1.283543
+#> 2      2        y1        7.451776             0.5612965              1.340128
+#> 3      3        y1        6.436447             0.6559056              1.215488
+#> 4      4        y1       10.219753             1.1048015              1.289174
+#> 5      5        y1        4.910246             0.9696648              1.091763
+#> 6      6        y1        9.790845             0.9883168              1.296825
 #>   overall_uncertainty epistemic_conformal_credible_interval
-#> 1            2.627037                              2.766737
-#> 2            2.075524                              1.754799
-#> 3            2.039480                              1.817072
-#> 4            2.665281                              2.855141
-#> 5            2.186990                              2.378589
-#> 6            2.549588                              2.641845
+#> 1            2.351074                              3.103068
+#> 2            1.901425                              1.631560
+#> 3            1.871393                              1.906567
+#> 4            2.393975                              3.211404
+#> 5            2.061428                              2.818593
+#> 6            2.285142                              2.872810
 #>   overall_conformal_credible_interval posterior_median posterior_lower_ci
-#> 1                            2.319398        10.449607           7.875955
-#> 2                            1.832470         7.764633           6.311849
-#> 3                            1.800647         6.828698           5.442749
-#> 4                            2.353163        10.453612           7.927136
-#> 5                            1.930882         5.221919           4.109687
-#> 6                            2.251019         9.939818           7.530343
+#> 1                            2.342507        10.385820           7.560987
+#> 2                            1.894496         7.469801           6.283964
+#> 3                            1.864574         6.371157           5.279931
+#> 4                            2.385252        10.391239           7.434653
+#> 5                            2.053916         4.697867           3.732350
+#> 6                            2.276815         9.918343           7.429564
 #>   posterior_upper_ci
-#> 1          12.383102
-#> 2           9.074528
-#> 3           8.485639
-#> 4          12.465216
-#> 5           8.444420
-#> 6          11.872901
+#> 1          11.994395
+#> 2           8.480160
+#> 3           8.033218
+#> 4          11.961211
+#> 5           7.971181
+#> 6          11.352325
 ```
 
 The trained model provides separate estimates of aleatoric and epistemic
@@ -652,7 +652,7 @@ abc$plot_posterior(sample = 700, prior = TRUE, uncertainty_type = "uncertainty")
 Y_obs[700]
 #> [1] 6.906046
 abc$predictive_mean$y1[700]
-#> [1] 6.596844
+#> [1] 6.173774
 ```
 
 ``` r
@@ -675,7 +675,7 @@ and credible intervals. The prior distribution is plotted underneath
 Y_obs[501]
 #> [1] 5.541102
 abc$predictive_mean$y1[501]
-#> [1] 6.476291
+#> [1] 6.058429
 ```
 
 ## Case study 2: Nonlinear multivariate regression with **Deep Ensemble**
@@ -874,7 +874,7 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 
 ![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-36-1.png)
 
-## Case Study 3: A high-dimensional dataset
+## Case Study 3: Model Interpretability and Feature Importance in a high-dimensional dataset
 
 ### Gaussian Toy Model
 
@@ -917,7 +917,7 @@ ggplot(theta.train, aes(x = theta1, y = theta2)) +
 
 ![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-40-1.png)
 
-### Training a Deep Ensemble model with adversarial training
+### Training a Deep Ensemble model
 
 ``` r
 deepensemble_highdim = abcnn$new(theta.train,
@@ -929,7 +929,7 @@ deepensemble_highdim = abcnn$new(theta.train,
             num_hidden_layers = 3,
             num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 64,
+            batch_size = 128,
             l2_weight_decay = 1e-4,
             epsilon_adversarial = 0.001,
             seed = 42)
@@ -942,15 +942,15 @@ deepensemble_highdim$summary()
 #> ABC parameter inference with the method: deep ensemble 
 #> 
 #> 
-#> |Sample           |    Size|
-#> |:----------------|-------:|
-#> |Training         | 18000.0|
-#> |Testing split    |     0.1|
-#> |Testing          |  1800.0|
-#> |Evaluation split |     0.1|
-#> |Evaluation       |  2000.0|
-#> |Conformal        |  1000.0|
-#> |Observed         |  1000.0|
+#> |Sample           |  Size|
+#> |:----------------|-----:|
+#> |Training         | 9e+04|
+#> |Testing split    | 1e-01|
+#> |Testing          | 9e+03|
+#> |Evaluation split | 1e-01|
+#> |Evaluation       | 1e+04|
+#> |Conformal        | 1e+03|
+#> |Observed         | 1e+03|
 #> 
 #> Is CUDA available? [1] FALSE
 #> 
@@ -958,7 +958,7 @@ deepensemble_highdim$summary()
 #> 
 #> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", 
 #>     scale_input = "minmax", scale_target = "minmax", num_hidden_layers = 3, 
-#>     num_hidden_dim = 256, batch_size = 64, epochs = 20, l2_weight_decay = 1e-04, 
+#>     num_hidden_dim = 256, batch_size = 128, epochs = 20, l2_weight_decay = 1e-04, 
 #>     epsilon_adversarial = 0.001, seed = 42)
 ```
 
@@ -969,7 +969,7 @@ deepensemble_highdim$summary()
 | Scaling for targets (theta)                                   | minmax        |
 | Number hidden layers                                          | 3             |
 | Number hidden dimensions                                      | 256           |
-| Batch size                                                    | 64            |
+| Batch size                                                    | 128           |
 | Epochs                                                        | 20            |
 | Early stopping callback                                       | FALSE         |
 | Patience for early stopping                                   | 4             |
@@ -996,110 +996,7 @@ deepensemble_highdim$plot_training()
 
 ![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-44-1.png)
 
-### Model performance
-
-Evaluate performance with cross-validation (here we re-use the previous
-observed test set for convenience):
-
-``` r
-true.theta = data.frame(theta1 = theta.exact$mean.theta1,
-                        theta2 = theta.exact$mean.theta2)
-
-deepensemble_highdim$cross_validation(true.theta,
-                                      sumstats.test)
-#> [1] "Predictions with 1000 samples."
-#> 
-#> 
-#> Performing conformal prediction
-#> 
-#> [1] "Predictions with 1000 samples."
-#> Back-transform scaled parameters with method: minmax
-#> # A tibble: 2 × 10
-#>   parameter     n    mae     mse   rmse  nmae   cor   cov mean_epistemic_inter…¹
-#>   <chr>     <int>  <dbl>   <dbl>  <dbl> <dbl> <dbl> <dbl>                  <dbl>
-#> 1 theta1     1000 0.0710 0.00710 0.0843 0.991 0.999 0.911                 -15.6 
-#> 2 theta2     1000 0.0937 0.0203  0.142  0.887 0.977 0.331                   1.86
-#> # ℹ abbreviated name: ¹​mean_epistemic_interval
-#> # ℹ 1 more variable: mean_overall_interval <dbl>
-
-deepensemble_highdim$plot_cross_validation()
-```
-
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-45-1.png)
-
-Plot the predictions on the observed summary statistics:
-
-``` r
-deepensemble_highdim$predict()
-#> [1] "Predictions with 1000 samples."
-#> 
-#> 
-#> Performing conformal prediction
-#> 
-#> [1] "Predictions with 1000 samples."
-
-deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
-#> Back-transform scaled parameters with method: minmax
-```
-
-![TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter
-values.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-46-1.png)
-
-TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter values.
-
-``` r
-df = deepensemble_highdim$predictions() %>%
-  filter(parameter == "theta1")
-#> Back-transform scaled parameters with method: minmax
-
-df$true.theta = theta.exact[1:1000,"mean.theta1"]
-
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
-                  ymax = predictive_mean + overall_conformal_credible_interval), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "Deep Ensemble Predictive check") +
-  theme_bw()
-```
-
-![Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible
-intervals.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-48-1.png)
-
-Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible intervals.
-
-``` r
-df = deepensemble_highdim$predictions() %>%
-  filter(parameter == "theta2")
-#> Back-transform scaled parameters with method: minmax
-
-df$true.theta = theta.exact[1:1000,"mean.theta2"]
-
-ggplot(df, aes(x = true.theta, y = predictive_mean)) +
-  geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval,
-                  ymax = predictive_mean + overall_conformal_credible_interval), 
-              fill = "lightgrey", alpha = 0.5) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  labs(x = "True Posterior Mean", y = "Predicted Mean",
-       title = "Deep Ensemble Predictive check") +
-  theme_bw()
-```
-
-![Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible
-intervals.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-49-1.png)
-
-Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible intervals.
-
-## Model Interpretability and Feature Importance
+### Model Interpretability and Feature Importance
 
 Understanding which summary statistics drive parameter estimates is
 crucial for scientific interpretation. The **explainn** class implements
@@ -1152,7 +1049,7 @@ exp$plot_global()
 ![Feature importance visualization using DeepLIFT attribution methods,
 summarized across the 1,000 smaples. Colors indicate the contribution of
 each feature to the final
-prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-51-1.png)
+prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-47-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods,
 summarized across the 1,000 smaples. Colors indicate the contribution of
@@ -1168,16 +1065,16 @@ prediction:
 # - the two output parameters
 exp$get_result()[1,1:10,1:2]
 #>                    theta1        theta2
-#> expectation  0.1132899374 -3.613198e-02
-#> variance    -0.0077273310  6.013012e-03
-#> mad         -0.0091874162  2.681975e-03
-#> x1           0.0008358774  5.219426e-04
-#> x2           0.0011738730  7.647114e-05
-#> x3          -0.0018923717 -4.173693e-04
-#> x4           0.0037287869  7.422647e-04
-#> x5           0.0010782239 -2.531084e-04
-#> x6          -0.0092090024  4.534874e-03
-#> x7           0.0015082605 -8.027250e-04
+#> expectation  0.1460142732 -5.027594e-02
+#> variance    -0.0065255184  8.956507e-03
+#> mad         -0.0113766696  1.351331e-03
+#> x1           0.0004650040 -9.684055e-05
+#> x2          -0.0007771448 -3.409701e-04
+#> x3           0.0017208772 -6.854113e-04
+#> x4           0.0009468492 -1.750268e-03
+#> x5          -0.0013936884  1.411439e-03
+#> x6          -0.0004466020  1.980743e-04
+#> x7          -0.0000228984 -2.658666e-04
 ```
 
 SmoothGrad is another method, which can also be interpreted as local and
@@ -1200,7 +1097,7 @@ exp$plot()
 
 ![Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
-prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-54-1.png)
+prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-50-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
@@ -1212,7 +1109,7 @@ exp$plot_global()
 
 ![Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
-prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-55-1.png)
+prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-51-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
@@ -1223,18 +1120,18 @@ predictions:
 
 ``` r
 exp$get_result()[1:5,1:10,1]
-#>      expectation   variance         mad            x1           x2
-#> [1,]   0.2326391 -0.2523827 -0.11713754  5.041405e-03 -0.001891958
-#> [2,]   0.2170596 -0.2169580 -0.11633647 -3.929718e-03  0.001464537
-#> [3,]   0.2326872 -0.2697320 -0.10735155 -1.393232e-03  0.002467735
-#> [4,]   0.1931195 -0.2597125 -0.09758517  3.265328e-03 -0.003275896
-#> [5,]   0.2249627 -0.2598084 -0.11301942  1.443309e-05  0.002916930
-#>                 x3           x4            x5            x6           x7
-#> [1,] -0.0046282778  0.006362002 -2.198114e-05 -0.0072565828 -0.004144170
-#> [2,] -0.0042510945 -0.002362086 -6.157480e-03 -0.0005503270 -0.003398478
-#> [3,] -0.0044409810 -0.001600192 -8.429552e-04  0.0012674592 -0.004286564
-#> [4,] -0.0004554572  0.005352917 -2.581265e-03 -0.0011391795 -0.002925031
-#> [5,]  0.0004897260 -0.000301440  2.696004e-03 -0.0009752425 -0.003922338
+#>      expectation   variance         mad            x1            x2
+#> [1,]   0.3255743 -0.3050727 -0.09064770 -0.0013809617  0.0010920103
+#> [2,]   0.3329250 -0.2718877 -0.09537423 -0.0002339264  0.0010713534
+#> [3,]   0.3276761 -0.3135173 -0.09169979 -0.0008421264 -0.0013861365
+#> [4,]   0.3265152 -0.3029364 -0.09186912 -0.0005627453  0.0019531704
+#> [5,]   0.3331444 -0.3012623 -0.09207514 -0.0008558772  0.0002431661
+#>                 x3            x4            x5            x6            x7
+#> [1,] -8.995859e-05 -0.0010456606 -0.0011938943  0.0002980323 -0.0002025143
+#> [2,]  1.799968e-03 -0.0025958740  0.0017612416  0.0027715405  0.0011652763
+#> [3,] -4.617441e-04 -0.0018017567 -0.0013031620 -0.0014219709 -0.0019077504
+#> [4,] -2.938703e-06 -0.0022597241 -0.0008649514 -0.0002333858 -0.0003632023
+#> [5,] -7.953043e-04 -0.0007909555 -0.0020508503 -0.0013334239 -0.0004314916
 ```
 
 ## ABC Integration with TabNet
@@ -1324,7 +1221,7 @@ tabnetabc$fit()
 tabnetabc$plot_training()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-60-1.png)
+![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-56-1.png)
 
 ### Model performance
 
@@ -1381,19 +1278,19 @@ exp$run(data = sumstats.test)
 exp$plot()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-64-1.png)
+![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-60-1.png)
 
 ``` r
 exp$plot(type = "mask_agg")
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-65-1.png)
+![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-61-1.png)
 
 ``` r
 exp$plot(type = "steps")
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-66-1.png)
+![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-62-1.png)
 
 ## FAQ
 

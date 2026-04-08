@@ -506,20 +506,20 @@ curve of the deep learning model.</p>
 <span><span class="va">abc</span><span class="op">$</span><span class="va">fitted</span></span>
 <span><span class="co">#&gt; A `luz_module_fitted`</span></span>
 <span><span class="co">#&gt; ── Time ────────────────────────────────────────────────────────────────────────</span></span>
-<span><span class="co">#&gt; • Total time: 18.3s</span></span>
-<span><span class="co">#&gt; • Avg time per training epoch: 731ms</span></span>
+<span><span class="co">#&gt; • Total time: 12.1s</span></span>
+<span><span class="co">#&gt; • Avg time per training epoch: 487ms</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ── Results ─────────────────────────────────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; Metrics observed in the last epoch.</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> Training:</span></span>
-<span><span class="co">#&gt; loss: 51.6446</span></span>
+<span><span class="co">#&gt; loss: 51.0977</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ── Model ───────────────────────────────────────────────────────────────────────</span></span>
-<span><span class="co">#&gt; An `nn_module` containing 66,569 parameters.</span></span>
+<span><span class="co">#&gt; An `nn_module` containing 33,543 parameters.</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ── Modules ─────────────────────────────────────────────────────────────────────</span></span>
-<span><span class="co">#&gt; • concrete_dropout: &lt;nn_sequential&gt; #66,309 parameters</span></span>
+<span><span class="co">#&gt; • concrete_dropout: &lt;nn_sequential&gt; #33,283 parameters</span></span>
 <span><span class="co">#&gt; • linear_mu: &lt;nn_linear&gt; #129 parameters</span></span>
 <span><span class="co">#&gt; • linear_logvar: &lt;nn_linear&gt; #129 parameters</span></span>
 <span><span class="co">#&gt; • conc_drop_mu: &lt;nn_concrete_dropout&gt; #1 parameters</span></span>
@@ -576,7 +576,7 @@ simulations with ground truth:</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 10</span></span></span>
 <span><span class="co">#&gt;   parameter     n   mae   mse  rmse  nmae   cor   cov mean_epistemic_interval</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> y1         <span style="text-decoration: underline;">1</span>000 0.786 0.986 0.993  6.93 0.889  3.76                    4.34</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> y1         <span style="text-decoration: underline;">1</span>000 0.843  1.11  1.05  7.05 0.882  3.84                    4.72</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: mean_overall_interval &lt;dbl&gt;</span></span></span></code></pre></div>
 <p>Plot the cross-validation scatter plot (predicted ~ ground truth)
 with Conformal Credible Intervals:</p>
@@ -600,33 +600,33 @@ Conformal Credibility Intervals as a tidy data frame:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">abc</span><span class="op">$</span><span class="fu">predictions</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Back-transform scaled parameters with method: none</span></span>
 <span><span class="co">#&gt;   sample parameter predictive_mean epistemic_uncertainty aleatoric_uncertainty</span></span>
-<span><span class="co">#&gt; 1      1        y1       10.358264             1.1372202              1.489817</span></span>
-<span><span class="co">#&gt; 2      2        y1        7.753262             0.7212800              1.354244</span></span>
-<span><span class="co">#&gt; 3      3        y1        6.867565             0.7468763              1.292604</span></span>
-<span><span class="co">#&gt; 4      4        y1       10.372236             1.1735570              1.491724</span></span>
-<span><span class="co">#&gt; 5      5        y1        5.393135             0.9776782              1.209312</span></span>
-<span><span class="co">#&gt; 6      6        y1        9.894000             1.0858852              1.463703</span></span>
+<span><span class="co">#&gt; 1      1        y1       10.309218             1.0675313              1.283543</span></span>
+<span><span class="co">#&gt; 2      2        y1        7.451776             0.5612965              1.340128</span></span>
+<span><span class="co">#&gt; 3      3        y1        6.436447             0.6559056              1.215488</span></span>
+<span><span class="co">#&gt; 4      4        y1       10.219753             1.1048015              1.289174</span></span>
+<span><span class="co">#&gt; 5      5        y1        4.910246             0.9696648              1.091763</span></span>
+<span><span class="co">#&gt; 6      6        y1        9.790845             0.9883168              1.296825</span></span>
 <span><span class="co">#&gt;   overall_uncertainty epistemic_conformal_credible_interval</span></span>
-<span><span class="co">#&gt; 1            2.627037                              2.766737</span></span>
-<span><span class="co">#&gt; 2            2.075524                              1.754799</span></span>
-<span><span class="co">#&gt; 3            2.039480                              1.817072</span></span>
-<span><span class="co">#&gt; 4            2.665281                              2.855141</span></span>
-<span><span class="co">#&gt; 5            2.186990                              2.378589</span></span>
-<span><span class="co">#&gt; 6            2.549588                              2.641845</span></span>
+<span><span class="co">#&gt; 1            2.351074                              3.103068</span></span>
+<span><span class="co">#&gt; 2            1.901425                              1.631560</span></span>
+<span><span class="co">#&gt; 3            1.871393                              1.906567</span></span>
+<span><span class="co">#&gt; 4            2.393975                              3.211404</span></span>
+<span><span class="co">#&gt; 5            2.061428                              2.818593</span></span>
+<span><span class="co">#&gt; 6            2.285142                              2.872810</span></span>
 <span><span class="co">#&gt;   overall_conformal_credible_interval posterior_median posterior_lower_ci</span></span>
-<span><span class="co">#&gt; 1                            2.319398        10.449607           7.875955</span></span>
-<span><span class="co">#&gt; 2                            1.832470         7.764633           6.311849</span></span>
-<span><span class="co">#&gt; 3                            1.800647         6.828698           5.442749</span></span>
-<span><span class="co">#&gt; 4                            2.353163        10.453612           7.927136</span></span>
-<span><span class="co">#&gt; 5                            1.930882         5.221919           4.109687</span></span>
-<span><span class="co">#&gt; 6                            2.251019         9.939818           7.530343</span></span>
+<span><span class="co">#&gt; 1                            2.342507        10.385820           7.560987</span></span>
+<span><span class="co">#&gt; 2                            1.894496         7.469801           6.283964</span></span>
+<span><span class="co">#&gt; 3                            1.864574         6.371157           5.279931</span></span>
+<span><span class="co">#&gt; 4                            2.385252        10.391239           7.434653</span></span>
+<span><span class="co">#&gt; 5                            2.053916         4.697867           3.732350</span></span>
+<span><span class="co">#&gt; 6                            2.276815         9.918343           7.429564</span></span>
 <span><span class="co">#&gt;   posterior_upper_ci</span></span>
-<span><span class="co">#&gt; 1          12.383102</span></span>
-<span><span class="co">#&gt; 2           9.074528</span></span>
-<span><span class="co">#&gt; 3           8.485639</span></span>
-<span><span class="co">#&gt; 4          12.465216</span></span>
-<span><span class="co">#&gt; 5           8.444420</span></span>
-<span><span class="co">#&gt; 6          11.872901</span></span></code></pre></div>
+<span><span class="co">#&gt; 1          11.994395</span></span>
+<span><span class="co">#&gt; 2           8.480160</span></span>
+<span><span class="co">#&gt; 3           8.033218</span></span>
+<span><span class="co">#&gt; 4          11.961211</span></span>
+<span><span class="co">#&gt; 5           7.971181</span></span>
+<span><span class="co">#&gt; 6          11.352325</span></span></code></pre></div>
 <p>The trained model provides separate estimates of aleatoric and
 epistemic uncertainty:</p>
 <pre><code><span><span class="co">#&gt; Back-transform scaled parameters with method: none</span></span></code></pre>
@@ -761,7 +761,7 @@ distribution:</p>
 <code class="sourceCode R"><span><span class="va">Y_obs</span><span class="op">[</span><span class="fl">700</span><span class="op">]</span></span>
 <span><span class="co">#&gt; [1] 6.906046</span></span>
 <span><span class="va">abc</span><span class="op">$</span><span class="va">predictive_mean</span><span class="op">$</span><span class="va">y1</span><span class="op">[</span><span class="fl">700</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 6.596844</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 6.173774</span></span></code></pre></div>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">abc</span><span class="op">$</span><span class="fu">plot_posterior</span><span class="op">(</span>sample <span class="op">=</span> <span class="fl">501</span>, prior <span class="op">=</span> <span class="cn">TRUE</span>, uncertainty_type <span class="op">=</span> <span class="st">"conformal"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">geom_vline</span><span class="op">(</span>xintercept <span class="op">=</span> <span class="va">Y_obs</span><span class="op">[</span><span class="fl">501</span><span class="op">]</span>, color <span class="op">=</span> <span class="st">"red"</span>, size <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span></span>
@@ -778,7 +778,7 @@ and credible intervals. The prior distribution is plotted underneath
 <code class="sourceCode R"><span><span class="va">Y_obs</span><span class="op">[</span><span class="fl">501</span><span class="op">]</span></span>
 <span><span class="co">#&gt; [1] 5.541102</span></span>
 <span><span class="va">abc</span><span class="op">$</span><span class="va">predictive_mean</span><span class="op">$</span><span class="va">y1</span><span class="op">[</span><span class="fl">501</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 6.476291</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 6.058429</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -963,7 +963,8 @@ increases in regions with higher variance (i.e. noise) in data:</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="case-study-3-a-high-dimensional-dataset">Case Study 3: A high-dimensional dataset<a class="anchor" aria-label="anchor" href="#case-study-3-a-high-dimensional-dataset"></a>
+<h2 id="case-study-3-model-interpretability-and-feature-importance-in-a-high-dimensional-dataset">Case Study 3: Model Interpretability and Feature Importance in a
+high-dimensional dataset<a class="anchor" aria-label="anchor" href="#case-study-3-model-interpretability-and-feature-importance-in-a-high-dimensional-dataset"></a>
 </h2>
 <div class="section level3">
 <h3 id="gaussian-toy-model">Gaussian Toy Model<a class="anchor" aria-label="anchor" href="#gaussian-toy-model"></a>
@@ -1005,7 +1006,7 @@ statistics, and only 11 of these are informative.</p>
 <p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-40-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
-<h3 id="training-a-deep-ensemble-model-with-adversarial-training">Training a Deep Ensemble model with adversarial training<a class="anchor" aria-label="anchor" href="#training-a-deep-ensemble-model-with-adversarial-training"></a>
+<h3 id="training-a-deep-ensemble-model">Training a Deep Ensemble model<a class="anchor" aria-label="anchor" href="#training-a-deep-ensemble-model"></a>
 </h3>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">deepensemble_highdim</span> <span class="op">=</span> <span class="va"><a href="../reference/abcnn.html">abcnn</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">theta.train</span>,</span>
@@ -1017,7 +1018,7 @@ statistics, and only 11 of these are informative.</p>
 <span>            num_hidden_layers <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>            num_hidden_dim <span class="op">=</span> <span class="fl">256</span>,</span>
 <span>            epochs <span class="op">=</span> <span class="fl">20</span>,</span>
-<span>            batch_size <span class="op">=</span> <span class="fl">64</span>,</span>
+<span>            batch_size <span class="op">=</span> <span class="fl">128</span>,</span>
 <span>            l2_weight_decay <span class="op">=</span> <span class="fl">1e-4</span>,</span>
 <span>            epsilon_adversarial <span class="op">=</span> <span class="fl">0.001</span>,</span>
 <span>            seed <span class="op">=</span> <span class="fl">42</span><span class="op">)</span></span>
@@ -1030,15 +1031,15 @@ statistics, and only 11 of these are informative.</p>
 <span><span class="co">#&gt; ABC parameter inference with the method: deep ensemble </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; |Sample           |    Size|</span></span>
-<span><span class="co">#&gt; |:----------------|-------:|</span></span>
-<span><span class="co">#&gt; |Training         | 18000.0|</span></span>
-<span><span class="co">#&gt; |Testing split    |     0.1|</span></span>
-<span><span class="co">#&gt; |Testing          |  1800.0|</span></span>
-<span><span class="co">#&gt; |Evaluation split |     0.1|</span></span>
-<span><span class="co">#&gt; |Evaluation       |  2000.0|</span></span>
-<span><span class="co">#&gt; |Conformal        |  1000.0|</span></span>
-<span><span class="co">#&gt; |Observed         |  1000.0|</span></span>
+<span><span class="co">#&gt; |Sample           |  Size|</span></span>
+<span><span class="co">#&gt; |:----------------|-----:|</span></span>
+<span><span class="co">#&gt; |Training         | 9e+04|</span></span>
+<span><span class="co">#&gt; |Testing split    | 1e-01|</span></span>
+<span><span class="co">#&gt; |Testing          | 9e+03|</span></span>
+<span><span class="co">#&gt; |Evaluation split | 1e-01|</span></span>
+<span><span class="co">#&gt; |Evaluation       | 1e+04|</span></span>
+<span><span class="co">#&gt; |Conformal        | 1e+03|</span></span>
+<span><span class="co">#&gt; |Observed         | 1e+03|</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Is CUDA available? [1] FALSE</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -1046,7 +1047,7 @@ statistics, and only 11 of these are informative.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", </span></span>
 <span><span class="co">#&gt;     scale_input = "minmax", scale_target = "minmax", num_hidden_layers = 3, </span></span>
-<span><span class="co">#&gt;     num_hidden_dim = 256, batch_size = 64, epochs = 20, l2_weight_decay = 1e-04, </span></span>
+<span><span class="co">#&gt;     num_hidden_dim = 256, batch_size = 128, epochs = 20, l2_weight_decay = 1e-04, </span></span>
 <span><span class="co">#&gt;     epsilon_adversarial = 0.001, seed = 42)</span></span></code></pre></div>
 <table class="table">
 <colgroup>
@@ -1080,7 +1081,7 @@ statistics, and only 11 of these are informative.</p>
 </tr>
 <tr class="even">
 <td align="left">Batch size</td>
-<td align="left">64</td>
+<td align="left">128</td>
 </tr>
 <tr class="odd">
 <td align="left">Epochs</td>
@@ -1134,106 +1135,60 @@ beginning:</p>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">plot_training</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-44-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
+<!-- ## Model performance -->
+<!-- Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience): -->
+<!-- ```{r, echo = T} -->
+<!-- true.theta = data.frame(theta1 = theta.exact$mean.theta1, -->
+<!--                         theta2 = theta.exact$mean.theta2) -->
+<!-- deepensemble_highdim$cross_validation(true.theta, -->
+<!--                                       sumstats.test) -->
+<!-- deepensemble_highdim$plot_cross_validation() -->
+<!-- ``` -->
+<!-- Plot the predictions on the observed summary statistics: -->
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."} -->
+<!-- deepensemble_highdim$predict() -->
+<!-- deepensemble_highdim$plot_prediction(uncertainty_type = "conformal") -->
+<!-- ``` -->
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."} -->
+<!-- df = deepensemble_highdim$predictions() %>% -->
+<!--   filter(parameter == "theta1") -->
+<!-- df$true.theta = theta.exact[1:1000,"mean.theta1"] -->
+<!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
+<!--   geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval, -->
+<!--                   ymax = predictive_mean + overall_conformal_credible_interval),  -->
+<!--               fill = "lightgrey", alpha = 0.5) + -->
+<!--   geom_point(alpha = 0.6) + -->
+<!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->
+<!--   labs(x = "True Posterior Mean", y = "Predicted Mean", -->
+<!--        title = "Deep Ensemble Predictive check Theta 1") + -->
+<!--   theme_bw() -->
+<!-- ``` -->
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."} -->
+<!-- df = deepensemble_highdim$predictions() %>% -->
+<!--   filter(parameter == "theta2") -->
+<!-- df$true.theta = theta.exact[1:1000,"mean.theta2"] -->
+<!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
+<!--   geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval, -->
+<!--                   ymax = predictive_mean + overall_conformal_credible_interval),  -->
+<!--               fill = "lightgrey", alpha = 0.5) + -->
+<!--   geom_point(alpha = 0.6) + -->
+<!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->
+<!--   labs(x = "True Posterior Mean", y = "Predicted Mean", -->
+<!--        title = "Deep Ensemble Predictive check Theta 2") + -->
+<!--   theme_bw() -->
+<!-- ``` -->
+<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Prediction for a single point."} -->
+<!-- deepensemble_highdim$plot_posterior(100) -->
+<!-- ``` -->
 </div>
 <div class="section level3">
-<h3 id="model-performance">Model performance<a class="anchor" aria-label="anchor" href="#model-performance"></a>
+<h3 id="model-interpretability-and-feature-importance">Model Interpretability and Feature Importance<a class="anchor" aria-label="anchor" href="#model-interpretability-and-feature-importance"></a>
 </h3>
-<p>Evaluate performance with cross-validation (here we re-use the
-previous observed test set for convenience):</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">true.theta</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>theta1 <span class="op">=</span> <span class="va">theta.exact</span><span class="op">$</span><span class="va">mean.theta1</span>,</span>
-<span>                        theta2 <span class="op">=</span> <span class="va">theta.exact</span><span class="op">$</span><span class="va">mean.theta2</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">cross_validation</span><span class="op">(</span><span class="va">true.theta</span>,</span>
-<span>                                      <span class="va">sumstats.test</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Predictions with 1000 samples."</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Performing conformal prediction</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; [1] "Predictions with 1000 samples."</span></span>
-<span><span class="co">#&gt; Back-transform scaled parameters with method: minmax</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 10</span></span></span>
-<span><span class="co">#&gt;   parameter     n    mae     mse   rmse  nmae   cor   cov mean_epistemic_inter…¹</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> theta1     <span style="text-decoration: underline;">1</span>000 0.071<span style="text-decoration: underline;">0</span> 0.007<span style="text-decoration: underline;">10</span> 0.084<span style="text-decoration: underline;">3</span> 0.991 0.999 0.911                 -<span style="color: #BB0000;">15.6</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> theta2     <span style="text-decoration: underline;">1</span>000 0.093<span style="text-decoration: underline;">7</span> 0.020<span style="text-decoration: underline;">3</span>  0.142  0.887 0.977 0.331                   1.86</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ abbreviated name: ¹​mean_epistemic_interval</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: mean_overall_interval &lt;dbl&gt;</span></span></span>
-<span></span>
-<span><span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">plot_cross_validation</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-45-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
-<p>Plot the predictions on the observed summary statistics:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">predict</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Predictions with 1000 samples."</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Performing conformal prediction</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; [1] "Predictions with 1000 samples."</span></span>
-<span></span>
-<span><span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">plot_prediction</span><span class="op">(</span>uncertainty_type <span class="op">=</span> <span class="st">"conformal"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Back-transform scaled parameters with method: minmax</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-46-1.png" class="r-plt" alt="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values." width="768"><p class="caption">
-TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter values.
-</p>
-</div>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">predictions</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta1"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Back-transform scaled parameters with method: minmax</span></span>
-<span></span>
-<span><span class="va">df</span><span class="op">$</span><span class="va">true.theta</span> <span class="op">=</span> <span class="va">theta.exact</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="st">"mean.theta1"</span><span class="op">]</span></span>
-<span></span>
-<span><span class="fu">ggplot</span><span class="op">(</span><span class="va">df</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">true.theta</span>, y <span class="op">=</span> <span class="va">predictive_mean</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_ribbon</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>ymin <span class="op">=</span> <span class="va">predictive_mean</span> <span class="op">-</span> <span class="va">overall_conformal_credible_interval</span>,</span>
-<span>                  ymax <span class="op">=</span> <span class="va">predictive_mean</span> <span class="op">+</span> <span class="va">overall_conformal_credible_interval</span><span class="op">)</span>, </span>
-<span>              fill <span class="op">=</span> <span class="st">"lightgrey"</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_point</span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_smooth</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"lm"</span>, se <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>x <span class="op">=</span> <span class="st">"True Posterior Mean"</span>, y <span class="op">=</span> <span class="st">"Predicted Mean"</span>,</span>
-<span>       title <span class="op">=</span> <span class="st">"Deep Ensemble Predictive check"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme_bw</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-48-1.png" class="r-plt" alt="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals." width="768"><p class="caption">
-Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible intervals.
-</p>
-</div>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">predictions</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta2"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Back-transform scaled parameters with method: minmax</span></span>
-<span></span>
-<span><span class="va">df</span><span class="op">$</span><span class="va">true.theta</span> <span class="op">=</span> <span class="va">theta.exact</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="st">"mean.theta2"</span><span class="op">]</span></span>
-<span></span>
-<span><span class="fu">ggplot</span><span class="op">(</span><span class="va">df</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">true.theta</span>, y <span class="op">=</span> <span class="va">predictive_mean</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_ribbon</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>ymin <span class="op">=</span> <span class="va">predictive_mean</span> <span class="op">-</span> <span class="va">overall_conformal_credible_interval</span>,</span>
-<span>                  ymax <span class="op">=</span> <span class="va">predictive_mean</span> <span class="op">+</span> <span class="va">overall_conformal_credible_interval</span><span class="op">)</span>, </span>
-<span>              fill <span class="op">=</span> <span class="st">"lightgrey"</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_point</span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_smooth</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"lm"</span>, se <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>x <span class="op">=</span> <span class="st">"True Posterior Mean"</span>, y <span class="op">=</span> <span class="st">"Predicted Mean"</span>,</span>
-<span>       title <span class="op">=</span> <span class="st">"Deep Ensemble Predictive check"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme_bw</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-49-1.png" class="r-plt" alt="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals." width="768"><p class="caption">
-Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible intervals.
-</p>
-</div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="model-interpretability-and-feature-importance">Model Interpretability and Feature Importance<a class="anchor" aria-label="anchor" href="#model-interpretability-and-feature-importance"></a>
-</h2>
 <p>Understanding which summary statistics drive parameter estimates is
 crucial for scientific interpretation. The <strong>explainn</strong>
 class implements a suite of methods to provide interpretable feature
 attributions.</p>
+</div>
 <div class="section level3">
 <h3 id="the-explainn-class-and-methods-for-model-explanation">The <code>explainn()</code> class and methods for model
 explanation<a class="anchor" aria-label="anchor" href="#the-explainn-class-and-methods-for-model-explanation"></a>
@@ -1256,12 +1211,12 @@ the output
 and the reference output
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mi>′</mi><mo>=</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mi>′</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y' = f(x')</annotation></semantics></math>
 prediction.</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span> <span class="op">=</span> <span class="va"><a href="../reference/explainn.html">explainn</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">deepensemble_highdim</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">exp</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span>data <span class="op">=</span> <span class="va">sumstats.test</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="op">]</span>,</span>
 <span>        method <span class="op">=</span> <span class="st">"deeplift"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="Bayesian_neural_networks_inference_files/figure-html/explainn_plot-1.png" class="r-plt" alt="Feature importance visualization using DeepLIFT attribution methods, for the first sample output prediction. Colors indicate the contribution of each feature to the final prediction." width="768"><p class="caption">
@@ -1272,10 +1227,10 @@ each feature to the final prediction.
 </div>
 <p>Even if DeepLift is a local method, multiple samples can be passed
 and importance scores summarizzed across all samples’ predictions.</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">plot_global</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-51-1.png" class="r-plt" alt="Feature importance visualization using DeepLIFT attribution methods, summarized across the 1,000 smaples. Colors indicate the contribution of each feature to the final prediction." width="768"><p class="caption">
+<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-47-1.png" class="r-plt" alt="Feature importance visualization using DeepLIFT attribution methods, summarized across the 1,000 smaples. Colors indicate the contribution of each feature to the final prediction." width="768"><p class="caption">
 Feature importance visualization using DeepLIFT attribution methods,
 summarized across the 1,000 smaples. Colors indicate the contribution of
 each feature to the final prediction.
@@ -1283,46 +1238,46 @@ each feature to the final prediction.
 </div>
 <p>The individual contributions of input variables to the subject
 prediction:</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Three dimension outpout:</span></span>
 <span><span class="co"># - First sample</span></span>
 <span><span class="co"># - 10 first summary statistics</span></span>
 <span><span class="co"># - the two output parameters</span></span>
 <span><span class="va">exp</span><span class="op">$</span><span class="fu">get_result</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">10</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                    theta1        theta2</span></span>
-<span><span class="co">#&gt; expectation  0.1132899374 -3.613198e-02</span></span>
-<span><span class="co">#&gt; variance    -0.0077273310  6.013012e-03</span></span>
-<span><span class="co">#&gt; mad         -0.0091874162  2.681975e-03</span></span>
-<span><span class="co">#&gt; x1           0.0008358774  5.219426e-04</span></span>
-<span><span class="co">#&gt; x2           0.0011738730  7.647114e-05</span></span>
-<span><span class="co">#&gt; x3          -0.0018923717 -4.173693e-04</span></span>
-<span><span class="co">#&gt; x4           0.0037287869  7.422647e-04</span></span>
-<span><span class="co">#&gt; x5           0.0010782239 -2.531084e-04</span></span>
-<span><span class="co">#&gt; x6          -0.0092090024  4.534874e-03</span></span>
-<span><span class="co">#&gt; x7           0.0015082605 -8.027250e-04</span></span></code></pre></div>
+<span><span class="co">#&gt; expectation  0.1460142732 -5.027594e-02</span></span>
+<span><span class="co">#&gt; variance    -0.0065255184  8.956507e-03</span></span>
+<span><span class="co">#&gt; mad         -0.0113766696  1.351331e-03</span></span>
+<span><span class="co">#&gt; x1           0.0004650040 -9.684055e-05</span></span>
+<span><span class="co">#&gt; x2          -0.0007771448 -3.409701e-04</span></span>
+<span><span class="co">#&gt; x3           0.0017208772 -6.854113e-04</span></span>
+<span><span class="co">#&gt; x4           0.0009468492 -1.750268e-03</span></span>
+<span><span class="co">#&gt; x5          -0.0013936884  1.411439e-03</span></span>
+<span><span class="co">#&gt; x6          -0.0004466020  1.980743e-04</span></span>
+<span><span class="co">#&gt; x7          -0.0000228984 -2.658666e-04</span></span></code></pre></div>
 <p>SmoothGrad is another method, which can also be interpreted as local
 and global feature importance scores. SmoothGrad was introduced by D.
 Smilkov et al. (2017) and is an extension to the classical Vanilla
 Gradient method (see <a href="https://bips-hb.github.io/innsight/reference/SmoothGrad.html" class="external-link">SmoothGrad</a>
 for more details).</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span> <span class="op">=</span> <span class="va"><a href="../reference/explainn.html">explainn</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">deepensemble_highdim</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">exp</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span>data <span class="op">=</span> <span class="va">sumstats.test</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="op">]</span>,</span>
 <span>        method <span class="op">=</span> <span class="st">"smoothgrad"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-54-1.png" class="r-plt" alt="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction." width="768"><p class="caption">
+<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-50-1.png" class="r-plt" alt="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction." width="768"><p class="caption">
 Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
 prediction.
 </p>
 </div>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">plot_global</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-55-1.png" class="r-plt" alt="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction." width="768"><p class="caption">
+<img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-51-1.png" class="r-plt" alt="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction." width="768"><p class="caption">
 Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
 prediction.
@@ -1330,20 +1285,20 @@ prediction.
 </div>
 <p>The individual contributions of input variables to individual
 predictions:</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">get_result</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">10</span>,<span class="fl">1</span><span class="op">]</span></span>
-<span><span class="co">#&gt;      expectation   variance         mad            x1           x2</span></span>
-<span><span class="co">#&gt; [1,]   0.2326391 -0.2523827 -0.11713754  5.041405e-03 -0.001891958</span></span>
-<span><span class="co">#&gt; [2,]   0.2170596 -0.2169580 -0.11633647 -3.929718e-03  0.001464537</span></span>
-<span><span class="co">#&gt; [3,]   0.2326872 -0.2697320 -0.10735155 -1.393232e-03  0.002467735</span></span>
-<span><span class="co">#&gt; [4,]   0.1931195 -0.2597125 -0.09758517  3.265328e-03 -0.003275896</span></span>
-<span><span class="co">#&gt; [5,]   0.2249627 -0.2598084 -0.11301942  1.443309e-05  0.002916930</span></span>
-<span><span class="co">#&gt;                 x3           x4            x5            x6           x7</span></span>
-<span><span class="co">#&gt; [1,] -0.0046282778  0.006362002 -2.198114e-05 -0.0072565828 -0.004144170</span></span>
-<span><span class="co">#&gt; [2,] -0.0042510945 -0.002362086 -6.157480e-03 -0.0005503270 -0.003398478</span></span>
-<span><span class="co">#&gt; [3,] -0.0044409810 -0.001600192 -8.429552e-04  0.0012674592 -0.004286564</span></span>
-<span><span class="co">#&gt; [4,] -0.0004554572  0.005352917 -2.581265e-03 -0.0011391795 -0.002925031</span></span>
-<span><span class="co">#&gt; [5,]  0.0004897260 -0.000301440  2.696004e-03 -0.0009752425 -0.003922338</span></span></code></pre></div>
+<span><span class="co">#&gt;      expectation   variance         mad            x1            x2</span></span>
+<span><span class="co">#&gt; [1,]   0.3255743 -0.3050727 -0.09064770 -0.0013809617  0.0010920103</span></span>
+<span><span class="co">#&gt; [2,]   0.3329250 -0.2718877 -0.09537423 -0.0002339264  0.0010713534</span></span>
+<span><span class="co">#&gt; [3,]   0.3276761 -0.3135173 -0.09169979 -0.0008421264 -0.0013861365</span></span>
+<span><span class="co">#&gt; [4,]   0.3265152 -0.3029364 -0.09186912 -0.0005627453  0.0019531704</span></span>
+<span><span class="co">#&gt; [5,]   0.3331444 -0.3012623 -0.09207514 -0.0008558772  0.0002431661</span></span>
+<span><span class="co">#&gt;                 x3            x4            x5            x6            x7</span></span>
+<span><span class="co">#&gt; [1,] -8.995859e-05 -0.0010456606 -0.0011938943  0.0002980323 -0.0002025143</span></span>
+<span><span class="co">#&gt; [2,]  1.799968e-03 -0.0025958740  0.0017612416  0.0027715405  0.0011652763</span></span>
+<span><span class="co">#&gt; [3,] -4.617441e-04 -0.0018017567 -0.0013031620 -0.0014219709 -0.0019077504</span></span>
+<span><span class="co">#&gt; [4,] -2.938703e-06 -0.0022597241 -0.0008649514 -0.0002333858 -0.0003632023</span></span>
+<span><span class="co">#&gt; [5,] -7.953043e-04 -0.0007909555 -0.0020508503 -0.0013334239 -0.0004314916</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -1366,7 +1321,7 @@ during inference as a new informative summary statistics. We leverage
 the Tabnet Attention map and feature importance to subset only the most
 informative summary statistics for the ABC inference step. They are then
 concatenated to the Tabnet predicted mean.</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tabnetabc</span> <span class="op">=</span> <span class="va"><a href="../reference/abcnn.html">abcnn</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">theta.train</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10000</span>,<span class="op">]</span>,</span>
 <span>            <span class="va">sumstats.train</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10000</span>,<span class="op">]</span>,</span>
 <span>            <span class="va">sumstats.test</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="op">]</span>,</span>
@@ -1483,16 +1438,16 @@ dropout)</td>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tabnetabc</span><span class="op">$</span><span class="fu">fit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tabnetabc</span><span class="op">$</span><span class="fu">plot_training</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-60-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
+<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-56-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
-<h3 id="model-performance-1">Model performance<a class="anchor" aria-label="anchor" href="#model-performance-1"></a>
+<h3 id="model-performance">Model performance<a class="anchor" aria-label="anchor" href="#model-performance"></a>
 </h3>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tabnetabc</span><span class="op">$</span><span class="fu">plot_prediction</span><span class="op">(</span>uncertainty_type <span class="op">=</span> <span class="st">"posterior quantile"</span>,</span>
 <span>                          plot_type <span class="op">=</span> <span class="st">"errorbar"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Back-transform scaled parameters with method: none</span></span></code></pre></div>
@@ -1502,7 +1457,7 @@ TabNet-ABC performance showing posterior quantile predictions compared
 to true parameter values.
 </p>
 </div>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="va">tabnetabc</span><span class="op">$</span><span class="fu">predictions</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta1"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Back-transform scaled parameters with method: none</span></span>
@@ -1546,20 +1501,20 @@ The shaded region represents 95% credible intervals.
 <p>With the method <strong>Tabnet-ABC</strong>, built-in attention maps
 and <strong>tabnet</strong> methods are used instead of
 <strong>innsight</strong> methods:</p>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span> <span class="op">=</span> <span class="va"><a href="../reference/explainn.html">explainn</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">tabnetabc</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "Note that Tabnet-ABC has its own set of explainability methods."</span></span>
 <span></span>
 <span><span class="va">exp</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span>data <span class="op">=</span> <span class="va">sumstats.test</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-64-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-60-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"mask_agg"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-65-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-61-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"steps"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-66-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
+<p><img src="Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-62-1.png" class="r-plt" alt="" width="768" style="display: block; margin: auto;"></p>
 </div>
 </div>
 <div class="section level2">
@@ -1964,7 +1919,7 @@ for Bayesian Parameter Inference.”</span> <em>Bioinformatics</em> 35
 <div class="section level2">
 <h2 id="session-information">Session Information<a class="anchor" aria-label="anchor" href="#session-information"></a>
 </h2>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.5.3 (2026-03-11)</span></span>
 <span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu</span></span>
