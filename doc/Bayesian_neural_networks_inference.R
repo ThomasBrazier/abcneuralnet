@@ -401,7 +401,7 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 # alpha = 4
 # beta = 3
 # # Training set sample size
-# N = 100000
+# N = 20000
 # # Test set sample size
 # p = 1000
 # # offset for the out-of-dist data
@@ -636,9 +636,8 @@ deepensemble_highdim = abcnn$new(theta.train,
             num_hidden_layers = 3,
             num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 128,
+            batch_size = 64,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.001,
             seed = 42)
 
 

@@ -773,7 +773,7 @@ n = 10
 alpha = 4
 beta = 3
 # Training set sample size
-N = 100000
+N = 20000
 # Test set sample size
 p = 1000
 # offset for the out-of-dist data
@@ -1021,9 +1021,8 @@ deepensemble_highdim = abcnn$new(theta.train,
             num_hidden_layers = 3,
             num_hidden_dim = 256,
             epochs = 20,
-            batch_size = 128,
+            batch_size = 64,
             l2_weight_decay = 1e-4,
-            epsilon_adversarial = 0.001,
             seed = 42)
 
 
@@ -1037,7 +1036,7 @@ deepensemble_highdim$fit()
 ```
 
 
-With adversarial training, the training and validation losses are different (adversarial perturbation is applied on training only), yet the training curve is smoother after a strong perturbation at the beginning:
+<!-- With adversarial training, the training and validation losses are different (adversarial perturbation is applied on training only), yet the training curve is smoother after a strong perturbation at the beginning: -->
 
 ```{r, echo = F, eval=T}
 deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
