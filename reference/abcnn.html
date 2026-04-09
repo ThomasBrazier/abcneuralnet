@@ -65,7 +65,9 @@ A new <code>abcnn</code> object is created with <code>abcnn$new()</code>.</p>
 an implementation of Gal et al. (2017), and <code>deep ensemble</code>, an implementation
 of Lakshminarayanan et al. (2017), that allow to estimate both the aleatoric and epistemic uncertainty
 for each sample. <code>monte carlo dropout</code> is an implementation of Gal and Ghahramani (2016),
-that provides a simpler model that is easier to train, despite its limitations (the dropout rate must be arbitrary chosen).</p>
+that provides a simpler model that is easier to train, despite its limitations (the dropout rate must be arbitrary chosen).
+The <code>gaussian monte carlo dropout</code> is a version of <code>monte carlo dropout</code> where the loss function is the same as in <code>concrete dropout</code>
+allowing to estimate both aleatoric and epistemic uncertainty.</p>
 <p>A fourth method is <code>tabnet-abc</code>. This is a new method, combining regular ABC inference with the <code>abc</code> R package,
 and a Tabnet neural network, as in Arik et al. (2021) and implemented in the <code>tabnet</code> R package.
 This is the same idea than in Åkesson et al. (2021) or Jiang et al. (2017), except than te MLP/CNN used to estimate summary statistics
@@ -75,7 +77,7 @@ Then these predictions are used as a supplementary set of summary statistics and
 Explain methods are specific the <code>tabnet-abc</code> model.</p>
 <p>In addition, the credible interval is calibrated with conformal prediction, as in Baragatti et al. (2024).
 As it requires a proxy of uncertainty, conformal prediction is only available for <code>concrete dropout</code>,
-<code>deep ensemble</code> and <code>monte carlo dropout</code> (only for the epistemic uncertainty for this last method).</p>
+<code>deep ensemble</code>, <code>gaussian monte carlo dropout</code> and <code>monte carlo dropout</code> (only for the epistemic uncertainty for this last method).</p>
 <p>The neural networks are implemented with the <code>torch</code> R package and support CUDA devices for training.
 The <code>luz</code> package is used as a higher level API for training and predictions with <code>torch</code>.
 The device (<code>CUDA</code> or <code>cpu</code>) is automatically detected by <code>luz</code>.</p>
@@ -412,7 +414,7 @@ Jiang B, Wu T, Zheng C, Wong WH (2017).
 
 
 <dt><code>method</code></dt>
-<dd><p>the ABC-NN method used, whether <code>tabnet-abc</code>, <code>monte carlo dropout</code>, <code>concrete dropout</code> or <code>deep ensemble</code></p></dd>
+<dd><p>the ABC-NN method used, whether <code>tabnet-abc</code>, <code>monte carlo dropout</code>, <code>gaussian monte carlo dropout</code>, <code>concrete dropout</code> or <code>deep ensemble</code></p></dd>
 
 
 <dt><code>scale_input</code></dt>
@@ -448,7 +450,7 @@ Jiang B, Wu T, Zheng C, Wong WH (2017).
 
 
 <dt><code>dropout</code></dt>
-<dd><p>dropout rate to apply in <code>monte carlo dropout</code></p></dd>
+<dd><p>dropout rate to apply in <code>monte carlo dropout</code> and <code>gaussian monte carlo dropout</code></p></dd>
 
 
 <dt><code>batch_size</code></dt>
@@ -472,7 +474,7 @@ Jiang B, Wu T, Zheng C, Wong WH (2017).
 
 
 <dt><code>patience</code></dt>
-<dd><p>patience hyperparameter for <code>luz``early stopping</code>, the number of epochs without improving until stoping training</p></dd>
+<dd><p>patience hyperparameter for <code>luz</code> <code>early stopping</code>, the number of epochs without improving until stoping training</p></dd>
 
 
 <dt><code>optimizer</code></dt>
@@ -504,7 +506,7 @@ Jiang B, Wu T, Zheng C, Wong WH (2017).
 
 
 <dt><code>num_posterior_samples</code></dt>
-<dd><p>number of posterior samples to generate in <code>monte carlo dropout</code> and <code>concrete dropout</code></p></dd>
+<dd><p>number of posterior samples to generate in <code>monte carlo dropout</code>, <code>gaussian monte carlo dropout</code> and <code>concrete dropout</code></p></dd>
 
 
 <dt><code>abc_keep_original_sumstats</code></dt>
@@ -587,7 +589,7 @@ The variable importances are the one computed with <code>tabnet</code>.</p></dd>
 
 
 <dt><code>posterior_samples</code></dt>
-<dd><p>array of all posterior samples predicted in <code>monte carlo dropout</code> and <code>concrete dropout</code></p></dd>
+<dd><p>array of all posterior samples predicted in <code>monte carlo dropout</code>, <code>gaussian monte carlo dropout</code> and <code>concrete dropout</code></p></dd>
 
 
 <dt><code>quantile_posterior</code></dt>

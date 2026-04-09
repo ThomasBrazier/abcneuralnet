@@ -29,7 +29,10 @@ that allow to estimate both the aleatoric and epistemic uncertainty for
 each sample. `monte carlo dropout` is an implementation of Gal and
 Ghahramani (2016), that provides a simpler model that is easier to
 train, despite its limitations (the dropout rate must be arbitrary
-chosen).
+chosen). The `gaussian monte carlo dropout` is a version of
+`monte carlo dropout` where the loss function is the same as in
+`concrete dropout` allowing to estimate both aleatoric and epistemic
+uncertainty.
 
 A fourth method is `tabnet-abc`. This is a new method, combining regular
 ABC inference with the `abc` R package, and a Tabnet neural network, as
@@ -46,8 +49,9 @@ performed on it. Explain methods are specific the `tabnet-abc` model.
 In addition, the credible interval is calibrated with conformal
 prediction, as in Baragatti et al. (2024). As it requires a proxy of
 uncertainty, conformal prediction is only available for
-`concrete dropout`, `deep ensemble` and `monte carlo dropout` (only for
-the epistemic uncertainty for this last method).
+`concrete dropout`, `deep ensemble`, `gaussian monte carlo dropout` and
+`monte carlo dropout` (only for the epistemic uncertainty for this last
+method).
 
 The neural networks are implemented with the `torch` R package and
 support CUDA devices for training. The `luz` package is used as a higher
@@ -404,7 +408,7 @@ Sinica*, 1595–1618.
 - `method`:
 
   the ABC-NN method used, whether `tabnet-abc`, `monte carlo dropout`,
-  `concrete dropout` or `deep ensemble`
+  `gaussian monte carlo dropout`, `concrete dropout` or `deep ensemble`
 
 - `scale_input`:
 
@@ -443,7 +447,8 @@ Sinica*, 1595–1618.
 
 - `dropout`:
 
-  dropout rate to apply in `monte carlo dropout`
+  dropout rate to apply in `monte carlo dropout` and
+  `gaussian monte carlo dropout`
 
 - `batch_size`:
 
@@ -469,7 +474,7 @@ Sinica*, 1595–1618.
 
 - `patience`:
 
-  patience hyperparameter for ``` luz``early stopping ```, the number of
+  patience hyperparameter for `luz` `early stopping`, the number of
   epochs without improving until stoping training
 
 - `optimizer`:
@@ -503,8 +508,8 @@ Sinica*, 1595–1618.
 
 - `num_posterior_samples`:
 
-  number of posterior samples to generate in `monte carlo dropout` and
-  `concrete dropout`
+  number of posterior samples to generate in `monte carlo dropout`,
+  `gaussian monte carlo dropout` and `concrete dropout`
 
 - `abc_keep_original_sumstats`:
 
@@ -592,8 +597,8 @@ Sinica*, 1595–1618.
 
 - `posterior_samples`:
 
-  array of all posterior samples predicted in `monte carlo dropout` and
-  `concrete dropout`
+  array of all posterior samples predicted in `monte carlo dropout`,
+  `gaussian monte carlo dropout` and `concrete dropout`
 
 - `quantile_posterior`:
 
