@@ -1,6 +1,3 @@
-# library(torch)
-# library(luz)
-
 # Custom MC dropout layer
 nn_mc_dropout = torch::nn_module(
   "nn_mc_dropout",

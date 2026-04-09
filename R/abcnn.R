@@ -470,6 +470,7 @@ abcnn = R6::R6Class("abcnn",
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
 
       methods = c("monte carlo dropout",
+                  "gaussian monte carlo dropout",
                   "concrete dropout",
                   "deep ensemble",
                   "tabnet-abc")
