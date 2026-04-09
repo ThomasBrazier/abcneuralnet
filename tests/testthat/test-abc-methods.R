@@ -1,5 +1,6 @@
 # Test specific ABC methods implementations
 methods = c("monte carlo dropout",
+            "gaussian monte carlo dropout",
             "concrete dropout",
             "deep ensemble",
             "tabnet-abc")
@@ -46,7 +47,7 @@ for (m in methods) {
     if (m %in% c("monte carlo dropout")) {
       expect_equal(dim(abc$posterior_samples), c(num_posterior_samples, 1, 1))
     } else {
-      if (m %in% c("concrete dropout")) {
+      if (m %in% c("concrete dropout", "gaussian monte carlo dropout")) {
         expect_equal(dim(abc$posterior_samples), c(num_posterior_samples, 1, 2))
       }
     }
@@ -110,6 +111,18 @@ test_that("Method-specific outputs are correct", {
   expect_true(!is.na(abc_mc$epistemic_uncertainty))
   expect_true(!is.na(abc_mc$overall_uncertainty))
 
+
+  # Test Gaussian Monte Carlo Dropout outputs
+  abc_cd = abcnn$new(
+    theta_training, sumstats_training, sumstats_observed,
+    method = "gaussian monte carlo dropout", epochs = 2, verbose = FALSE
+  )
+  abc_cd$fit()
+  abc_cd$predict()
+
+  expect_true(!is.na(abc_cd$aleatoric_uncertainty))
+  expect_true(!is.na(abc_cd$epistemic_uncertainty))
+  expect_true(!is.na(abc_cd$overall_uncertainty))
 
   # Test Concrete Dropout outputs
   abc_cd = abcnn$new(

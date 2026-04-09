@@ -1,6 +1,6 @@
 # Integration tests for complete end-to-end workflows
 
-methods = c("monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
+methods = c("monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
 
 for (method in methods) {
   test_that(paste0("Complete workflow works for ", method), {

@@ -3,21 +3,21 @@
 #' @param observed a vector of summary statistics computed on the data
 #' @param theta a vector, matrix or data frame of the simulated theta_parameter values
 #' @param sumstat a vector, matrix or data frame of the simulated summary statistics
-#' @param method either `monte carlo dropout`, `concrete dropout`, `tabnet-abc` or `deep ensemble`, See `details`
+#' @param method either `monte carlo dropout`, `gaussian monte carlo dropout`, `concrete dropout`, `tabnet-abc` or `deep ensemble`, See `details`
 #' @param scale_input the method to scale summary statistics before training (`none` (default), `minmax` or `robustscaler`)
 #' @param scale_target the method to scale the parameter to estimate before training (`none` (default), `minmax` or `robustscaler`)
 #' @param num_hidden_layers the number of hidden layers in the Neural Network (default = 3), excluding the input and output layers
 #' @param num_hidden_dim the dimension of layers (i.e. number of neurons) in each layer of the Neural Network (default=128)
 #' @param validation_split the proportion of samples retained for validation in `luz`
 #' @param test_split the proportion of samples retained for evaluation in `luz`
-#' @param dropout the dropout rate for `monte carlo dropout`, i.e. the proportion of neurons dropped in each layer (must be between 0.1 and 0.5)
+#' @param dropout the dropout rate for `monte carlo dropout` and `gaussian monte carlo dropout`, i.e. the proportion of neurons dropped in each layer (must be between 0.1 and 0.5)
 #' @param batch_size the mini-batch size
 #' @param learning_rate the learning rate
 #' @param epochs the number of epochs
 #' @param early_stopping logical, whether to use early stopping or not (not implemented yet for the `deep ensemble` method)
 #' @param patience the patience (number of iterations) before early stopping
 #' @param optimizer a "torch_optimizer_generator", the optimizer to use in `luz` (default=optim_adam)
-#' @param loss a custom loss function passed to the ``monte carlo dropout` method (default=nn_mse_loss())
+#' @param loss a custom loss function passed to the `monte carlo dropout` method (default=nn_mse_loss())
 #' @param l2_weight_decay the L2 weigth decay value for L2 regularization
 #' @param tol the tolerance rate in `abc` for the `tabnet-abc` method (`tolerance`). The required proportion of points accepted nearest the target values.
 #' @param abc_method a character string indicating the type of ABC algorithm to be applied. Possible values are "rejection", "loclinear", "neuralnet" and "ridge".
@@ -56,6 +56,8 @@
 #' of Lakshminarayanan et al. (2017), that allow to estimate both the aleatoric and epistemic uncertainty
 #' for each sample. `monte carlo dropout` is an implementation of Gal and Ghahramani (2016),
 #' that provides a simpler model that is easier to train, despite its limitations (the dropout rate must be arbitrary chosen).
+#' The `gaussian monte carlo dropout` is a version of `monte carlo dropout` where the loss function is the same as in `concrete dropout`
+#' allowing to estimate both aleatoric and epistemic uncertainty.
 #'
 #'
 #' A fourth method is `tabnet-abc`. This is a new method, combining regular ABC inference with the `abc` R package,
@@ -69,7 +71,7 @@
 #'
 #' In addition, the credible interval is calibrated with conformal prediction, as in Baragatti et al. (2024).
 #' As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`,
-#' `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method).
+#' `deep ensemble`, `gaussian monte carlo dropout` and `monte carlo dropout` (only for the epistemic uncertainty for this last method).
 #'
 #'
 #' The neural networks are implemented with the `torch` R package and support CUDA devices for training.
@@ -231,7 +233,7 @@ abcnn = R6::R6Class("abcnn",
     observed = NULL,
     #' @field model the `luz` model
     model=NULL,
-    #' @field method the ABC-NN method used, whether `tabnet-abc`, `monte carlo dropout`, `concrete dropout` or `deep ensemble`
+    #' @field method the ABC-NN method used, whether `tabnet-abc`, `monte carlo dropout`, `gaussian monte carlo dropout`, `concrete dropout` or `deep ensemble`
     method='concrete dropout',
     #' @field scale_input the scaling method for summary statistics
     scale_input=NULL,
@@ -249,7 +251,7 @@ abcnn = R6::R6Class("abcnn",
     credible_interval_p = NA,
     #' @field test_split proportion of training samples to retain for testing (at each training iteration)
     test_split=NA,
-    #' @field dropout dropout rate to apply in `monte carlo dropout`
+    #' @field dropout dropout rate to apply in `monte carlo dropout` and `gaussian monte carlo dropout`
     dropout=NA,
     #' @field batch_size batch size in `luz`
     batch_size=NA,
@@ -261,7 +263,7 @@ abcnn = R6::R6Class("abcnn",
     callbacks=NULL,
     #' @field verbose logical, whether to print messages and progress bars for the user
     verbose=NULL,
-    #' @field patience patience hyperparameter for `luz``early stopping`, the number of epochs without improving until stoping training
+    #' @field patience patience hyperparameter for `luz` `early stopping`, the number of epochs without improving until stoping training
     patience=4,
     #' @field optimizer `torch` custom optimizer
     optimizer=NULL,
@@ -277,7 +279,7 @@ abcnn = R6::R6Class("abcnn",
     tol=NULL,
     #' @field abc_method `abc` method for `tabnet-abc`
     abc_method=NULL,
-    #' @field num_posterior_samples number of posterior samples to generate in `monte carlo dropout` and `concrete dropout`
+    #' @field num_posterior_samples number of posterior samples to generate in `monte carlo dropout`, `gaussian monte carlo dropout` and `concrete dropout`
     num_posterior_samples=1000,
     #' @field abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value). 
     #' If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
@@ -320,7 +322,7 @@ abcnn = R6::R6Class("abcnn",
     evaluation=NULL,
     #' @field eval_metrics list of custom metrics to use at evaluation (not implemented yet)
     eval_metrics=NA,
-    #' @field posterior_samples array of all posterior samples predicted in `monte carlo dropout` and `concrete dropout`
+    #' @field posterior_samples array of all posterior samples predicted in `monte carlo dropout`, `gaussian monte carlo dropout` and `concrete dropout`
     posterior_samples = NA,
     #' @field quantile_posterior quantiles of the posterior distributions, given the credible interval significance required
     quantile_posterior = NA,
@@ -469,6 +471,7 @@ abcnn = R6::R6Class("abcnn",
 
       if(dropout < 0.1 | dropout > 0.5) stop("The 'dropout' rate must be between 0.1 and 0.5.")
 
+      # Check method name
       methods = c("monte carlo dropout",
                   "gaussian monte carlo dropout",
                   "concrete dropout",
@@ -623,7 +626,19 @@ abcnn = R6::R6Class("abcnn",
                         num_output_dim = self$output_dim,
                         num_hidden_layers = self$num_hidden_layers,
                         dropout_hidden = self$dropout) %>%
-            luz::set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
+            luz::set_opt_hparams(lr = self$learning_rate,
+                                 weight_decay = self$l2_weight_decay)
+        }
+        if (self$method == "gaussian monte carlo dropout") {
+          self$model = gaussian_mc_model %>%
+            luz::setup(optimizer = self$optimizer) %>%
+            luz::set_hparams(num_input_dim = self$input_dim,
+                             num_hidden_dim = self$num_hidden_dim,
+                             num_output_dim = self$output_dim,
+                             num_hidden_layers = self$num_hidden_layers,
+                             clamp = self$variance_clamping) %>%
+            luz::set_opt_hparams(lr = self$learning_rate,
+                                 weight_decay = self$l2_weight_decay)
         }
         if (self$method == "concrete dropout") {
           # TODO Make utility functions for weight_regularizer and weight_regularizer
@@ -641,7 +656,8 @@ abcnn = R6::R6Class("abcnn",
                         weight_regularizer = self$weight_regularizer,
                         dropout_regularizer = self$weight_regularizer,
                         clamp = self$variance_clamping) %>%
-            luz::set_opt_hparams(lr = self$learning_rate, weight_decay = self$l2_weight_decay)
+            luz::set_opt_hparams(lr = self$learning_rate,
+                                 weight_decay = self$l2_weight_decay)
         }
         if (self$method == "deep ensemble") {
 
@@ -711,6 +727,18 @@ abcnn = R6::R6Class("abcnn",
 
       }
 
+      if (self$method == 'gaussian monte carlo dropout') {
+        # Load data
+        # dl = self$dataloader()
+        
+        # Fit
+        self$fitted = self$model %>%
+          luz::fit(dl$train,
+                   epochs = self$epochs,
+                   valid_data = dl$valid,
+                   callbacks = self$callbacks)
+      }
+      
       if (self$method == 'concrete dropout') {
         # Load data
         # dl = self$dataloader()
@@ -774,7 +802,7 @@ abcnn = R6::R6Class("abcnn",
 
       # TODO luz::evaluate currently not working with Deep Ensemble
       # fitted returns n values named value.x instead of a single value
-      if (self$method == "monte carlo dropout" | self$method == "concrete dropout") {
+      if (self$method == "monte carlo dropout" | self$method == "gaussian monte carlo dropout" | self$method == "concrete dropout") {
         print("Evaluation")
         self$evaluation = self$fitted %>% luz::evaluate(data = dl$test)
         self$eval_metrics = luz::get_metrics(self$evaluation)
@@ -1018,6 +1046,75 @@ abcnn = R6::R6Class("abcnn",
                                          posterior_upper_ci = posterior_upper_ci)
         }
 
+        if (self$method == 'gaussian monte carlo dropout') {
+
+          mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
+          for (k in cli::cli_progress_along(1:self$num_posterior_samples)) {
+            preds = self$fitted$model(observed)
+            mc_samples[k, , ] = cbind(as.matrix(preds[1]), as.matrix(preds[2]))
+          }
+
+          # the means are in the first output column
+          means = mc_samples[, , 1:self$output_dim, drop = F]
+          logvar = mc_samples[, , (self$output_dim + 1):(self$output_dim * 2), drop = F]
+          
+          self$posterior_samples = mc_samples
+          self$output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(self$theta), x, sep = "_")))
+          
+          # average over the MC samples
+          # If more than one parameter to estimate
+          # TODO Generalize to any number of output dim
+          if (self$output_dim > 1) {
+            # Lines are observations
+            # Columns are parameters
+            predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
+            epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
+            aleatoric_uncertainty = apply(logvar, 3, function(x) exp(colMeans(x)))
+            
+            posterior_median = apply(means, 3, function(x) apply(x, 2, median))
+            posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
+            posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
+            
+          } else {
+            predictive_mean = apply(means, 2, mean)
+            epistemic_uncertainty = apply(means, 2, var)
+            aleatoric_uncertainty = exp(colMeans(logvar))
+            
+            posterior_median = apply(means, 2, median)
+            posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
+            posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
+          }
+          
+          
+          predictive_mean = as.data.frame(array(predictive_mean, dim = c(observed$shape[1], self$output_dim)))
+          colnames(predictive_mean) = colnames(self$theta)
+          self$predictive_mean = predictive_mean
+          
+          epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(observed$shape[1], self$output_dim)))
+          colnames(epistemic_uncertainty) = colnames(self$theta)
+          self$epistemic_uncertainty = sqrt(epistemic_uncertainty)
+          
+          aleatoric_uncertainty = as.data.frame(array(aleatoric_uncertainty, dim = c(observed$shape[1], self$output_dim)))
+          colnames(aleatoric_uncertainty) = colnames(self$theta)
+          self$aleatoric_uncertainty = sqrt(aleatoric_uncertainty)
+          
+          posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_median) = colnames(self$theta)
+          
+          posterior_lower_ci = as.data.frame(array(posterior_lower_ci, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_lower_ci) = colnames(self$theta)
+          
+          posterior_upper_ci = as.data.frame(array(posterior_upper_ci, dim = c(observed$shape[1], self$output_dim)))
+          colnames(posterior_upper_ci) = colnames(self$theta)
+          
+          self$quantile_posterior = list(mean = predictive_mean,
+                                         median = posterior_median,
+                                         posterior_lower_ci = posterior_lower_ci,
+                                         posterior_upper_ci = posterior_upper_ci)
+          
+          self$overall_uncertainty = sqrt(aleatoric_uncertainty) + sqrt(epistemic_uncertainty)
+        }
+        
         if (self$method == 'concrete dropout') {
           # pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
           # pb = progress_estimated(self$num_posterior_samples)
@@ -1291,7 +1388,7 @@ abcnn = R6::R6Class("abcnn",
         return(list(sumstat_adj = scaled_input, theta_adj = scaled_target))
       }
 
-      if (self$method == 'monte carlo dropout' | self$method == 'concrete dropout') {
+      if (self$method == 'monte carlo dropout' | self$method == 'gaussian monte carlo dropout' | self$method == 'concrete dropout') {
         # Data loader (MC dropout and Concrete dropout)
         train_ds = torch::dataset_subset(ds, train_idx)
         train_dl = torch::dataloader(train_ds, batch_size = self$batch_size, shuffle = TRUE, drop_last = TRUE)
@@ -1445,7 +1542,7 @@ abcnn = R6::R6Class("abcnn",
                                                method = self$scale_target,
                                                type = "backward")
 
-      if (self$method == "monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
+      if (self$method == "monte carlo dropout" | self$method == "gaussian monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
         posterior_median = scaler(self$quantile_posterior$median,
                                     self$target_summary,
                                     method = self$scale_target,
@@ -1521,7 +1618,7 @@ abcnn = R6::R6Class("abcnn",
                                 "epistemic_conformal_credible_interval",
                                 "overall_conformal_credible_interval")
 
-      if (self$method == "monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
+      if (self$method == "monte carlo dropout" | self$method == "gaussian monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
         predictions$posterior_median = tidyr::gather(posterior_median,
                                 key = "variable")[,2]
         predictions$posterior_lower_ci = tidyr::gather(posterior_lower_ci,
@@ -1588,7 +1685,7 @@ abcnn = R6::R6Class("abcnn",
           if (self$method != "deep ensemble") {
             train_metric = as.numeric(unlist(self$fitted$records$metrics$train))
             valid_metric = as.numeric(unlist(self$fitted$records$metrics$valid))
-            eval = ifelse(self$method == "monte carlo dropout" | self$method == "concrete dropout",
+            eval = ifelse(self$method == "monte carlo dropout" | self$method == "gaussian monte carlo dropout" | self$method == "concrete dropout",
                           self$eval_metrics$value,
                           NA)
 
@@ -1808,7 +1905,7 @@ abcnn = R6::R6Class("abcnn",
           p = ggplot2::ggplot()
         }
 
-        if (self$method %in% c("tabnet-abc", "monte carlo dropout", "concrete dropout")) {
+        if (self$method %in% c("tabnet-abc", "gaussian monte carlo dropout", "monte carlo dropout", "concrete dropout")) {
           posteriors = self$posterior_samples[,sample,]
           posteriors = as.data.frame(posteriors)
           posteriors = posteriors[,1:self$output_dim, drop = FALSE]

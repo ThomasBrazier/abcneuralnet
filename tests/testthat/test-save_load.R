@@ -12,6 +12,7 @@ test_that("save_abcnn() and load_abcnn() functions work", {
   num_posterior_samples = 50 
 
   methods = c("tabnet-abc",
+              "gaussian monte carlo dropout",
               "monte carlo dropout",
               "concrete dropout",
               "deep ensemble")

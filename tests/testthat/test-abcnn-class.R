@@ -10,7 +10,7 @@ test_that("abcnn class initializes correctly", {
   sumstats_observed = data.frame(stat1 = 0.4, stat2 = 0.2)
   
   # Test initialization with different methods
-  methods = c("monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
+  methods = c("monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
   
   for (method in methods) {
     expect_no_error({
@@ -51,7 +51,7 @@ test_that("abcnn parameter validation works", {
     stat2 = theta_training$param1^2 + rnorm(n_samples, 0, 0.1)
   )
   sumstats_observed = data.frame(stat1 = 0.4, stat2 = 0.2)
-  methods = c("monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
+  methods = c("monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
   
   # Test invalid method
   expect_error(
@@ -72,7 +72,7 @@ test_that("abcnn plotting methods work", {
   )
   sumstats_observed = data.frame(stat1 = 0.4, stat2 = 0.2)
   
-  methods = c("monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
+  methods = c("monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble", "tabnet-abc")
   
   for (method in methods) {
     abc = abcnn$new(

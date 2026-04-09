@@ -78,7 +78,7 @@ test_that("ABC-NN handle correctly input and output with one or more dimensions"
   test_data = make_test_data()
 
   # Test each method sequentially
-  for (met in c("monte carlo dropout", "concrete dropout", "deep ensemble")) {
+  for (met in c("monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble")) {
     # Test 1D
     theta_training = data.frame(y = test_data$train_y$y1)
     sumstats_training = data.frame(x = test_data$train_x$x1)
@@ -149,6 +149,7 @@ test_that("Test random seed when initializing a torch model always return the sa
   num_posterior_samples = 50
 
   methods = c("monte carlo dropout",
+              "gaussian monte carlo dropout",
               "concrete dropout",
               "deep ensemble",
               "tabnet-abc")

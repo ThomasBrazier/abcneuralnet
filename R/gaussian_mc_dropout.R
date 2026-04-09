@@ -6,38 +6,43 @@
 # Custom MC dropout layer is the same as nn_mc_dropout
 
 # Model with Dense layers and MC dropout + heteroscedastic loss
-gaussian_mc_dropout_model = torch::nn_module(
+gaussian_mc_model = torch::nn_module(
   "GaussianMCDropout",
   initialize = function(num_input_dim = 1,
                         num_hidden_dim = 1024,
                         num_output_dim = 1,
                         num_hidden_layers = 3,
-                        dropout_hidden = 0.5) {
+                        dropout_hidden = 0.5,
+                        clamp = c(-1e25, 1e25)) {
+
+    self$num_hidden_layers = num_hidden_layers
+
     # Set a minimal model with a single layer and dropout on inputs (facultative)
-    self$mc_dropout = torch::nn_sequential(
+    self$gaussian_mc_dropout = torch::nn_sequential(
       torch::nn_linear(num_input_dim, num_hidden_dim),
       nn_mc_dropout(p = dropout_hidden),
       torch::nn_leaky_relu())
 
     for (i in 2:(num_hidden_layers)) {
-      self$mc_dropout$add_module(paste0("linear_", i), torch::nn_linear(num_hidden_dim, num_hidden_dim))
-      self$mc_dropout$add_module(paste0("dropout_", i), nn_mc_dropout(p = dropout_hidden))
-      self$mc_dropout$add_module(paste0("relu_", i), torch::nn_leaky_relu())
+      self$gaussian_mc_dropout$add_module(paste0("linear_", i), torch::nn_linear(num_hidden_dim, num_hidden_dim))
+      self$gaussian_mc_dropout$add_module(paste0("dropout_", i), nn_mc_dropout(p = dropout_hidden))
+      self$gaussian_mc_dropout$add_module(paste0("relu_", i), torch::nn_leaky_relu())
     }
 
     # Add output layers
     self$linear_mu = torch::nn_linear(num_hidden_dim, num_output_dim)
     self$linear_logvar = torch::nn_linear(num_hidden_dim, num_output_dim)
+    
+    self$clamp = clamp
   },
   
   # this function is called whenever we call our model on input.
   forward = function(x) {
-    self$mc_dropout$train()
-    x1 = self$mc_dropout(x)
+    x1 = self$gaussian_mc_dropout(x)
     
     # Two output layers (mu + log var)
-    mean = self$conc_drop_mu(x1, self$linear_mu)
-    log_var = self$conc_drop_logvar(x1, self$linear_logvar)
+    mean = self$linear_mu(x1)
+    log_var = self$linear_logvar(x1)
     
     # Ensure that the variance does not become too small, which can lead to numerical instability
     log_var = torch::torch_clamp(log_var,
