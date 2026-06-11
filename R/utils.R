@@ -102,6 +102,8 @@ log1pexp = function(x, threshold = 10) {
 #' @param type is `forward` when scaling inputs or targets and `backward` when back-transforming targets at prediction time
 #'
 #' @return a data frame with scaled values
+#' 
+#' @export
 #'
 scaler = function(x, sum_stats, method = "minmax", type = "forward") {
 
