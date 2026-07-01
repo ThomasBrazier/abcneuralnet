@@ -132,6 +132,22 @@ The package automatically detects and utilizes CUDA-enabled GPUs through the **l
 
 
 
+# Uncertainty quantification in statistical inference: epistemic vs. aleatoric
+
+
+
+Understanding the sources of uncertainty is crucial for robust statistical inference and is the core objective of uncertainty quantification. Uncertainty can broadly be categorized into two types: epistemic and aleatoric. The epistemic uncertainty reflects our lack of knowledge and how well/bad the model performs for predictions. It’s reducible – meaning it shrinks as we gather more data or refine our models. In the case of ABC, it stems from factors like sparse data, complex relationships between summary statistics and parameters, or poorly defined prior assumptions. Essentially, it's the uncertainty about the true posterior distribution. On the other hand, aleatoric uncertainty represents inherent randomness, i.e. noise, within the data itself. It’s irreducible. It’s a fundamental property of the system and cannot be reduced by collecting more data. In population genomics, examples include stochastic genetic drift, rare variants, or sequencing/genotyping errors. It is the uncertainty in the data itself. In the figure, both epistemic and aleatoric uncertainties are represented over the underlying data, estimated with either Concrete Dropout or Deep Ensemble. The epistemic uncertainty is globally narrow, but increases sharply in regions that have not been seen during training (-2 < x < 2), indicating a lower confidence when the model doesn't know (i.e. prediction out of the training distribution). On the other hand, aleatoric uncertainty within and close to the region where the data is noisy, reflecting the prediction uncertainty due to the inherent noise in the data. Crucially, both types of uncertainty must be accounted for when doing statistical inference. Ignoring either can lead to flawed conclusions. Combining both types of uncertainty helps us quantify the predictive uncertainty — the model’s confidence — taking into account noise it can explain and noise it cannot. It allows for more realistic and reliable estimates of credible intervals, and facilitates informed model checking and interpretation.
+
+
+
+![Two different types of uncertainty estimated with Concrete Dropout and Deep Ensemble methods in the 'abcneuralnet' package. The aleatoric uncertainty (data-driven) is in orange, and the epistemic uncertainty (model-driven) is in purple.](../inst/extdata/epistemic_aleatoric.jpeg)
+
+
+
+
+
+
+
 # Case study 1: Linear Regression with uncertainty quantification
 
 

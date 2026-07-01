@@ -1495,19 +1495,23 @@ abcnn = R6::R6Class("abcnn",
       # Compute the conformal quantile
       alpha = 1 - self$credible_interval_p
 
-      q_level = ceiling((n_cal + 1)*(1 - alpha))/n_cal
-      qhat = sort(scores_epistemic)[q_level*n_cal]
+      # q_level = ceiling((n_cal + 1)*(1 - alpha))/n_cal
+      # qhat = sort(scores_epistemic)[q_level*n_cal]
       # # It is the same as above
-      quantile(scores_epistemic, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE)
+      # quantile(scores_epistemic, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE)
 
       # For the new data sample x, approximation of Eπ[θ | x] and confidence set for θ :
       # apply(scores_epistemic, 2, function(x) sort(x[q_level * n_cal]))
 
-      epistemic_conformal_quantile = apply(scores_epistemic, 2, function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
+      epistemic_conformal_quantile = apply(scores_epistemic, 2,
+                                           function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal,
+                                                                na.rm = TRUE))
       epistemic_conformal_quantile = as.data.frame(t(epistemic_conformal_quantile))
       colnames(epistemic_conformal_quantile) = abcnn_conformal$theta_names
 
-      overall_conformal_quantile = apply(scores_overall, 2, function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE))
+      overall_conformal_quantile = apply(scores_overall, 2,
+                                         function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal,
+                                                              na.rm = TRUE))
       overall_conformal_quantile = as.data.frame(t(overall_conformal_quantile))
       colnames(overall_conformal_quantile) = abcnn_conformal$theta_names
 
@@ -1515,6 +1519,7 @@ abcnn = R6::R6Class("abcnn",
       self$overall_conformal_quantile = overall_conformal_quantile
 
       # Clean up deep copies
+      # TODO optim
       rm(abcnn_conformal)
     },
 
