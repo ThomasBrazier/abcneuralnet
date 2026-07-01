@@ -129,19 +129,19 @@ explainn = R6::R6Class("explainn",
                             # model_concrete
                             model_gaussian_mc = model_gaussian_mc$gaussian_mc_dropout
                             # model_concrete
-                            
-                            model_sequential = torch::nn_sequential(model_gaussian_mc["0"])
-                            
-                            for (i in 1:(x$num_hidden_layers - 1)) {
+
+                            model_sequential = torch::nn_sequential(model_gaussian_mc["0"])[[1]]
+
+                            for (i in 2:(x$num_hidden_layers)) {
                               mod = model_gaussian_mc[paste0("linear_", i)]
-                              model_sequential$add_module(name = paste0("linear_", i), module = mod)
+                              model_sequential$add_module(name = paste0("linear_", i), module = mod[[1]])
                             }
-                            
+
                             mod = x$fitted$model$linear_mu
                             model_sequential$add_module(name = "output_mu", module = mod)
-                            
+
                           }
-                          
+
                           if (self$model_method == "concrete dropout") {
                             # FOR A CONCRETE MODEL
                             model = x$fitted$model

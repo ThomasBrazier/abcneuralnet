@@ -21,7 +21,7 @@
 #' @param l2_weight_decay the L2 weigth decay value for L2 regularization
 #' @param tol the tolerance rate in `abc` for the `tabnet-abc` method (`tolerance`). The required proportion of points accepted nearest the target values.
 #' @param abc_method a character string indicating the type of ABC algorithm to be applied. Possible values are "rejection", "loclinear", "neuralnet" and "ridge".
-#' @param abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value). 
+#' @param abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
 #' @param num_posterior_samples the number of posterior samples to predict with the `concrete dropout` and `monte carlo dropout` methods
 #' @param credible_interval_p the alpha value for the quantile credible interval (default=0.95, with alpha/2 and 1 - alpha/2 quantiles)
 #' @param num_conformal the number of training samples retained for Conformal Prediction (default=1,000)
@@ -281,7 +281,7 @@ abcnn = R6::R6Class("abcnn",
     abc_method=NULL,
     #' @field num_posterior_samples number of posterior samples to generate in `monte carlo dropout`, `gaussian monte carlo dropout` and `concrete dropout`
     num_posterior_samples=1000,
-    #' @field abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value). 
+    #' @field abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
     #' If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
     #' If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
     #' The variable importances are the one computed with `tabnet`.
@@ -395,7 +395,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param loss `torch` nn loss function
     #' @param abc_method ABC sampling method in `abc` function (only for `tabnet-abc`)
     #' @param tol tolerance rate for `abc` functions (only for `tabnet-abc`)
-    #' @param abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value). 
+    #' @param abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
     #' If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
     #' If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
     #' The variable importances are the one computed with `tabnet`.
@@ -730,7 +730,7 @@ abcnn = R6::R6Class("abcnn",
       if (self$method == 'gaussian monte carlo dropout') {
         # Load data
         # dl = self$dataloader()
-        
+
         # Fit
         self$fitted = self$model %>%
           luz::fit(dl$train,
@@ -738,7 +738,7 @@ abcnn = R6::R6Class("abcnn",
                    valid_data = dl$valid,
                    callbacks = self$callbacks)
       }
-      
+
       if (self$method == 'concrete dropout') {
         # Load data
         # dl = self$dataloader()
@@ -855,7 +855,7 @@ abcnn = R6::R6Class("abcnn",
           importances = self$fitted$fit$importances
           importances = importances[order(importances$importance, decreasing = TRUE),]
           importances$relative_importance = importances$importance / max(importances$importance)
-          
+
           # Sample the n most important (or relative importance > x if a proportion is given)
           # where relative importance is importance / max(importance)
           # if TRUE, keep all sumstats
@@ -866,14 +866,14 @@ abcnn = R6::R6Class("abcnn",
           } else {
             if (self$abc_keep_original_sumstats >= 1) {
               varnames = importances$variables[1:self$abc_keep_original_sumstats]
-              
+
               new_sumstats_train = cbind(tabnet_train, self$sumstat_adj[,varnames, drop = F])
               new_sumstats_observed = cbind(tabnet_observed, self$observed_adj[,varnames, drop = F])
-              
+
             } else {
               if (self$abc_keep_original_sumstats > 0 & self$abc_keep_original_sumstats < 1) {
                 varnames = importances$variables[which(importances$relative_importance >= self$abc_keep_original_sumstats)]
-                
+
                 new_sumstats_train = cbind(tabnet_train, self$sumstat_adj[,varnames, drop = F])
                 new_sumstats_observed = cbind(tabnet_observed, self$observed_adj[,varnames, drop = F])
               } else {
@@ -882,7 +882,7 @@ abcnn = R6::R6Class("abcnn",
               }
             }
           }
-          
+
           self$num_posterior_samples = nrow(new_sumstats_train) * self$tol
           nsamples = nrow(self$observed_adj)
           ndim = ncol(self$theta_adj)
@@ -979,7 +979,7 @@ abcnn = R6::R6Class("abcnn",
           # Mean prediction on axis 3, multiplied by the number of parameters to estimate
           # pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
           # pb = progress_estimated(self$num_posterior_samples)
-          
+
           mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], self$output_dim))
           for (k in cli::cli_progress_along(1:self$num_posterior_samples)) {
             # pb$tick()$print()
@@ -1048,6 +1048,8 @@ abcnn = R6::R6Class("abcnn",
 
         if (self$method == 'gaussian monte carlo dropout') {
 
+          self$fitted$model$eval()
+
           mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
           for (k in cli::cli_progress_along(1:self$num_posterior_samples)) {
             preds = self$fitted$model(observed)
@@ -1057,10 +1059,10 @@ abcnn = R6::R6Class("abcnn",
           # the means are in the first output column
           means = mc_samples[, , 1:self$output_dim, drop = F]
           logvar = mc_samples[, , (self$output_dim + 1):(self$output_dim * 2), drop = F]
-          
+
           self$posterior_samples = mc_samples
           self$output_names = unlist(lapply(c("mu", "sigma"), function(x) paste(colnames(self$theta), x, sep = "_")))
-          
+
           # average over the MC samples
           # If more than one parameter to estimate
           # TODO Generalize to any number of output dim
@@ -1070,55 +1072,55 @@ abcnn = R6::R6Class("abcnn",
             predictive_mean = apply(means, 3, function(x) apply(x, 2, mean))
             epistemic_uncertainty = apply(means, 3, function(x) apply(x, 2, var))
             aleatoric_uncertainty = apply(logvar, 3, function(x) exp(colMeans(x)))
-            
+
             posterior_median = apply(means, 3, function(x) apply(x, 2, median))
             posterior_lower_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2)))
             posterior_upper_ci = apply(means, 3, function(x) apply(x, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2))))
-            
+
           } else {
             predictive_mean = apply(means, 2, mean)
             epistemic_uncertainty = apply(means, 2, var)
             aleatoric_uncertainty = exp(colMeans(logvar))
-            
+
             posterior_median = apply(means, 2, median)
             posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
             posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))
           }
-          
-          
+
+
           predictive_mean = as.data.frame(array(predictive_mean, dim = c(observed$shape[1], self$output_dim)))
           colnames(predictive_mean) = colnames(self$theta)
           self$predictive_mean = predictive_mean
-          
+
           epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(observed$shape[1], self$output_dim)))
           colnames(epistemic_uncertainty) = colnames(self$theta)
           self$epistemic_uncertainty = sqrt(epistemic_uncertainty)
-          
+
           aleatoric_uncertainty = as.data.frame(array(aleatoric_uncertainty, dim = c(observed$shape[1], self$output_dim)))
           colnames(aleatoric_uncertainty) = colnames(self$theta)
           self$aleatoric_uncertainty = sqrt(aleatoric_uncertainty)
-          
+
           posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
           colnames(posterior_median) = colnames(self$theta)
-          
+
           posterior_lower_ci = as.data.frame(array(posterior_lower_ci, dim = c(observed$shape[1], self$output_dim)))
           colnames(posterior_lower_ci) = colnames(self$theta)
-          
+
           posterior_upper_ci = as.data.frame(array(posterior_upper_ci, dim = c(observed$shape[1], self$output_dim)))
           colnames(posterior_upper_ci) = colnames(self$theta)
-          
+
           self$quantile_posterior = list(mean = predictive_mean,
                                          median = posterior_median,
                                          posterior_lower_ci = posterior_lower_ci,
                                          posterior_upper_ci = posterior_upper_ci)
-          
+
           self$overall_uncertainty = sqrt(aleatoric_uncertainty) + sqrt(epistemic_uncertainty)
         }
-        
+
         if (self$method == 'concrete dropout') {
           # pb = txtProgressBar(min = 1, max = self$num_posterior_samples, style = 3)
           # pb = progress_estimated(self$num_posterior_samples)
-          
+
           mc_samples = array(0, dim = c(self$num_posterior_samples, observed$shape[1], 2 * self$output_dim))
           for (k in cli::cli_progress_along(1:self$num_posterior_samples)) {
             # pb$tick()$print()
@@ -1204,10 +1206,10 @@ abcnn = R6::R6Class("abcnn",
           n_obs = nrow(self$observed_adj)
           out_mu_sample  = torch::torch_zeros(c(n_obs, self$output_dim, self$num_networks))
           out_sig_sample = torch::torch_zeros(c(n_obs, self$output_dim, self$num_networks))
-          
+
           # pb = txtProgressBar(min = 1, max = self$num_networks, style = 3)
           # pb = progress_estimated(self$num_networks)
-          
+
           for (i in cli::cli_progress_along(1:self$num_networks)) {
             # pb$tick()$print()
             # print(paste("Network", i))
@@ -1747,7 +1749,7 @@ abcnn = R6::R6Class("abcnn",
     plot_prediction = function(uncertainty_type = "conformal",
                                epistemic_uncertainty = TRUE,
                               plot_type = "line") {
-      
+
       # if only few samples, force the type of plot = errorbar
       if (self$n_obs < 3) {
         plot_type = "errorbar"
@@ -1809,37 +1811,37 @@ abcnn = R6::R6Class("abcnn",
             geom_line(aes(x = x, y = mean), color = "black") +
             facet_wrap(~ parameter, scales = "free") +
             geom_ribbon(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, fill = "Overall"), alpha = 0.3)
-          
+
           if (isTRUE(epistemic_uncertainty)) {
             p = p +
               geom_ribbon(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, fill = "Epistemic"), alpha = 0.3)
           }
-          
+
           p = p +
             xlab("Summary statistics") + ylab("Predicted parameters") +
             scale_fill_manual(name = "Uncertainty", values = cols) +
             theme_bw()
-          
+
           return(p)
-          
+
         } else {
           if (plot_type == "errorbar") {
             p = ggplot2::ggplot(data = df_predicted, aes(x = x)) +
               facet_wrap(~ parameter, scales = "free") +
               geom_errorbar(aes(x = x, ymin = ci_overall_lower, ymax = ci_overall_upper, colour = "Overall"), alpha = 0.5)
-            
+
             if (isTRUE(epistemic_uncertainty)) {
               p = p +
                 geom_errorbar(aes(x = x, ymin = ci_e_lower, ymax = ci_e_upper, colour = "Epistemic"), alpha = 0.5)
             }
-            
+
             p = p + geom_point(aes(x = x, y = mean), color = "black") +
               xlab("Summary statistics") + ylab("Predicted parameters") +
               scale_colour_manual(name = "Uncertainty", values = cols) +
               theme_bw()
-            
+
             return(p)
-              
+
           }
         }
 
@@ -1936,13 +1938,13 @@ abcnn = R6::R6Class("abcnn",
         p = p +
           geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "black")) +
           geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1)
-        
+
         if (isTRUE(epistemic_uncertainty)) {
           p = p +
             geom_vline(data = tidy_predictions, aes(xintercept = ci_e_lower, colour = "Epistemic")) +
             geom_vline(data = tidy_predictions, aes(xintercept = ci_e_upper, colour = "Epistemic"))
         }
-        
+
         p = p +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
@@ -2060,13 +2062,13 @@ abcnn = R6::R6Class("abcnn",
 
       pred$ci_e_upper = pred$predictive_mean + pred$epistemic_conformal_credible_interval
       pred$ci_e_lower = pred$predictive_mean - pred$epistemic_conformal_credible_interval
-      
-      
+
+
       # Sort and index observations
       # pred = pred %>%
       #   group_by(.data$param) %>%
       #   arrange(.data$true_value, .by_group = TRUE)
-      # 
+      #
       # pred$idx = 1:nrow(pred)
 
       ggplot2::ggplot(data = pred, aes(x = true_value)) +

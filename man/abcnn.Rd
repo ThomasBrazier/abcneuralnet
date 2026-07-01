@@ -26,6 +26,8 @@ an implementation of Gal et al. (2017), and \verb{deep ensemble}, an implementat
 of Lakshminarayanan et al. (2017), that allow to estimate both the aleatoric and epistemic uncertainty
 for each sample. \verb{monte carlo dropout} is an implementation of Gal and Ghahramani (2016),
 that provides a simpler model that is easier to train, despite its limitations (the dropout rate must be arbitrary chosen).
+The \verb{gaussian monte carlo dropout} is a version of \verb{monte carlo dropout} where the loss function is the same as in \verb{concrete dropout}
+allowing to estimate both aleatoric and epistemic uncertainty.
 
 A fourth method is \code{tabnet-abc}. This is a new method, combining regular ABC inference with the \code{abc} R package,
 and a Tabnet neural network, as in Arik et al. (2021) and implemented in the \code{tabnet} R package.
@@ -37,7 +39,7 @@ Explain methods are specific the \code{tabnet-abc} model.
 
 In addition, the credible interval is calibrated with conformal prediction, as in Baragatti et al. (2024).
 As it requires a proxy of uncertainty, conformal prediction is only available for \verb{concrete dropout},
-\verb{deep ensemble} and \verb{monte carlo dropout} (only for the epistemic uncertainty for this last method).
+\verb{deep ensemble}, \verb{gaussian monte carlo dropout} and \verb{monte carlo dropout} (only for the epistemic uncertainty for this last method).
 
 The neural networks are implemented with the \code{torch} R package and support CUDA devices for training.
 The \code{luz} package is used as a higher level API for training and predictions with \code{torch}.
@@ -245,7 +247,7 @@ abc = abcnn$new(theta,
 
 \item{\code{model}}{the \code{luz} model}
 
-\item{\code{method}}{the ABC-NN method used, whether \code{tabnet-abc}, \verb{monte carlo dropout}, \verb{concrete dropout} or \verb{deep ensemble}}
+\item{\code{method}}{the ABC-NN method used, whether \code{tabnet-abc}, \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout}, \verb{concrete dropout} or \verb{deep ensemble}}
 
 \item{\code{scale_input}}{the scaling method for summary statistics}
 
@@ -263,7 +265,7 @@ abc = abcnn$new(theta,
 
 \item{\code{test_split}}{proportion of training samples to retain for testing (at each training iteration)}
 
-\item{\code{dropout}}{dropout rate to apply in \verb{monte carlo dropout}}
+\item{\code{dropout}}{dropout rate to apply in \verb{monte carlo dropout} and \verb{gaussian monte carlo dropout}}
 
 \item{\code{batch_size}}{batch size in \code{luz}}
 
@@ -275,7 +277,7 @@ abc = abcnn$new(theta,
 
 \item{\code{verbose}}{logical, whether to print messages and progress bars for the user}
 
-\item{\code{patience}}{patience hyperparameter for \verb{luz``early stopping}, the number of epochs without improving until stoping training}
+\item{\code{patience}}{patience hyperparameter for \code{luz} \verb{early stopping}, the number of epochs without improving until stoping training}
 
 \item{\code{optimizer}}{\code{torch} custom optimizer}
 
@@ -291,7 +293,7 @@ abc = abcnn$new(theta,
 
 \item{\code{abc_method}}{\code{abc} method for \code{tabnet-abc}}
 
-\item{\code{num_posterior_samples}}{number of posterior samples to generate in \verb{monte carlo dropout} and \verb{concrete dropout}}
+\item{\code{num_posterior_samples}}{number of posterior samples to generate in \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout} and \verb{concrete dropout}}
 
 \item{\code{abc_keep_original_sumstats}}{(logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
 If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
@@ -334,7 +336,7 @@ The variable importances are the one computed with \code{tabnet}.}
 
 \item{\code{eval_metrics}}{list of custom metrics to use at evaluation (not implemented yet)}
 
-\item{\code{posterior_samples}}{array of all posterior samples predicted in \verb{monte carlo dropout} and \verb{concrete dropout}}
+\item{\code{posterior_samples}}{array of all posterior samples predicted in \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout} and \verb{concrete dropout}}
 
 \item{\code{quantile_posterior}}{quantiles of the posterior distributions, given the credible interval significance required}
 
