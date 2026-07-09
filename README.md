@@ -1,6 +1,6 @@
 # ABCNeuralNet
 
-# pkgdown <img src="man/figures/logo.png" align="right" />
+<img src="man/figures/logo.png" align="right" />
 
 ![license](https://badgen.net/badge/license/GPL-3.0/blue)
 ![release](https://badgen.net/badge/release/0.2.0/blue?icon=github)
