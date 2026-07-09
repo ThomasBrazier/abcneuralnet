@@ -140,7 +140,7 @@ Understanding the sources of uncertainty is crucial for robust statistical infer
 
 
 
-![Two different types of uncertainty estimated with Concrete Dropout and Deep Ensemble methods in the 'abcneuralnet' package. The aleatoric uncertainty (data-driven) is in orange, and the epistemic uncertainty (model-driven) is in purple.](../inst/extdata/epistemic_aleatoric.jpeg)
+![Two different types of uncertainty estimated with Concrete Dropout and Deep Ensemble methods in the 'abcneuralnet' package. The aleatoric uncertainty (data-driven) is in orange, and the epistemic uncertainty (model-driven) is in purple.](../inst/extdata/epistemic_aleatoric.jpeg){width=100%}
 
 
 
