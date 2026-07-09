@@ -1,5 +1,7 @@
 # Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference
 
+![](reference/figures/logo.png)
+
 ## Introduction
 
 Approximate Bayesian Computation (ABC) has emerged as a powerful
