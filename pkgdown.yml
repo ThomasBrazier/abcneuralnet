@@ -1,9 +1,9 @@
-pandoc: 3.1.11
-pkgdown: 2.2.0
+pandoc: 3.8.3
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   Bayesian_neural_networks_inference: Bayesian_neural_networks_inference.html
-last_built: 2026-04-09T20:20Z
+last_built: 2026-07-09T12:03Z
 urls:
   reference: https://thomasbrazier.github.io/abcneuralnet/reference
   article: https://thomasbrazier.github.io/abcneuralnet/articles

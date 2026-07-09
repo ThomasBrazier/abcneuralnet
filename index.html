@@ -7,12 +7,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference • abcneuralnet</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference">
 <meta name="description" content="The package `abcneuralnet` provides Bayesian Neural Network and an Approximate Baysesian Computation framework for simulation-based parameter inference. It implements four different methods combining ABC and neural networks implemented in R `torch`. The two core methods are `concrete dropout`, an implementation of Gal et al. (2017), and `deep ensemble`, an implementation of Lakshminarayanan et al. (2017), both allowing to estimate both the aleatoric and epistemic uncertainty for each sample. `monte carlo dropout` is an implementation of Gal and Ghahramani (2016), that provides a simpler model easier to train, despite its limitations (the dropout rate must be arbitrary chosen). A fourth method is `tabnet-abc`. This is a new method, combining regular ABC inference with the `abc` R package, and a Tabnet neural network, as in Arik et al. (2021) and implemented in the `tabnet` R package. This is the same idea than in Åkesson et al. (2021) or Jiang et al. (2017), except than te MLP/CNN used to estimate summary statistics is replaced by a `tabnet` model specifically designed to handle tabular data and feature selection through an attention map on features. The `tabnet` neural network is trained to predict summary statistics from the observed summary statistics. Then these predictions are used as a supplementary set of summary statistics and regular ABC inference is performed on it. Explain methods are specific the `tabnet-abc` model. In addition, Credible Intervals are calibrated with conformal prediction, as in Baragatti et al. (2024). As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`, `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method). The neural networks are implemented with the `torch` R package and support CUDA devices for training. The `luz` package is used as a higher level API for training and predictions with `torch`. The device (`CUDA` or `cpu`) is automatically detected by `luz`.">
 <meta property="og:description" content="The package `abcneuralnet` provides Bayesian Neural Network and an Approximate Baysesian Computation framework for simulation-based parameter inference. It implements four different methods combining ABC and neural networks implemented in R `torch`. The two core methods are `concrete dropout`, an implementation of Gal et al. (2017), and `deep ensemble`, an implementation of Lakshminarayanan et al. (2017), both allowing to estimate both the aleatoric and epistemic uncertainty for each sample. `monte carlo dropout` is an implementation of Gal and Ghahramani (2016), that provides a simpler model easier to train, despite its limitations (the dropout rate must be arbitrary chosen). A fourth method is `tabnet-abc`. This is a new method, combining regular ABC inference with the `abc` R package, and a Tabnet neural network, as in Arik et al. (2021) and implemented in the `tabnet` R package. This is the same idea than in Åkesson et al. (2021) or Jiang et al. (2017), except than te MLP/CNN used to estimate summary statistics is replaced by a `tabnet` model specifically designed to handle tabular data and feature selection through an attention map on features. The `tabnet` neural network is trained to predict summary statistics from the observed summary statistics. Then these predictions are used as a supplementary set of summary statistics and regular ABC inference is performed on it. Explain methods are specific the `tabnet-abc` model. In addition, Credible Intervals are calibrated with conformal prediction, as in Baragatti et al. (2024). As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`, `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method). The neural networks are implemented with the `torch` R package and support CUDA devices for training. The `luz` package is used as a higher level API for training and predictions with `torch`. The device (`CUDA` or `cpu`) is automatically detected by `luz`.">
+<meta property="og:image" content="https://thomasbrazier.github.io/abcneuralnet/logo.png">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -51,8 +52,10 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="abcneuralnet">ABCNeuralNet<a class="anchor" aria-label="anchor" href="#abcneuralnet"></a>
-</h1></div>
+<div class="page-header">
+<img src="logo.png" class="logo" alt=""><h1 id="abcneuralnet">ABCNeuralNet<a class="anchor" aria-label="anchor" href="#abcneuralnet"></a>
+</h1>
+</div>
 <p><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="license"><img src="https://badgen.net/badge/release/0.2.0/blue?icon=github" alt="release"><img src="https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -63,7 +66,12 @@
 </h3>
 <p>The list of CUDA-compatible <a href="https://developer.nvidia.com/cuda-gpus#compute" class="external-link">GPUs</a></p>
 <p><a href="https://docs.nvidia.com/cuda/archive/11.7.0/" class="external-link">CUDA toolkit</a></p>
-<p>Instructions to install <a href="https://developer.nvidia.com/cudnn" class="external-link">cudnn</a> # ### Install <code>Torch</code></p>
+<p>Instructions to install <a href="https://developer.nvidia.com/cudnn" class="external-link">cudnn</a></p>
+</div>
+<div class="section level3">
+<h3 id="install-torch">Install <code>Torch</code>
+<a class="anchor" aria-label="anchor" href="#install-torch"></a>
+</h3>
 <p>See the mlverse <a href="https://torch.mlverse.org/docs/articles/installation" class="external-link">Torch</a> documentation for installing the <code>torch</code> R package.</p>
 <pre><code><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"torch"</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://torch.mlverse.org/docs" class="external-link">torch</a></span><span class="op">)</span> <span class="co"># Will install all libraries necessary (lantern, torch)</span></span>
@@ -166,7 +174,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
