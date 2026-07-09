@@ -1,11 +1,11 @@
 # ABCNeuralNet
 
+# pkgdown <img src="man/figures/logo.png" align="right" />
 
 ![license](https://badgen.net/badge/license/GPL-3.0/blue)
 ![release](https://badgen.net/badge/release/0.2.0/blue?icon=github)
 ![R-CMD-check](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/R-CMD-check.yaml/badge.svg)
 
-# pkgdown <img src="man/figures/logo.png" align="right" />
 
 
 ## Installation
