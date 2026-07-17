@@ -237,7 +237,7 @@ abcnn = R6::R6Class("abcnn",
     method='concrete dropout',
     #' @field scale_input the scaling method for summary statistics
     scale_input=NULL,
-    #' @field scale_target the scaling method for targets (i.e.e theta)
+    #' @field scale_target the scaling method for targets (i.e. theta)
     scale_target=NULL,
     #' @field num_hidden_layers number of hidden layers in the neural network
     num_hidden_layers=NA,
@@ -373,8 +373,8 @@ abcnn = R6::R6Class("abcnn",
     #' @param observed summary statistics of the observed samples
     #' @param model a `luz` model
     #' @param method the ABC-NN method used
-    #' @param scale_input the scaling method for summary statistics, whether `minmax`, `robustscaler`, `normalization` or `none`
-    #' @param scale_target the scaling method for targets (i.e. theta), whether `minmax`, `robustscaler`, `normalization` or `none`
+    #' @param scale_input the scaling method for summary statistics, whether `minmax`, `robustscaler`, `normalization`, `log`, `logit` or `none`
+    #' @param scale_target the scaling method for targets (i.e. theta), whether `minmax`, `robustscaler`, `normalization`, `log`, `logit` or `none`
     #' @param num_hidden_layers number of hidden layers in the neural network
     #' @param num_hidden_dim number of hidden dimensions (neurons) in each hidden layer
     #' @param validation_split proportion of samples retained for validation at the end of training
@@ -423,7 +423,7 @@ abcnn = R6::R6Class("abcnn",
                           test_split=0.1,
                           dropout=0.5,
                           batch_size=128,
-                          epochs=20,
+                          epochs=30,
                           early_stopping=FALSE,
                           verbose=TRUE,
                           patience=4,
@@ -1331,8 +1331,8 @@ abcnn = R6::R6Class("abcnn",
                                 quantile_25 = quantile_25,
                                 quantile_75 = quantile_75)
 
-      target_min = apply(self$theta[train_idx,,drop = F], 2, function(x) min(x, na.rm = TRUE))
-      target_max = apply(self$theta[train_idx,,drop = F], 2, function(x) max(x, na.rm = TRUE))
+      target_min = apply(self$theta[c(train_idx, valid_idx),,drop = F], 2, function(x) min(x, na.rm = TRUE))
+      target_max = apply(self$theta[c(train_idx, valid_idx),,drop = F], 2, function(x) max(x, na.rm = TRUE))
       target_mean = apply(self$theta[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
       target_sd = apply(self$theta[train_idx,,drop = F], 2, function(x) sd(x, na.rm = TRUE))
       quantile_25 = apply(self$theta[train_idx,,drop = F], 2, function(x) quantile(x, 0.25, na.rm = TRUE))

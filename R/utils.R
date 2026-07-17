@@ -88,6 +88,24 @@ log1pexp = function(x, threshold = 10) {
 
 
 
+# A numerical method to avoid Inf when qlogis(0)
+squeeze = function(p, n = length(p)) (p * (n - 1) + 0.5) / n
+
+# A logit transformation
+logit = function(y, a, b) {
+  p = (y - a) / (b - a)
+  p = squeeze(p)
+  return(qlogis(p))
+}
+
+# The backward logit transform
+inv_logit = function(z, a, b, n = length(z)) {
+  p = plogis(z)
+  p = (p * n - 0.5) / (n - 1)
+  a + (b - a) * p
+}
+
+
 
 #' A scaling function for targets and inputs
 #'
@@ -98,7 +116,7 @@ log1pexp = function(x, threshold = 10) {
 #'
 #' @param x a data frame to scale, each column is scaled separately
 #' @param sum_stats list, summary statistics learned on the data to back-transform
-#' @param method the scaling method, either `minmax`, `robustscaler`, `normalization` or `none`
+#' @param method the scaling method, either `minmax`, `robustscaler`, `normalization`, `log`, `logit` or `none`. Can be a single character (same transformation applied to all columns) or a vector of characters with one transformation per column.
 #' @param type is `forward` when scaling inputs or targets and `backward` when back-transforming targets at prediction time
 #'
 #' @return a data frame with scaled values
@@ -110,44 +128,107 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
   x = as.data.frame(x)
 
   # Raise an error if the method is not provided
-  if (!(method %in% c("none", "minmax", "robustscaler", "normalization"))) {
+  l = lapply(method, function(x) (x %in% c("none", "minmax", "robustscaler", "log", "logit", "normalization")))
+  if (!all(unlist(l))) {
     stop("The scaling method must be provided.")
   }
   
-  if (method == "none") {
-    # Do nothing
-    return(x)
-  }
-  else {
-    if (type == "forward") {
-      if (method == "minmax") {
-        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$min[i]) / (sum_stats$max[i] - sum_stats$min[i])}))
-        return(x_scaled)
+  method = if(length(method) == 1) {rep(method, ncol(x))} else {method}
+  
+  # Process each column one by one
+  for (i in 1:ncol(x)) {
+    if (method[i] == "none") {
+      # Do nothing
+    }
+    else {
+      if (type == "forward") {
+        if (method[i] == "minmax") {
+          x[,i] = (x[,i] - sum_stats$min[i]) / (sum_stats$max[i] - sum_stats$min[i])
+        }
+        if (method[i] == "normalization") {
+          x[,i] = (x[,i] - sum_stats$mean[i]) / (sum_stats$sd[i])
+        }
+        if (method[i] == "robustscaler") {
+          x[,i] = (x[,i] - sum_stats$quantile_25[i]) / (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])
+        }
+        if (method[i] == "log") {
+          x[,i] = log(x[,i])
+        }
+        if (method[i] == "logit") {
+          x[,i] = logit(x[,i], sum_stats$min[i], sum_stats$max[i])
+        }
       }
-      if (method == "normalization") {
-        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$mean[i]) / (sum_stats$sd[i])}))
-        return(x_scaled)
-      }
-      if (method == "robustscaler") {
-        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$quantile_25[i]) / (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])}))
-        return(x_scaled)
+      if (type == "backward") {
+        if (method[i] == "minmax") {
+          x[,i] = (x[,i] * (sum_stats$max[i] - sum_stats$min[i])) + sum_stats$min[i]
+        }
+        if (method[i] == "robustscaler") {
+          x[,i] = (x[,i] * (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])) + sum_stats$quantile_25[i]
+        }
+        if (method[i] == "normalization") {
+          x[,i] = (x[,i] * (sum_stats$sd[i])) + sum_stats$mean[i]
+        }
+        if (method[i] == "log") {
+          x[,i] = exp(x[,i])
+        }
+        if (method[i] == "logit") {
+          x[,i] = inv_logit(x[,i], sum_stats$min[i], sum_stats$max[i])
+        }
       }
     }
-    if (type == "backward") {
-      if (method == "minmax") {
-        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$max[i] - sum_stats$min[i])) + sum_stats$min[i]}))
-        return(x_scaled)
-      }
-      if (method == "robustscaler") {
-        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])) + sum_stats$quantile_25[i]}))
-        return(x_scaled)
-      }
-      if (method == "normalization") {
-        x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$sd[i])) + sum_stats$mean[i]}))
-        return(x_scaled)
-      }
-    }
   }
+  
+  return(x)
+  # if (method == "none") {
+  #   # Do nothing
+  #   return(x)
+  # }
+  # else {
+  #   if (type == "forward") {
+  #     if (method == "minmax") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$min[i]) / (sum_stats$max[i] - sum_stats$min[i])}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "normalization") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$mean[i]) / (sum_stats$sd[i])}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "robustscaler") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] - sum_stats$quantile_25[i]) / (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "log") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {log(x[,i,drop=F])}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "logit") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {logit(x[,i,drop=F], sum_stats$min[i], sum_stats$max[i])}))
+  #       return(x_scaled)
+  #     }
+  #   }
+  #   if (type == "backward") {
+  #     if (method == "minmax") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$max[i] - sum_stats$min[i])) + sum_stats$min[i]}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "robustscaler") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$quantile_75[i] - sum_stats$quantile_25[i])) + sum_stats$quantile_25[i]}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "normalization") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {(x[,i,drop=F] * (sum_stats$sd[i])) + sum_stats$mean[i]}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "log") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {exp(x[,i,drop=F])}))
+  #       return(x_scaled)
+  #     }
+  #     if (method == "logit") {
+  #       x_scaled = data.frame(lapply(1:ncol(x), function(i) {inv_logit(x[,i,drop=F], sum_stats$min[i], sum_stats$max[i])}))
+  #       return(x_scaled)
+  #     }
+  #   }
+  # }
 }
 
 
@@ -256,8 +337,8 @@ hyperparams_abcnn = function(object) {
                                       "Dropout rate",
                                       "Number of networks (deep ensemble)"),
                        Value = c(object$method,
-                                 object$scale_input,
-                                 object$scale_target,
+                                 paste(object$scale_input, collapse = ", "),
+                                 paste(object$scale_target, collapse = ", "),
                                  object$num_hidden_layers,
                                  object$num_hidden_dim,
                                  object$batch_size,
