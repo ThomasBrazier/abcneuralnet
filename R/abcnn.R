@@ -1317,6 +1317,7 @@ abcnn = R6::R6Class("abcnn",
       # predict(scaler, train)
       # predict(scaler, test)
 
+      input_n = apply(self$sumstat[train_idx,,drop = F], 2, function(x) length(x))
       input_min = apply(self$sumstat[train_idx,,drop = F], 2, function(x) min(x, na.rm = TRUE))
       input_max = apply(self$sumstat[train_idx,,drop = F], 2, function(x) max(x, na.rm = TRUE))
       input_mean = apply(self$sumstat[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
@@ -1329,8 +1330,10 @@ abcnn = R6::R6Class("abcnn",
                                 mean = input_mean,
                                 sd = input_sd,
                                 quantile_25 = quantile_25,
-                                quantile_75 = quantile_75)
+                                quantile_75 = quantile_75,
+                                n_training = input_n)
 
+      target_n = apply(self$sumstat[train_idx,,drop = F], 2, function(x) length(x))
       target_min = apply(self$theta[c(train_idx, valid_idx),,drop = F], 2, function(x) min(x, na.rm = TRUE))
       target_max = apply(self$theta[c(train_idx, valid_idx),,drop = F], 2, function(x) max(x, na.rm = TRUE))
       target_mean = apply(self$theta[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
@@ -1343,7 +1346,8 @@ abcnn = R6::R6Class("abcnn",
                                  mean = target_mean,
                                  sd = target_sd,
                                  quantile_25 = quantile_25,
-                                 quantile_75 = quantile_75)
+                                 quantile_75 = quantile_75,
+                                 n_training = target_n)
 
       # Scale with summary statistics learned on training set only
       scaled_input = scaler(self$sumstat,

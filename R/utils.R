@@ -89,19 +89,29 @@ log1pexp = function(x, threshold = 10) {
 
 
 # A numerical method to avoid Inf when qlogis(0)
-squeeze = function(p, n = length(p)) (p * (n - 1) + 0.5) / n
+squeeze = function(p, n) (p * (n - 1) + 0.5) / n
+unsqueeze = function(p, n) (p * n - 0.5) / (n - 1)
 
 # A logit transformation
-logit = function(y, a, b) {
+#' @param z a vector of numerical values to transform
+#' @param a the min value of the training set
+#' @param b the max value of the training set
+#' @param n the number of samples in the training set
+logit = function(y, a, b, n) {
   p = (y - a) / (b - a)
-  p = squeeze(p)
+  # Trick to avoid Inf for qlogis(0)
+  p = squeeze(p, n)
   return(qlogis(p))
 }
 
-# The backward logit transform
-inv_logit = function(z, a, b, n = length(z)) {
+#' The backward logit transform
+#' @param z a vector of numerical values to transform
+#' @param a the min value of the training set
+#' @param b the max value of the training set
+#' @param n the number of samples in the training set
+inv_logit = function(z, a, b, n) {
   p = plogis(z)
-  p = (p * n - 0.5) / (n - 1)
+  p = unsqueeze(p, n)
   a + (b - a) * p
 }
 
@@ -155,7 +165,8 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
           x[,i] = log(x[,i])
         }
         if (method[i] == "logit") {
-          x[,i] = logit(x[,i], sum_stats$min[i], sum_stats$max[i])
+          # x[,i] = logit(x[,i], sum_stats$min[i], sum_stats$max[i], sum_stats$n_training[i])
+          x[,i] = logit(x[,i], sum_stats$min[i], sum_stats$max[i], 100000)
         }
       }
       if (type == "backward") {
@@ -172,7 +183,8 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
           x[,i] = exp(x[,i])
         }
         if (method[i] == "logit") {
-          x[,i] = inv_logit(x[,i], sum_stats$min[i], sum_stats$max[i])
+          # x[,i] = inv_logit(x[,i], sum_stats$min[i], sum_stats$max[i], sum_stats$n_training[i])
+          x[,i] = inv_logit(x[,i], sum_stats$min[i], sum_stats$max[i], 100000)
         }
       }
     }
