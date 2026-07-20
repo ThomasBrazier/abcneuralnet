@@ -197,8 +197,6 @@
 #' @slot calibration_theta adjusted theta for conformal prediction after scaling (calibration set)
 #' @slot calibration_sumstat adjusted summary statistics for conformal prediction after scaling (calibration set)
 #' @slot ncores number of cores for parallelized steps
-#' @slot abc_transf a vector of character strings passed directly to 'abc' indicating the kind of transformation to be applied to the parameter values. The possible values are "log", "logit", and "none" (default), when no is transformation applied. See also Details
-#' @slot abc_logit.bounds a matrix of bounds if transf is "logit", passed directly to 'abc'. The matrix has as many lines as parameters (including the ones that are not "logit" transformed) and 2 columns. First column is the minimum bound and second column is the maximum bound.
 #' @slot call the call to the new() initialisation function
 #'
 #'
@@ -358,10 +356,6 @@ abcnn = R6::R6Class("abcnn",
     calibration_sumstat = NA,
     #' @field ncores number of cores for parallel procedures
     ncores = NA,
-    #' @field abc_transf a vector of character strings passed directly to 'abc' indicating the kind of transformation to be applied to the parameter values. The possible values are "log", "logit", and "none" (default), when no is transformation applied. See also Details
-    abc_transf = NA,
-    #' @field abc_logit.bounds a matrix of bounds if transf is "logit", passed directly to 'abc'. The matrix has as many lines as parameters (including the ones that are not "logit" transformed) and 2 columns. First column is the minimum bound and second column is the maximum bound.
-    abc_logit.bounds = NA,
     #' @field seed a random seed when initializing the network
     seed = NA,
     #' @field cross_validation_data the unseen dataset for cross-validation
@@ -412,8 +406,11 @@ abcnn = R6::R6Class("abcnn",
     #' @param num_networks number of networks in `deep ensemble`
     #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble` (experimental)
     #' @param ncores number of cores for parallelized steps
+<<<<<<< HEAD
     #' @param abc_transf a vector of character strings passed directly to 'abc' indicating the kind of transformation to be applied to the parameter values. The possible values are "log", "logit", and "none" (default), when no is transformation applied. See `abc` for details.
     #' @param abc_logit.bounds a matrix of bounds if transf is "logit", passed directly to 'abc'. The matrix has as many lines as parameters (including the ones that are not "logit" transformed) and 2 columns. First column is the minimum bound and second column is the maximum bound. See `abc` for details.
+=======
+>>>>>>> parent of 66ee7c8 (Add transf and logit.bounds to internal abc function)
     #' @param seed a random seed
     #'
     initialize = function(theta,
@@ -450,8 +447,6 @@ abcnn = R6::R6Class("abcnn",
                           num_networks=5,
                           epsilon_adversarial=0,
                           ncores = 1,
-                          abc_transf="none",
-                          abc_logit.bounds=NA,
                           seed = round(runif(1, 0, 1e4), digits = 0)) {
       #-----------------------------------#
       # CHECK INPUTS
@@ -908,9 +903,7 @@ abcnn = R6::R6Class("abcnn",
                                self$theta_adj,
                                new_sumstats_train,
                                tol = self$tol,
-                               method = self$abc_method,
-                               transf = self$abc_transf,
-                               logit.bounds = self$abc_logit.bounds)})
+                               method = self$abc_method)})
 
             if (self$abc_method == "rejection") {
               mc_samples[,i,] = abc_res$unadj.values
