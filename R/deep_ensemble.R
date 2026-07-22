@@ -277,8 +277,9 @@ nn_ensemble = torch::nn_module(
     # sig_train_pos = torch_logsumexp(sig_train, 1, keepdim = TRUE) + 1e-6
     sig_train_pos = log1pexp(sig_train) + 1e-6
 
-    loss = torch::torch_mean(0.5 * torch::torch_log(sig_train_pos) + 0.5 * (torch::torch_square(target - mu_train)/sig_train_pos)) + 1
-
+    # loss = torch::torch_mean(0.5 * torch::torch_log(sig_train_pos) + 0.5 * (torch::torch_square(target - mu_train)/sig_train_pos)) + 1
+    loss = torch::torch_mean(0.5 * torch::torch_log(sig_train_pos) + 0.5 * (torch::torch_square(target - mu_train)/sig_train_pos)) + (log(2*pi) / 2)
+    
     if (is.nan(loss$item())) {
       print(mu_train)
       print(target)
