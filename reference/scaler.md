@@ -22,8 +22,10 @@ scaler(x, sum_stats, method = "minmax", type = "forward")
 
 - method:
 
-  the scaling method, either `minmax`, `robustscaler`, `normalization`
-  or `none`
+  the scaling method, either `minmax`, `robustscaler`, `normalization`,
+  `log`, `logit` or `none`. Can be a single character (same
+  transformation applied to all columns) or a vector of characters with
+  one transformation per column.
 
 - type:
 

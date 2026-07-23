@@ -416,7 +416,7 @@ Sinica*, 1595–1618.
 
 - `scale_target`:
 
-  the scaling method for targets (i.e.e theta)
+  the scaling method for targets (i.e. theta)
 
 - `num_hidden_layers`:
 
@@ -739,7 +739,7 @@ Create a new `abcnn` object
       test_split = 0.1,
       dropout = 0.5,
       batch_size = 128,
-      epochs = 20,
+      epochs = 30,
       early_stopping = FALSE,
       verbose = TRUE,
       patience = 4,
@@ -786,12 +786,12 @@ Create a new `abcnn` object
 - `scale_input`:
 
   the scaling method for summary statistics, whether `minmax`,
-  `robustscaler`, `normalization` or `none`
+  `robustscaler`, `normalization`, `log`, `logit` or `none`
 
 - `scale_target`:
 
   the scaling method for targets (i.e. theta), whether `minmax`,
-  `robustscaler`, `normalization` or `none`
+  `robustscaler`, `normalization`, `log`, `logit` or `none`
 
 - `num_hidden_layers`:
 

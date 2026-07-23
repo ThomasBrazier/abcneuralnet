@@ -21,6 +21,9 @@
 
   Return a data frame with hyperparameters of an `abcnn` object
 
+- [`inv_logit()`](https://thomasbrazier.github.io/abcneuralnet/reference/inv_logit.md)
+  : The backward logit transform
+
 - [`load_abcnn()`](https://thomasbrazier.github.io/abcneuralnet/reference/load_abcnn.md)
   :
 
