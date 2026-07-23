@@ -11,7 +11,7 @@ scaler(x, sum_stats, method = "minmax", type = "forward")
 
 \item{sum_stats}{list, summary statistics learned on the data to back-transform}
 
-\item{method}{the scaling method, either \code{minmax}, \code{robustscaler}, \code{normalization} or \code{none}}
+\item{method}{the scaling method, either \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}. Can be a single character (same transformation applied to all columns) or a vector of characters with one transformation per column.}
 
 \item{type}{is \code{forward} when scaling inputs or targets and \code{backward} when back-transforming targets at prediction time}
 }

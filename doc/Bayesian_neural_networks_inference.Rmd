@@ -8,6 +8,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+<img src="man/figures/logo.png" style='width: 100px; position:absolute; top:0; right:0; padding:10px;'/>
+
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,

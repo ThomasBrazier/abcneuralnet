@@ -251,7 +251,7 @@ abc = abcnn$new(theta,
 
 \item{\code{scale_input}}{the scaling method for summary statistics}
 
-\item{\code{scale_target}}{the scaling method for targets (i.e.e theta)}
+\item{\code{scale_target}}{the scaling method for targets (i.e. theta)}
 
 \item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
 
@@ -421,7 +421,7 @@ Create a new \code{abcnn} object
   test_split = 0.1,
   dropout = 0.5,
   batch_size = 128,
-  epochs = 20,
+  epochs = 30,
   early_stopping = FALSE,
   verbose = TRUE,
   patience = 4,
@@ -457,9 +457,9 @@ Create a new \code{abcnn} object
 
 \item{\code{method}}{the ABC-NN method used}
 
-\item{\code{scale_input}}{the scaling method for summary statistics, whether \code{minmax}, \code{robustscaler}, \code{normalization} or \code{none}}
+\item{\code{scale_input}}{the scaling method for summary statistics, whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
 
-\item{\code{scale_target}}{the scaling method for targets (i.e. theta), whether \code{minmax}, \code{robustscaler}, \code{normalization} or \code{none}}
+\item{\code{scale_target}}{the scaling method for targets (i.e. theta), whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
 
 \item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
 
