@@ -1680,16 +1680,16 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#>  [1] kableExtra_1.4.1 lubridate_1.9.5  forcats_1.0.1    stringr_1.6.0   
-#>  [5] dplyr_1.2.1      purrr_1.2.2      readr_2.2.0      tidyr_1.3.2     
-#>  [9] tibble_3.3.1     tidyverse_2.0.0  torch_0.17.0     ggplot2_4.0.3   
-#> [13] abcneuralnet_0.2
+#>  [1] kableExtra_1.4.1   lubridate_1.9.5    forcats_1.0.1      stringr_1.6.0     
+#>  [5] dplyr_1.2.1        purrr_1.2.2        readr_2.2.0        tidyr_1.3.2       
+#>  [9] tibble_3.3.1       tidyverse_2.0.0    torch_0.17.0       ggplot2_4.0.3     
+#> [13] abcneuralnet_0.3.0
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] splines_4.6.1        rminer_1.5.0         hardhat_1.4.3       
 #>   [4] janitor_2.2.1        abc.data_1.1         pROC_1.19.0.1       
-#>   [7] rpart_4.1.27         tabnet_0.9.0         lifecycle_1.0.5     
-#>  [10] rstatix_1.0.0        Rdpack_2.6.6         bundle_0.1.3        
+#>   [7] rpart_4.1.27         tabnet_0.9.1         lifecycle_1.0.5     
+#>  [10] rstatix_1.1.0        Rdpack_2.6.6         bundle_0.1.3        
 #>  [13] doParallel_1.0.17    globals_0.19.1       processx_3.9.0      
 #>  [16] lattice_0.22-9       MASS_7.3-65          backports_1.5.1     
 #>  [19] magrittr_2.0.5       sass_0.4.10          rmarkdown_2.31      
