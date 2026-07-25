@@ -138,7 +138,7 @@
 #' @slot sumstat summary statistics of the pseudo-observed samples (i.e. simulations)
 #' @slot observed summary statistics of the observed samples
 #' @slot model the `luz` model
-#' @slot method the ABC-NN method used
+#' @slot method the ABCNN method used, either "monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"
 #' @slot scale_input the scaling method for summary statistics
 #' @slot scale_target the scaling method for targets (i.e. theta)
 #' @slot num_hidden_layers number of hidden layers in the neural network
@@ -380,7 +380,7 @@ abcnn = R6::R6Class("abcnn",
     #' @param sumstat summary statistics of the pseudo-observed samples (i.e. simulations)
     #' @param observed summary statistics of the observed samples
     #' @param model a `luz` model
-    #' @param method the ABC-NN method used
+    #' @param method the ABC-NN method used, either "monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"
     #' @param scale_input the scaling method for summary statistics, whether `minmax`, `robustscaler`, `normalization`, `log`, `logit` or `none`
     #' @param scale_target the scaling method for targets (i.e. theta), whether `minmax`, `robustscaler`, `normalization`, `log`, `logit` or `none`
     #' @param num_hidden_layers number of hidden layers in the neural network
@@ -2064,7 +2064,6 @@ abcnn = R6::R6Class("abcnn",
         }
 
         p = p +
-          geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean, colour = "black")) +
           geom_rect(data = tidy_predictions, aes(xmin = ci_e_lower, xmax = ci_e_upper, ymin = -Inf, ymax = Inf, colour = "Epistemic", fill = "Epistemic"), alpha = 0.1)
 
         if (isTRUE(epistemic_uncertainty)) {
@@ -2076,6 +2075,7 @@ abcnn = R6::R6Class("abcnn",
         p = p +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_lower, colour = "Overall")) +
           geom_vline(data = tidy_predictions, aes(xintercept = ci_upper, colour = "Overall")) +
+          geom_vline(data = tidy_predictions, aes(xintercept = predictive_mean), colour = "black") +
           # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_lower, colour = "Overall conformal")) +
           # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_upper, colour = "Overall conformal")) +
           # geom_vline(data = tidy_predictions, aes(xintercept = ci_conformal_e_lower, colour = "Epistemic conformal")) +

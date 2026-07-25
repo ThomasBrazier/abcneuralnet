@@ -1,8 +1,8 @@
 Package: abcneuralnet
-Title: Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference
+Title: Bayesian Deep Learning and Approximate Bayesian Computation for Parameter Inference
 Version: 0.3.0
 Authors@R: 
-    person("Brazier", "Thomas", , "brazier.thomas@gmail.com", role = c("aut", "cre"))
+    person("Thomas", "Brazier", "brazier.thomas@gmail.com", role = c("aut", "cre"))
 Author: Thomas Brazier [aut, cre]
 Maintainer: Thomas Brazier <brazier.thomas@gmail.com>
 Description:
@@ -32,7 +32,8 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Suggests:
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    assertthat
 Imports:
     R6,
     RColorBrewer,

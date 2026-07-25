@@ -1,2 +1,4 @@
 *.html
 *.R
+# ...but the pre-computation script is part of the package sources
+!precompute.R

@@ -9,3 +9,5 @@
 ^docs$
 ^pkgdown$
 ^inst/extdata$
+^vignettes/.*\.Rmd\.orig$
+^vignettes/precompute\.R$
