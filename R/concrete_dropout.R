@@ -114,7 +114,9 @@ concrete_model = torch::nn_module(
                                                                       weight_regularizer=weight_regularizer,
                                                                       dropout_regularizer=dropout_regularizer))
 
-    for (i in 2:(num_hidden_layers)) {
+    # `seq_len()` so that a single hidden layer gives an empty loop.
+    # `2:num_hidden_layers` would count down to c(2, 1) and add a second layer.
+    for (i in seq_len(num_hidden_layers - 1) + 1) {
       self$concrete_dropout$add_module(paste0("conc_drop", i), nn_concrete_linear(num_hidden_dim,
                                                                                   num_hidden_dim,
                                                                                   weight_regularizer=weight_regularizer,
@@ -143,8 +145,12 @@ concrete_model = torch::nn_module(
     mean = self$conc_drop_mu(x1, self$linear_mu)
     log_var = self$conc_drop_logvar(x1, self$linear_logvar)
     # ensure that the variance does not become too small, which can lead to numerical instability
+    # Signed log of the lower bound, so that a bound given on either side of
+    # zero maps to the log variance scale. `sign()` must be taken on the bound
+    # itself: a hardcoded negative sign turns any positive lower bound into
+    # `min = max`, which pins the log variance to a constant.
     log_var = torch::torch_clamp(log_var,
-                          min = sign(-1e25) * log(abs(self$clamp[1])),
+                          min = sign(self$clamp[1]) * log(abs(self$clamp[1])),
                           max = log(self$clamp[2]))
 
     # Regularization terms
@@ -188,6 +194,11 @@ concrete_model = torch::nn_module(
     # heteroscedastic_loss = torch_sum(torch_mean(torch_sum(precision * (target - mu)^2 + log_var, 1), 1))
     heteroscedastic_loss = torch::torch_mean(torch::torch_sum(precision * (target - mu)^2 + log_var, 1), 1)
 
-    return(heteroscedastic_loss)
+    # The objective of Gal et al. (2017) is the heteroscedastic likelihood plus
+    # the regularization term accumulated over the concrete dropout layers by
+    # `forward()`. Without it the dropout rates are only driven by the
+    # likelihood, and both `weight_regularizer` and `dropout_regularizer` have
+    # no effect on training.
+    return(heteroscedastic_loss + self$regularization)
   }
 )

@@ -54,7 +54,7 @@ for (m in methods) {
 
     # Test credible intervals
     expect_no_error(abc$predictions())
-    expect_equal(dim(abc$predictions()), c(1, 11))
+    expect_equal(dim(abc$predictions()), c(1, 13))
   })
 
 }

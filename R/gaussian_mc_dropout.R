@@ -23,7 +23,9 @@ gaussian_mc_model = torch::nn_module(
       nn_mc_dropout(p = dropout_hidden),
       torch::nn_leaky_relu())
 
-    for (i in 2:(num_hidden_layers)) {
+    # `seq_len()` so that a single hidden layer gives an empty loop.
+    # `2:num_hidden_layers` would count down to c(2, 1) and add a second layer.
+    for (i in seq_len(num_hidden_layers - 1) + 1) {
       self$gaussian_mc_dropout$add_module(paste0("linear_", i), torch::nn_linear(num_hidden_dim, num_hidden_dim))
       self$gaussian_mc_dropout$add_module(paste0("dropout_", i), nn_mc_dropout(p = dropout_hidden))
       self$gaussian_mc_dropout$add_module(paste0("relu_", i), torch::nn_leaky_relu())
@@ -45,8 +47,12 @@ gaussian_mc_model = torch::nn_module(
     log_var = self$linear_logvar(x1)
     
     # Ensure that the variance does not become too small, which can lead to numerical instability
+    # Signed log of the lower bound, so that a bound given on either side of
+    # zero maps to the log variance scale. `sign()` must be taken on the bound
+    # itself: a hardcoded negative sign turns any positive lower bound into
+    # `min = max`, which pins the log variance to a constant.
     log_var = torch::torch_clamp(log_var,
-                                 min = sign(-1e25) * log(abs(self$clamp[1])),
+                                 min = sign(self$clamp[1]) * log(abs(self$clamp[1])),
                                  max = log(self$clamp[2]))
     
     # return a concatenated tensor

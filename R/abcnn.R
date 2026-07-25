@@ -183,9 +183,9 @@
 #' @slot posterior_samples array of posterior samples
 #' @slot quantile_posterior quantiles computed on the posterior samples, given the `credible_interval_p`
 #' @slot predictive_mean values predicted by the model for each observed sample
-#' @slot aleatoric_uncertainty aleatoric uncertainty for each observed sample
-#' @slot epistemic_uncertainty epistemic uncertainty for each observed sample
-#' @slot overall_uncertainty overall uncertainty for each observed sample (epistemic + aleatoric)
+#' @slot aleatoric_uncertainty aleatoric uncertainty (standard deviation, in the scaled space) for each observed sample
+#' @slot epistemic_uncertainty epistemic uncertainty (standard deviation, in the scaled space) for each observed sample
+#' @slot overall_uncertainty overall uncertainty for each observed sample, `sqrt(var_epistemic + var_aleatoric)`
 #' @slot epistemic_conformal_quantile the quantile factor to get the conformalized credible interval for epistemic uncertainty
 #' @slot overall_conformal_quantile the quantile factor to get the conformalized credible interval for overall uncertainty
 #' @slot dropout_rates the dropout rate hyperparameter estimated by concrete dropout
@@ -328,11 +328,12 @@ abcnn = R6::R6Class("abcnn",
     quantile_posterior = NA,
     #' @field predictive_mean mean predicted value
     predictive_mean = NA,
-    #' @field aleatoric_uncertainty aleatoric uncertainty
+    #' @field aleatoric_uncertainty aleatoric uncertainty, as a standard deviation in the scaled space
     aleatoric_uncertainty = NA,
-    #' @field epistemic_uncertainty epistemic uncertainty
+    #' @field epistemic_uncertainty epistemic uncertainty, as a standard deviation in the scaled space
     epistemic_uncertainty = NA,
-    #' @field overall_uncertainty overall uncertainty
+    #' @field overall_uncertainty overall uncertainty `sqrt(var_epistemic + var_aleatoric)`, in the scaled space.
+    #' Use `predictions()` to obtain uncertainties and credible intervals on the original parameter scale.
     overall_uncertainty = NA,
     #' @field epistemic_conformal_quantile conformal quantile of epistemic uncertainty calibrated with conformal prediction
     epistemic_conformal_quantile = NA,
@@ -401,8 +402,8 @@ abcnn = R6::R6Class("abcnn",
     #' The variable importances are the one computed with `tabnet`.
     #' @param num_posterior_samples number of samples to generate for the posterior distribution
     #' @param prior_length_scale prior length scale hyperparameter value
-    #' @param weight_regularizer `concrete dropout` regularization term for weights
-    #' @param dropout_regularizer `concrete dropout` regularization term for dropout
+    #' @param weight_regularizer `concrete dropout` a numerical value, regularization term for weights in Concrete Dropout, set to "auto" if you want it to be computed at fit time
+    #' @param dropout_regularizer `concrete dropout` a numerical value, regularization term for dropout in Concrete Dropout, set to "auto" if you want it to be computed at fit time
     #' @param num_networks number of networks in `deep ensemble`
     #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble` (experimental)
     #' @param ncores number of cores for parallelized steps
@@ -517,7 +518,11 @@ abcnn = R6::R6Class("abcnn",
       self$abc_keep_original_sumstats=abc_keep_original_sumstats
       self$abc_method=abc_method
       self$num_posterior_samples=num_posterior_samples
-      self$l2_weight_decay
+      self$l2_weight_decay = l2_weight_decay
+      self$num_networks = num_networks
+      self$prior_length_scale = prior_length_scale
+      self$weight_regularizer = weight_regularizer
+      self$dropout_regularizer = dropout_regularizer
       self$epsilon_adversarial = epsilon_adversarial
       self$credible_interval_p = credible_interval_p
       self$variance_clamping = variance_clamping
@@ -636,17 +641,12 @@ abcnn = R6::R6Class("abcnn",
                              num_hidden_dim = self$num_hidden_dim,
                              num_output_dim = self$output_dim,
                              num_hidden_layers = self$num_hidden_layers,
+                             dropout_hidden = self$dropout,
                              clamp = self$variance_clamping) %>%
             luz::set_opt_hparams(lr = self$learning_rate,
                                  weight_decay = self$l2_weight_decay)
         }
         if (self$method == "concrete dropout") {
-          # TODO Make utility functions for weight_regularizer and weight_regularizer
-          l = self$prior_length_scale
-          N = self$n_train
-          self$weight_regularizer = l^2 / N
-          self$weight_regularizer = 2 / N
-
           self$model = concrete_model %>%
             luz::setup(optimizer = self$optimizer) %>%
             luz::set_hparams(num_input_dim = self$input_dim,
@@ -654,7 +654,7 @@ abcnn = R6::R6Class("abcnn",
                         num_output_dim = self$output_dim,
                         num_hidden_layers = self$num_hidden_layers,
                         weight_regularizer = self$weight_regularizer,
-                        dropout_regularizer = self$weight_regularizer,
+                        dropout_regularizer = self$dropout_regularizer,
                         clamp = self$variance_clamping) %>%
             luz::set_opt_hparams(lr = self$learning_rate,
                                  weight_decay = self$l2_weight_decay)
@@ -742,9 +742,30 @@ abcnn = R6::R6Class("abcnn",
       if (self$method == 'concrete dropout') {
         # Load data
         # dl = self$dataloader()
+        
+        # Compute weight regularizer and dropout regularizer at fit time if specified as "auto"
+        # `dataloader()` has just set `n_train`, which is not known in `new()`
+        N = self$n_train
+        if (is.character(self$weight_regularizer) && self$weight_regularizer == "auto") {
+          self$weight_regularizer = self$prior_length_scale^2 / N
+        }
+        if (is.character(self$dropout_regularizer) && self$dropout_regularizer == "auto") {
+          self$dropout_regularizer = 2 / N
+        }
 
         # Fit
+        # `set_hparams()` replaces the hyperparameters rather than merging them,
+        # so the architecture has to be repeated here alongside the regularizers
+        # that were just derived. Passing the regularizers alone would silently
+        # drop the layer sizes and fall back to the `concrete_model` defaults.
         self$fitted = self$model %>%
+          luz::set_hparams(num_input_dim = self$input_dim,
+                           num_hidden_dim = self$num_hidden_dim,
+                           num_output_dim = self$output_dim,
+                           num_hidden_layers = self$num_hidden_layers,
+                           weight_regularizer = self$weight_regularizer,
+                           dropout_regularizer = self$dropout_regularizer,
+                           clamp = self$variance_clamping) %>%
           luz::fit(dl$train,
               epochs = self$epochs,
               valid_data = dl$valid,
@@ -942,14 +963,17 @@ abcnn = R6::R6Class("abcnn",
 
           epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(nsamples, ndim)))
           colnames(epistemic_uncertainty) = colnames(self$theta)
-          self$epistemic_uncertainty = epistemic_uncertainty
+          # `epistemic_uncertainty` is a variance at this point. Store it as a
+          # standard deviation, consistently with the other methods.
+          self$epistemic_uncertainty = sqrt(epistemic_uncertainty)
 
           aleatoric_uncertainty = as.data.frame(array(NA, dim = c(nsamples, ndim)))
           colnames(aleatoric_uncertainty) = colnames(self$theta)
           self$aleatoric_uncertainty = aleatoric_uncertainty
 
+          # No aleatoric estimate for this method, so the overall uncertainty
+          # sqrt(var_aleatoric + var_epistemic) reduces to the epistemic sd
           self$overall_uncertainty = self$epistemic_uncertainty
-          # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
 
           posterior_median = as.data.frame(array(posterior_median, dim = c(nsamples, ndim)))
           colnames(posterior_median) = colnames(self$theta)
@@ -1022,14 +1046,17 @@ abcnn = R6::R6Class("abcnn",
 
           epistemic_uncertainty = as.data.frame(array(epistemic_uncertainty, dim = c(observed$shape[1], self$output_dim)))
           colnames(epistemic_uncertainty) = colnames(self$theta)
-          self$epistemic_uncertainty = epistemic_uncertainty
+          # `epistemic_uncertainty` is a variance at this point. Store it as a
+          # standard deviation, consistently with the other methods.
+          self$epistemic_uncertainty = sqrt(epistemic_uncertainty)
 
           aleatoric_uncertainty = as.data.frame(array(NA, dim = c(observed$shape[1], self$output_dim)))
           colnames(aleatoric_uncertainty) = colnames(self$theta)
           self$aleatoric_uncertainty = aleatoric_uncertainty
 
+          # No aleatoric estimate for this method, so the overall uncertainty
+          # sqrt(var_aleatoric + var_epistemic) reduces to the epistemic sd
           self$overall_uncertainty = self$epistemic_uncertainty
-          # self$overall_uncertainty = self$epistemic_uncertainty + self$aleatoric_uncertainty
 
           posterior_median = as.data.frame(array(posterior_median, dim = c(observed$shape[1], self$output_dim)))
           colnames(posterior_median) = colnames(self$theta)
@@ -1114,7 +1141,9 @@ abcnn = R6::R6Class("abcnn",
                                          posterior_lower_ci = posterior_lower_ci,
                                          posterior_upper_ci = posterior_upper_ci)
 
-          self$overall_uncertainty = sqrt(aleatoric_uncertainty) + sqrt(epistemic_uncertainty)
+          # Both locals still hold variances here, so this is sqrt(var_a + var_e).
+          # Summing the two standard deviations instead would overstate the spread.
+          self$overall_uncertainty = sqrt(aleatoric_uncertainty + epistemic_uncertainty)
         }
 
         if (self$method == 'concrete dropout') {
@@ -1188,7 +1217,9 @@ abcnn = R6::R6Class("abcnn",
                                          posterior_lower_ci = posterior_lower_ci,
                                          posterior_upper_ci = posterior_upper_ci)
 
-          self$overall_uncertainty = sqrt(aleatoric_uncertainty) + sqrt(epistemic_uncertainty)
+          # Both locals still hold variances here, so this is sqrt(var_a + var_e).
+          # Summing the two standard deviations instead would overstate the spread.
+          self$overall_uncertainty = sqrt(aleatoric_uncertainty + epistemic_uncertainty)
 
           # Store dropout rates inferred
           params = self$fitted$model$named_parameters()
@@ -1259,7 +1290,11 @@ abcnn = R6::R6Class("abcnn",
           self$aleatoric_uncertainty = aleatoric_uncertainty
           self$epistemic_uncertainty = epistemic_uncertainty
 
-          self$overall_uncertainty = aleatoric_uncertainty + epistemic_uncertainty
+          # `out_sig_sample_final` is already sqrt(var_aleatoric + var_epistemic).
+          # Summing the two standard deviations instead would overstate the spread.
+          overall_uncertainty = as.data.frame(array(as.numeric(out_sig_sample_final), dim = c(observed$shape[1], self$output_dim)))
+          colnames(overall_uncertainty) = colnames(self$theta)
+          self$overall_uncertainty = overall_uncertainty
         }
 
         # Conformal prediction
@@ -1334,8 +1369,14 @@ abcnn = R6::R6Class("abcnn",
                                 n_training = input_n)
 
       target_n = apply(self$sumstat[train_idx,,drop = F], 2, function(x) length(x))
-      target_min = apply(self$theta[c(train_idx, valid_idx),,drop = F], 2, function(x) min(x, na.rm = TRUE))
-      target_max = apply(self$theta[c(train_idx, valid_idx),,drop = F], 2, function(x) max(x, na.rm = TRUE))
+      # The target min and max are the boundaries of the prior, not statistics
+      # estimated from the training set, so they are taken over all the
+      # simulations. Restricting them to the training and validation splits left
+      # the extreme values of the test and conformal splits outside `[min, max]`,
+      # which makes `logit` return NaN for those samples (`qlogis()` of a value
+      # outside `[0, 1]`) and pushes `minmax` outside `[0, 1]`.
+      target_min = apply(self$theta, 2, function(x) min(x, na.rm = TRUE))
+      target_max = apply(self$theta, 2, function(x) max(x, na.rm = TRUE))
       target_mean = apply(self$theta[train_idx,,drop = F], 2, function(x) mean(x, na.rm = TRUE))
       target_sd = apply(self$theta[train_idx,,drop = F], 2, function(x) sd(x, na.rm = TRUE))
       quantile_25 = apply(self$theta[train_idx,,drop = F], 2, function(x) quantile(x, 0.25, na.rm = TRUE))
@@ -1530,7 +1571,43 @@ abcnn = R6::R6Class("abcnn",
     },
 
     #' @description
-    #' Returns a tidy tibble with predictions and credible intervals
+    #' Returns a tidy data frame with predictions, uncertainties and credible intervals
+    #'
+    #' @details
+    #'
+    #' All quantities are returned on the original parameter scale.
+    #'
+    #' Credible intervals are returned as explicit `lower`/`upper` bounds rather
+    #' than as a half-width around the mean. The bounds are built in the scaled
+    #' space in which the network was trained, and only then mapped back one
+    #' endpoint at a time. Because every scaling method is monotone increasing,
+    #' this preserves the conformal coverage guarantee exactly. It also means
+    #' that under the non-linear `log` and `logit` scalings the intervals are
+    #' asymmetric around `predictive_mean`, and that they always stay within the
+    #' support implied by the scaling.
+    #'
+    #' The columns returned are:
+    #'
+    #' * `sample` index of the observed sample
+    #' * `parameter` name of the parameter
+    #' * `predictive_mean` the point estimate
+    #' * `epistemic_uncertainty`, `aleatoric_uncertainty`, `overall_uncertainty`
+    #' standard deviations, carried to the original scale with the delta method
+    #' (see `scaler_grad()`). Exact for `none`, `minmax`, `robustscaler` and
+    #' `normalization`; a local linearisation for `log` and `logit`.
+    #' * `epistemic_conformal_lower`, `epistemic_conformal_upper` the conformalized
+    #' credible interval based on the epistemic uncertainty alone
+    #' * `overall_conformal_lower`, `overall_conformal_upper` the conformalized
+    #' credible interval based on the overall uncertainty
+    #' * `posterior_median`, `posterior_lower_ci`, `posterior_upper_ci` quantiles of
+    #' the sampled posterior (`NA` for `deep ensemble`, which does not draw posterior samples)
+    #'
+    #' Note that under `log` and `logit` scaling, `predictive_mean` is the
+    #' back-transform of the mean computed in the scaled space. By Jensen's
+    #' inequality it is a median-like point estimate rather than the posterior
+    #' mean on the original scale.
+    #'
+    #' @return a `data.frame` with one row per observed sample and per parameter
     #'
     predictions = function() {
       # Back-transform predictions to original scale
@@ -1540,18 +1617,24 @@ abcnn = R6::R6Class("abcnn",
                                            self$target_summary,
                                            method = self$scale_target,
                                            type = "backward")
-      epistemic_uncertainty = scaler(self$epistemic_uncertainty,
-                                                 self$target_summary,
-                                                 method = self$scale_target,
-                                                 type = "backward")
-      aleatoric_uncertainty = scaler(self$aleatoric_uncertainty,
-                                                 self$target_summary,
-                                                 method = self$scale_target,
-                                                 type = "backward")
-      overall_uncertainty = scaler(self$overall_uncertainty,
-                                               self$target_summary,
-                                               method = self$scale_target,
-                                               type = "backward")
+
+      # Uncertainties are spreads, not locations, so they must not be pushed
+      # through the backward transform directly (that would add its offset).
+      # Carry them to the original scale with the delta method instead:
+      # sd_original ~ |g'(mu)| * sd_scaled
+      grad = scaler_grad(self$predictive_mean,
+                         self$target_summary,
+                         method = self$scale_target)
+
+      delta_method = function(uncertainty) {
+        out = as.data.frame(as.matrix(uncertainty) * as.matrix(grad))
+        colnames(out) = colnames(self$theta)
+        return(out)
+      }
+
+      epistemic_uncertainty = delta_method(self$epistemic_uncertainty)
+      aleatoric_uncertainty = delta_method(self$aleatoric_uncertainty)
+      overall_uncertainty = delta_method(self$overall_uncertainty)
 
       if (self$method == "monte carlo dropout" | self$method == "gaussian monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
         posterior_median = scaler(self$quantile_posterior$median,
@@ -1568,29 +1651,37 @@ abcnn = R6::R6Class("abcnn",
                                     type = "backward")
       }
 
-      # Conformal predictions
-      # quantile * sqrt(variance heuristic)
-      df_epistemic = epistemic_uncertainty
-      for (j in 1:ncol(df_epistemic)) {
-        df_epistemic[,j] = self$epistemic_conformal_quantile[,j] * self$epistemic_uncertainty[,j]
+      # Conformal prediction intervals.
+      # The interval is built in the scaled space, where the conformal quantile
+      # was calibrated, and only then mapped back one endpoint at a time. All
+      # the scaling methods are monotone increasing, so this carries the
+      # coverage guarantee over to the original scale exactly.
+      mu_scaled = as.matrix(self$predictive_mean)
+
+      conformal_bounds = function(uncertainty, conformal_quantile) {
+        half_width = sweep(as.matrix(uncertainty), 2,
+                           as.numeric(conformal_quantile[1,]), `*`)
+
+        lower = as.data.frame(mu_scaled - half_width)
+        upper = as.data.frame(mu_scaled + half_width)
+        colnames(lower) = colnames(self$theta)
+        colnames(upper) = colnames(self$theta)
+
+        return(list(lower = scaler(lower,
+                                   self$target_summary,
+                                   method = self$scale_target,
+                                   type = "backward"),
+                    upper = scaler(upper,
+                                   self$target_summary,
+                                   method = self$scale_target,
+                                   type = "backward")))
       }
 
-      df_overall = overall_uncertainty
-      for (j in 1:ncol(df_overall)) {
-        df_overall[,j] = self$overall_conformal_quantile[,j] * self$overall_uncertainty[,j]
-      }
+      epistemic_conformal = conformal_bounds(self$epistemic_uncertainty,
+                                             self$epistemic_conformal_quantile)
 
-      # Scale back
-      df_overall = scaler(df_overall,
-                          self$target_summary,
-                          method = self$scale_target,
-                          type = "backward")
-
-      df_epistemic = scaler(df_epistemic,
-                            self$target_summary,
-                            method = self$scale_target,
-                            type = "backward")
-
+      overall_conformal = conformal_bounds(self$overall_uncertainty,
+                                           self$overall_conformal_quantile)
 
       # Tidy data
       pred_mean = tidyr::gather(predictive_mean,
@@ -1605,11 +1696,17 @@ abcnn = R6::R6Class("abcnn",
       overall_uncertainty = tidyr::gather(overall_uncertainty,
                                      key = "variable")
 
-      epistemic_conformal = tidyr::gather(df_epistemic,
-                                          key = "variable")
+      epistemic_conformal_lower = tidyr::gather(epistemic_conformal$lower,
+                                                key = "variable")
 
-      overall_conformal = tidyr::gather(df_overall,
-                                          key = "variable")
+      epistemic_conformal_upper = tidyr::gather(epistemic_conformal$upper,
+                                                key = "variable")
+
+      overall_conformal_lower = tidyr::gather(overall_conformal$lower,
+                                              key = "variable")
+
+      overall_conformal_upper = tidyr::gather(overall_conformal$upper,
+                                              key = "variable")
 
       sample = data.frame(sample = rep(seq(1, self$n_obs), self$output_dim))
 
@@ -1618,16 +1715,20 @@ abcnn = R6::R6Class("abcnn",
                           epistemic_uncertainty[,2],
                           aleatoric_uncertainty[,2],
                           overall_uncertainty[,2],
-                          epistemic_conformal[,2],
-                          overall_conformal[,2])
+                          epistemic_conformal_lower[,2],
+                          epistemic_conformal_upper[,2],
+                          overall_conformal_lower[,2],
+                          overall_conformal_upper[,2])
 
       colnames(predictions) = c("sample", "parameter",
                                 "predictive_mean",
                                 "epistemic_uncertainty",
                                 "aleatoric_uncertainty",
                                 "overall_uncertainty",
-                                "epistemic_conformal_credible_interval",
-                                "overall_conformal_credible_interval")
+                                "epistemic_conformal_lower",
+                                "epistemic_conformal_upper",
+                                "overall_conformal_lower",
+                                "overall_conformal_upper")
 
       if (self$method == "monte carlo dropout" | self$method == "gaussian monte carlo dropout" | self$method == "concrete dropout" | self$method == "tabnet-abc") {
         predictions$posterior_median = tidyr::gather(posterior_median,
@@ -1747,6 +1848,11 @@ abcnn = R6::R6Class("abcnn",
     #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
     #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
     #' computed on the distribution of posteriors.
+    #' The `conformal` and `posterior quantile` bounds are obtained by transforming the interval endpoints back to the
+    #' original scale, so they are exact under any scaling method and always remain within the support of the parameter.
+    #' The `uncertainty` band is a symmetric `mean +/- sd` band built from a delta-method approximation of the standard
+    #' deviation; under the non-linear `log` and `logit` scalings it is only a local linearisation and may extend beyond
+    #' that support.
     #' @param epistemic_uncertainty logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.
     #' @param plot_type The type of plot, whether a `line` or `errorbar` around points
     #'
@@ -1789,11 +1895,13 @@ abcnn = R6::R6Class("abcnn",
         }
 
         if (uncertainty_type == "conformal") {
-          df_predicted$ci_overall_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
-          df_predicted$ci_overall_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
+          # The bounds are already on the original scale, and are asymmetric
+          # around the mean under the `log` and `logit` scalings
+          df_predicted$ci_overall_upper = df_predicted$overall_conformal_upper
+          df_predicted$ci_overall_lower = df_predicted$overall_conformal_lower
 
-          df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
-          df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
+          df_predicted$ci_e_upper = df_predicted$epistemic_conformal_upper
+          df_predicted$ci_e_lower = df_predicted$epistemic_conformal_lower
 
           df_predicted$mean = df_predicted$predictive_mean
         }
@@ -1861,6 +1969,11 @@ abcnn = R6::R6Class("abcnn",
     #' @param uncertainty_type The type of uncertainty to plot, whether `conformal` credible intervals (default),
     #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
     #' computed on the distribution of posteriors.
+    #' The `conformal` and `posterior quantile` bounds are obtained by transforming the interval endpoints back to the
+    #' original scale, so they are exact under any scaling method and always remain within the support of the parameter.
+    #' The `uncertainty` band is a symmetric `mean +/- sd` band built from a delta-method approximation of the standard
+    #' deviation; under the non-linear `log` and `logit` scalings it is only a local linearisation and may extend beyond
+    #' that support.
     #' @param epistemic_uncertainty logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.
     #'
     plot_posterior = function(sample = 1,
@@ -1887,11 +2000,13 @@ abcnn = R6::R6Class("abcnn",
         }
 
         if (uncertainty_type == "conformal") {
-          tidy_predictions$ci_upper = tidy_predictions$predictive_mean + tidy_predictions$overall_conformal_credible_interval
-          tidy_predictions$ci_lower = tidy_predictions$predictive_mean - tidy_predictions$overall_conformal_credible_interval
+          # The bounds are already on the original scale, and are asymmetric
+          # around the mean under the `log` and `logit` scalings
+          tidy_predictions$ci_upper = tidy_predictions$overall_conformal_upper
+          tidy_predictions$ci_lower = tidy_predictions$overall_conformal_lower
 
-          tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_conformal_credible_interval
-          tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_conformal_credible_interval
+          tidy_predictions$ci_e_upper = tidy_predictions$epistemic_conformal_upper
+          tidy_predictions$ci_e_lower = tidy_predictions$epistemic_conformal_lower
         }
 
         if (uncertainty_type == "posterior quantile") {
@@ -1975,22 +2090,50 @@ abcnn = R6::R6Class("abcnn",
     #' @description
     #' Draw random samples from the posterior distribution
     #'
+    #' @details
+    #'
+    #' For every observed sample, `n` values are drawn per parameter from a
+    #' normal distribution centred on the predictive mean, with the overall
+    #' (aleatoric + epistemic) uncertainty as standard deviation.
+    #'
+    #' The draws are made in the scaled space the network was trained in, then
+    #' transformed back one draw at a time. As the scaling is monotone, the
+    #' draws respect the support implied by `scale_target`, in the same way as
+    #' the credible intervals returned by `predictions()`.
+    #'
     #' @param n the number of samples to draw from posterior
+    #' @param seed a custom seed for drawing parameters
     #'
-    #' @returns Returns a list with n random samples for each observed sample
+    #' @returns Returns a list with one `data.frame` per observed sample, of `n`
+    #' rows and one column per parameter, on the original parameter scale
     #'
-    draw_from_posterior = function(n = 1) {
-      set.seed(self$seed)
+    draw_from_posterior = function(n = 1, seed = NA) {
+      if(is.na(seed)) {set.seed(self$seed)} else {set.seed(seed)}
 
-      if (self$method == "deep ensemble") {
-        mu = self$predictive_mean
-        sigma = self$overall_uncertainty
-      } else {
-        mu = apply(self$posterior_samples, 3, function(x) mean(x))
-        sigma = var(self$posterior_samples)
+      if (is.null(self$fitted)) {
+        warning("The model has not been fitted. NULL returned.")
+        return(NULL)
       }
 
-      samples = lapply(1:self$n_obs, function(x) rnorm(n, mu[x], sigma[x]))
+      # One row per observed sample and one column per parameter, in the scaled
+      # space. `overall_uncertainty` is a standard deviation for every method.
+      mu = as.matrix(self$predictive_mean)
+      sigma = as.matrix(self$overall_uncertainty)
+
+      samples = lapply(seq_len(self$n_obs), function(i) {
+        draws = vapply(seq_len(self$output_dim),
+                       function(j) rnorm(n, mean = mu[i, j], sd = sigma[i, j]),
+                       numeric(n))
+        draws = as.data.frame(matrix(draws, nrow = n, ncol = self$output_dim))
+        colnames(draws) = colnames(self$theta)
+
+        scaler(draws,
+               self$target_summary,
+               method = self$scale_target,
+               type = "backward")
+      })
+
+      names(samples) = paste0("sample_", seq_len(self$n_obs))
 
       return(samples)
     },
@@ -2061,11 +2204,11 @@ abcnn = R6::R6Class("abcnn",
       pred = self$cross_validation_predictions
       pred$true_value = tidy_param$true_value
 
-      pred$ci_overall_upper = pred$predictive_mean + pred$overall_conformal_credible_interval
-      pred$ci_overall_lower = pred$predictive_mean - pred$overall_conformal_credible_interval
+      pred$ci_overall_upper = pred$overall_conformal_upper
+      pred$ci_overall_lower = pred$overall_conformal_lower
 
-      pred$ci_e_upper = pred$predictive_mean + pred$epistemic_conformal_credible_interval
-      pred$ci_e_lower = pred$predictive_mean - pred$epistemic_conformal_credible_interval
+      pred$ci_e_upper = pred$epistemic_conformal_upper
+      pred$ci_e_lower = pred$epistemic_conformal_lower
 
 
       # Sort and index observations

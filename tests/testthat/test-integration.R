@@ -99,7 +99,7 @@ for (method in methods) {
 
     pred = abc$predictions()
     expect_true(pred$epistemic_uncertainty > 0)
-    expect_true(pred$epistemic_conformal_credible_interval > 0)
+    expect_true(pred$epistemic_conformal_lower < pred$epistemic_conformal_upper)
     if (method != "deep ensemble") {
       expect_true(pred$posterior_lower_ci < pred$posterior_upper_ci)
     }
@@ -107,7 +107,7 @@ for (method in methods) {
     if (method %in% c("concrete dropout", "deep ensemble")) {
       expect_true(pred$aleatoric_uncertainty > 0)
       expect_true(pred$overall_uncertainty > 0)
-      expect_true(pred$overall_conformal_credible_interval > 0)
+      expect_true(pred$overall_conformal_lower < pred$overall_conformal_upper)
     }
   })
 }

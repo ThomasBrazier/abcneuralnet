@@ -112,7 +112,7 @@ explainn = R6::R6Class("explainn",
 
                             model_sequential = torch::nn_sequential(model_mc[[1]])
 
-                            for (i in 2:(x$num_hidden_layers)) {
+                            for (i in seq_len(x$num_hidden_layers - 1) + 1) {
                               mod = model_mc[[(i -1) * 3 + 1]]
                               model_sequential$add_module(name = i - 1, module = mod)
                             }
@@ -132,7 +132,7 @@ explainn = R6::R6Class("explainn",
 
                             model_sequential = torch::nn_sequential(model_gaussian_mc["0"])[[1]]
 
-                            for (i in 2:(x$num_hidden_layers)) {
+                            for (i in seq_len(x$num_hidden_layers - 1) + 1) {
                               mod = model_gaussian_mc[paste0("linear_", i)]
                               model_sequential$add_module(name = paste0("linear_", i), module = mod[[1]])
                             }
@@ -153,7 +153,7 @@ explainn = R6::R6Class("explainn",
 
                             model_sequential = torch::nn_sequential(model_concrete[[1]]$linear)
 
-                            for (i in 2:(x$num_hidden_layers)) {
+                            for (i in seq_len(x$num_hidden_layers - 1) + 1) {
                               mod = model_concrete[[i]]$linear
                               model_sequential$add_module(name = i - 1, module = mod)
                             }

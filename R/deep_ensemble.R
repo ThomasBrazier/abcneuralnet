@@ -13,7 +13,9 @@ single_model = torch::nn_module(
     self$mlp = torch::nn_sequential(torch::nn_linear(num_input_dim, num_hidden_dim),
                                     torch::nn_leaky_relu())
 
-    for (i in 2:(num_hidden_layers)) {
+    # `seq_len()` so that a single hidden layer gives an empty loop.
+    # `2:num_hidden_layers` would count down to c(2, 1) and add a second layer.
+    for (i in seq_len(num_hidden_layers - 1) + 1) {
       self$mlp$add_module(paste0("hidden_layer", i), torch::nn_linear(num_hidden_dim,
                                                                     num_hidden_dim))
       # self$mlp$add_module(paste0("batch_norm", i), nn_batch_norm1d(num_hidden_dim))
@@ -143,17 +145,19 @@ nn_ensemble = torch::nn_module(
   forward = function(input) {
     # print("forward")
     # Collect predictions from each model
-    predictions = lapply(fitted$model$model_list, function(model) model(x_sample))
+    predictions = lapply(self$model_list, function(model) model(input))
     predictions = torch::torch_stack(predictions, dim = 4)  # Stack predictions along a new dimension
 
     # Compute the mean and variance of predictions
     # dim (2 i.e. mu + var, num samples, num parameters, num networks)
     mu = predictions[1,,,]
-    sigma = predictions[2,,,]
+    # The second output of each network is unconstrained. `log1pexp()` maps it
+    # to a positive variance, as in `nll_loss()` and in `abcnn$predict()`.
+    sigma = log1pexp(predictions[2,,,])
     # mean_prediction = torch_mean(predictions[1,,,], dim = 3)  # Mean of means
     # variance_prediction = torch_mean(predictions[2,,,], dim = 3)  # Mean of variances
     mean_prediction = torch::torch_mean(mu, dim = 3)  # Mean of means across networks
-    variance_prediction = torch::torch_sqrt(torch::torch_mean(sigma, dim = 3) +
+    sd_prediction = torch::torch_sqrt(torch::torch_mean(sigma, dim = 3) +
                                               torch::torch_mean(torch::torch_square(mu), dim = 3) -
                                               torch::torch_square(mean_prediction))
 
@@ -169,7 +173,7 @@ nn_ensemble = torch::nn_module(
     # out_mu_final = torch_mean(out_mu, dim = 1)
     # out_sig_final = torch_sqrt(torch_mean(out_sig, dim = 1) + torch_mean(torch_square(out_mu), dim = 1) - torch_square(out_mu_final))
 
-    return(list(mean = mean_prediction, variance = variance_prediction))
+    return(list(mean = mean_prediction, sd = sd_prediction))
   },
 
   # Training step

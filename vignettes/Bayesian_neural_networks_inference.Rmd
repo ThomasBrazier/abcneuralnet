@@ -377,7 +377,9 @@ save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
 
 
 
-You can get predictions with their associated uncertainties and Conformal Credibility Intervals as a tidy data frame:
+You can get predictions with their associated uncertainties and Conformal Credibility Intervals as a tidy data frame.
+
+Credible Intervals are returned as explicit bounds (`overall_conformal_lower`/`overall_conformal_upper`, and their `epistemic_` counterparts) rather than as a half-width around the mean. The bounds are computed in the scaled space in which the network was trained and each endpoint is then transformed back individually. Since every scaling method is monotone, this preserves the conformal coverage guarantee exactly and keeps the bounds within the range of the parameter. Under the non-linear `log` and `logit` scalings the intervals are therefore asymmetric around `predictive_mean`, and must be used as bounds rather than reconstructed from the mean.
 
 ```{r, echo = T, message=F}
 head(abc$predictions())
@@ -396,11 +398,13 @@ df_predicted$uncertainty_a_lower = df_predicted$predictive_mean - df_predicted$a
 df_predicted$uncertainty_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
 df_predicted$uncertainty_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
 
-df_predicted$ci_conformal_upper = df_predicted$predictive_mean + df_predicted$overall_conformal_credible_interval
-df_predicted$ci_conformal_lower = df_predicted$predictive_mean - df_predicted$overall_conformal_credible_interval
+# The Conformal Credible Intervals are already returned as bounds on the
+# original scale, so they are used directly rather than added to the mean
+df_predicted$ci_conformal_upper = df_predicted$overall_conformal_upper
+df_predicted$ci_conformal_lower = df_predicted$overall_conformal_lower
 
-df_predicted$ci_conformal_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_conformal_credible_interval
-df_predicted$ci_conformal_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_conformal_credible_interval
+df_predicted$ci_conformal_e_upper = df_predicted$epistemic_conformal_upper
+df_predicted$ci_conformal_e_lower = df_predicted$epistemic_conformal_lower
 
 df_predicted$x = X_obs
 df_predicted$y_true = Y_obs
@@ -1107,8 +1111,8 @@ save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim"
 <!-- df$true.theta = theta.exact[1:1000,"mean.theta1"] -->
 
 <!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
-<!--   geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval, -->
-<!--                   ymax = predictive_mean + overall_conformal_credible_interval),  -->
+<!--   geom_ribbon(aes(ymin = overall_conformal_lower, -->
+<!--                   ymax = overall_conformal_upper),  -->
 <!--               fill = "lightgrey", alpha = 0.5) + -->
 <!--   geom_point(alpha = 0.6) + -->
 <!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->
@@ -1127,8 +1131,8 @@ save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim"
 <!-- df$true.theta = theta.exact[1:1000,"mean.theta2"] -->
 
 <!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
-<!--   geom_ribbon(aes(ymin = predictive_mean - overall_conformal_credible_interval, -->
-<!--                   ymax = predictive_mean + overall_conformal_credible_interval),  -->
+<!--   geom_ribbon(aes(ymin = overall_conformal_lower, -->
+<!--                   ymax = overall_conformal_upper),  -->
 <!--               fill = "lightgrey", alpha = 0.5) + -->
 <!--   geom_point(alpha = 0.6) + -->
 <!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->

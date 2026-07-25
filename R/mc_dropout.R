@@ -30,7 +30,9 @@ mc_dropout_model = torch::nn_module(
       nn_mc_dropout(p = dropout_hidden),
       torch::nn_leaky_relu())
 
-    for (i in 2:(num_hidden_layers)) {
+    # `seq_len()` so that a single hidden layer gives an empty loop.
+    # `2:num_hidden_layers` would count down to c(2, 1) and add a second layer.
+    for (i in seq_len(num_hidden_layers - 1) + 1) {
       self$mc_dropout$add_module(paste0("linear_", i), torch::nn_linear(num_hidden_dim, num_hidden_dim))
       self$mc_dropout$add_module(paste0("dropout_", i), nn_mc_dropout(p = dropout_hidden))
       self$mc_dropout$add_module(paste0("relu_", i), torch::nn_leaky_relu())

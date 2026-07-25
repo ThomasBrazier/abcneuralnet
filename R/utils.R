@@ -112,7 +112,28 @@ logit = function(y, a, b, n) {
 inv_logit = function(z, a, b, n) {
   p = plogis(z)
   p = unsqueeze(p, n)
+  # `unsqueeze()` undoes the `squeeze()` applied on the forward pass, but it
+  # overshoots [0, 1] by up to 0.5/(n - 1) once `plogis(z)` saturates. Clamp, as
+  # a parameter cannot fall outside the range learned on the training set.
+  # p = pmin(pmax(p, 0), 1)
+  # Keep it this way, I want to know when the CI is wrong (outside training range)
   a + (b - a) * p
+}
+
+#' The derivative of the backward logit transform
+#'
+#' @description
+#' The derivative of `inv_logit()` with respect to `z`. As `unsqueeze()` is
+#' affine in `p` with slope `n / (n - 1)`, and `d plogis(z) / dz = p * (1 - p)`,
+#' the chain rule gives `(b - a) * n / (n - 1) * p * (1 - p)`.
+#'
+#' @param z a vector of numerical values
+#' @param a the min value of the training set
+#' @param b the max value of the training set
+#' @param n the number of samples in the training set
+inv_logit_grad = function(z, a, b, n) {
+  p = plogis(z)
+  (b - a) * (n / (n - 1)) * p * (1 - p)
 }
 
 
@@ -244,6 +265,75 @@ scaler = function(x, sum_stats, method = "minmax", type = "forward") {
 }
 
 
+#' The gradient of the backward scaling transform
+#'
+#' @description
+#'
+#' Returns `|g'(z)|`, the absolute derivative of the backward transform applied
+#' by `scaler(type = "backward")`, evaluated at the scaled values `z`.
+#'
+#' This is the Jacobian factor used to carry a standard deviation from the
+#' scaled space, where the neural network is trained, to the original parameter
+#' scale with the delta method: `sd_original ~ |g'(z)| * sd_scaled`.
+#'
+#' The factor is a constant, and the delta method therefore exact, for the
+#' affine methods (`none`, `minmax`, `robustscaler` and `normalization`).
+#' For `log` and `logit` the backward transform is non-linear, so the result is
+#' only a local linearisation around `z` and the resulting symmetric interval
+#' may fall outside the support of the parameter. Prefer the conformal or
+#' posterior-quantile intervals returned by `abcnn$predictions()`, which are
+#' built by transforming interval endpoints and are exact under any monotone
+#' scaling.
+#'
+#' @param z a data frame of scaled values at which to evaluate the gradient,
+#' typically the scaled predictive mean. Each column is treated separately.
+#' @param sum_stats list, summary statistics learned on the training data. See `scaler()`.
+#' @param method the scaling method, either `minmax`, `robustscaler`, `normalization`, `log`, `logit` or `none`.
+#' Can be a single character (same transformation applied to all columns) or a vector of characters with one transformation per column.
+#'
+#' @return a data frame of gradients with the same dimensions as `z`
+#'
+scaler_grad = function(z, sum_stats, method = "minmax") {
+
+  z = as.data.frame(z)
+
+  # Raise an error if the method is not provided
+  l = lapply(method, function(x) (x %in% c("none", "minmax", "robustscaler", "log", "logit", "normalization")))
+  if (!all(unlist(l))) {
+    stop("The scaling method must be provided.")
+  }
+
+  method = if(length(method) == 1) {rep(method, ncol(z))} else {method}
+
+  grad = z
+
+  # Process each column one by one, as in scaler()
+  for (i in 1:ncol(z)) {
+    if (method[i] == "none") {
+      grad[,i] = 1
+    }
+    if (method[i] == "minmax") {
+      grad[,i] = sum_stats$max[i] - sum_stats$min[i]
+    }
+    if (method[i] == "robustscaler") {
+      grad[,i] = sum_stats$quantile_75[i] - sum_stats$quantile_25[i]
+    }
+    if (method[i] == "normalization") {
+      grad[,i] = sum_stats$sd[i]
+    }
+    if (method[i] == "log") {
+      grad[,i] = exp(z[,i])
+    }
+    if (method[i] == "logit") {
+      # Same hardcoded n as the logit branch of scaler()
+      grad[,i] = inv_logit_grad(z[,i], sum_stats$min[i], sum_stats$max[i], 100000)
+    }
+  }
+
+  return(abs(grad))
+}
+
+
 #' Cross-validation metrics between ground truth and predictions
 #'
 #' @description
@@ -272,8 +362,8 @@ cross_val = function(cross_validation_param,
               nmae = rminer::mmetric(.data$predictive_mean, .data$true_value, metric = "NMAE"),
               cor = stats::cor(.data$predictive_mean, .data$true_value, method = "spearman"),
               cov = stats::cov(.data$predictive_mean, .data$true_value),
-              mean_epistemic_interval = 2 * mean(.data$epistemic_conformal_credible_interval),
-              mean_overall_interval = 2 * mean(.data$overall_conformal_credible_interval))
+              mean_epistemic_interval = mean(.data$epistemic_conformal_upper - .data$epistemic_conformal_lower),
+              mean_overall_interval = mean(.data$overall_conformal_upper - .data$overall_conformal_lower))
 
   return(res)
 }
@@ -295,18 +385,28 @@ cross_val = function(cross_validation_param,
 #'
 samples_abcnn = function(object) {
 
-  samples = data.frame(Sample = c("Training",
+  # The same arithmetic as `abcnn$dataloader()`: the evaluation and testing
+  # sets are proportions of all the simulations, and the training set is what
+  # is left once they and the conformal calibration set have been taken out.
+  n_total = nrow(object$sumstat)
+  n_evaluation = round(n_total * object$validation_split, digits = 0)
+  n_testing = round(n_total * object$test_split, digits = 0)
+  n_training = n_total - n_evaluation - n_testing - object$num_conformal
+
+  samples = data.frame(Sample = c("Simulations",
+                                  "Training",
                                   "Testing split",
                                   "Testing",
                                   "Evaluation split",
                                   "Evaluation",
                                   "Conformal",
                                   "Observed"),
-                       Size = c(round(nrow(object$sumstat) * (1 - object$validation_split), digits = 0),
+                       Size = c(n_total,
+                                n_training,
                                 object$test_split,
-                                round(nrow(object$sumstat) * (1 - object$validation_split) * object$test_split, digits = 0),
+                                n_testing,
                                 object$validation_split,
-                                round(nrow(object$sumstat) * (object$validation_split), digits = 0),
+                                n_evaluation,
                                 object$num_conformal,
                                 nrow(object$observed)))
 
