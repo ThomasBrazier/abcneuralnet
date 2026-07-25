@@ -609,8 +609,10 @@ abcnn = R6::R6Class("abcnn",
       # torch_set_default_dtype(torch_float64())
 
       # Keep metadata of prior boundaries for plotting
-      self$prior_lower = apply(as.matrix(self$theta), 1, min)
-      self$prior_upper = apply(as.matrix(self$theta), 1, max)
+      # One boundary per parameter, so `MARGIN = 2`. Over the rows it would
+      # return the range of each simulation across parameters instead.
+      self$prior_lower = apply(as.matrix(self$theta), 2, function(x) min(x, na.rm = TRUE))
+      self$prior_upper = apply(as.matrix(self$theta), 2, function(x) max(x, na.rm = TRUE))
 
       #-----------------------------------#
       # INIT MODELS
