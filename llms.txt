@@ -2,7 +2,7 @@
 
 ![](reference/figures/logo.png)
 
-![license](https://badgen.net/badge/license/GPL-3.0/blue)![release](https://badgen.net/badge/release/0.2.0/blue?icon=github)![R-CMD-check](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/R-CMD-check.yaml/badge.svg)
+![license](https://badgen.net/badge/license/GPL-3.0/blue)![release](https://badgen.net/badge/release/0.3.0/blue?icon=github)![R-CMD-check](https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/R-CMD-check.yaml/badge.svg)
 
 ## Installation
 
@@ -121,6 +121,9 @@ to use the package, or to submit a feature request.
 - [`inv_logit()`](https://thomasbrazier.github.io/abcneuralnet/reference/inv_logit.md)
   : The backward logit transform
 
+- [`inv_logit_grad()`](https://thomasbrazier.github.io/abcneuralnet/reference/inv_logit_grad.md)
+  : The derivative of the backward logit transform
+
 - [`load_abcnn()`](https://thomasbrazier.github.io/abcneuralnet/reference/load_abcnn.md)
   :
 
@@ -141,6 +144,9 @@ to use the package, or to submit a feature request.
 
 - [`scaler()`](https://thomasbrazier.github.io/abcneuralnet/reference/scaler.md)
   : A scaling function for targets and inputs
+
+- [`scaler_grad()`](https://thomasbrazier.github.io/abcneuralnet/reference/scaler_grad.md)
+  : The gradient of the backward scaling transform
 
 # Articles
 

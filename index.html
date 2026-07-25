@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference • abcneuralnet</title>
+<title>Bayesian Deep Learning and Approximate Bayesian Computation for Parameter Inference • abcneuralnet</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Bayesian Deep Learning and Approximate Bayesian Computation for Parameter Inference">
 <meta name="description" content="The package `abcneuralnet` provides Bayesian Neural Network and an Approximate Baysesian Computation framework for simulation-based parameter inference. It implements four different methods combining ABC and neural networks implemented in R `torch`. The two core methods are `concrete dropout`, an implementation of Gal et al. (2017), and `deep ensemble`, an implementation of Lakshminarayanan et al. (2017), both allowing to estimate both the aleatoric and epistemic uncertainty for each sample. `monte carlo dropout` is an implementation of Gal and Ghahramani (2016), that provides a simpler model easier to train, despite its limitations (the dropout rate must be arbitrary chosen). A fourth method is `tabnet-abc`. This is a new method, combining regular ABC inference with the `abc` R package, and a Tabnet neural network, as in Arik et al. (2021) and implemented in the `tabnet` R package. This is the same idea than in Åkesson et al. (2021) or Jiang et al. (2017), except than te MLP/CNN used to estimate summary statistics is replaced by a `tabnet` model specifically designed to handle tabular data and feature selection through an attention map on features. The `tabnet` neural network is trained to predict summary statistics from the observed summary statistics. Then these predictions are used as a supplementary set of summary statistics and regular ABC inference is performed on it. Explain methods are specific the `tabnet-abc` model. In addition, Credible Intervals are calibrated with conformal prediction, as in Baragatti et al. (2024). As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`, `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method). The neural networks are implemented with the `torch` R package and support CUDA devices for training. The `luz` package is used as a higher level API for training and predictions with `torch`. The device (`CUDA` or `cpu`) is automatically detected by `luz`.">
 <meta property="og:description" content="The package `abcneuralnet` provides Bayesian Neural Network and an Approximate Baysesian Computation framework for simulation-based parameter inference. It implements four different methods combining ABC and neural networks implemented in R `torch`. The two core methods are `concrete dropout`, an implementation of Gal et al. (2017), and `deep ensemble`, an implementation of Lakshminarayanan et al. (2017), both allowing to estimate both the aleatoric and epistemic uncertainty for each sample. `monte carlo dropout` is an implementation of Gal and Ghahramani (2016), that provides a simpler model easier to train, despite its limitations (the dropout rate must be arbitrary chosen). A fourth method is `tabnet-abc`. This is a new method, combining regular ABC inference with the `abc` R package, and a Tabnet neural network, as in Arik et al. (2021) and implemented in the `tabnet` R package. This is the same idea than in Åkesson et al. (2021) or Jiang et al. (2017), except than te MLP/CNN used to estimate summary statistics is replaced by a `tabnet` model specifically designed to handle tabular data and feature selection through an attention map on features. The `tabnet` neural network is trained to predict summary statistics from the observed summary statistics. Then these predictions are used as a supplementary set of summary statistics and regular ABC inference is performed on it. Explain methods are specific the `tabnet-abc` model. In addition, Credible Intervals are calibrated with conformal prediction, as in Baragatti et al. (2024). As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`, `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method). The neural networks are implemented with the `torch` R package and support CUDA devices for training. The `luz` package is used as a higher level API for training and predictions with `torch`. The device (`CUDA` or `cpu`) is automatically detected by `luz`.">
 <meta property="og:image" content="https://thomasbrazier.github.io/abcneuralnet/logo.png">
@@ -57,7 +57,7 @@
 </h1>
 </div>
 <p><img src="reference/figures/logo.png" align="right"></p>
-<p><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="license"><img src="https://badgen.net/badge/release/0.2.0/blue?icon=github" alt="release"><img src="https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></p>
+<p><img src="https://badgen.net/badge/license/GPL-3.0/blue" alt="license"><img src="https://badgen.net/badge/release/0.3.0/blue?icon=github" alt="release"><img src="https://github.com/ThomasBrazier/abcneuralnet/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -160,7 +160,7 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Brazier Thomas <br><small class="roles"> Author, maintainer </small>   </li>
+<li>Thomas brazier.thomas@gmail.com Brazier <br><small class="roles"> Author, maintainer </small>   </li>
 </ul>
 </div>
 
@@ -171,7 +171,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Brazier Thomas.</p>
+  <p>Developed by Thomas <a href="mailto:brazier.thomas@gmail.com" class="email">brazier.thomas@gmail.com</a> Brazier.</p>
 </div>
 
 <div class="pkgdown-footer-right">

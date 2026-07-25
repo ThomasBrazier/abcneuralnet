@@ -123,7 +123,7 @@ See `https://bips-hb.github.io/innsight/` for details.
 
 ### Public methods
 
-- [`explainn$new()`](#method-explainn-new)
+- [`explainn$new()`](#method-explainn-initialize)
 
 - [`explainn$print()`](#method-explainn-print)
 
@@ -141,7 +141,7 @@ See `https://bips-hb.github.io/innsight/` for details.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `explainn$new()`
 
 Create a new `explainn` object
 
@@ -167,7 +167,7 @@ Create a new `explainn` object
 
 ------------------------------------------------------------------------
 
-### Method [`print()`](https://rdrr.io/r/base/print.html)
+### `explainn$print()`
 
 Print the converter
 
@@ -177,7 +177,7 @@ Print the converter
 
 ------------------------------------------------------------------------
 
-### Method `run()`
+### `explainn$run()`
 
 Apply the `method` to the passed `data` to be explained
 
@@ -216,7 +216,7 @@ The method is run on a `data` object (see `innsight` manual)
 
 ------------------------------------------------------------------------
 
-### Method `get_result()`
+### `explainn$get_result()`
 
 Get the results of the Feature Attribution method
 
@@ -238,7 +238,7 @@ importances weigths of the fitted model.
 
 ------------------------------------------------------------------------
 
-### Method [`plot()`](https://rdrr.io/r/graphics/plot.default.html)
+### `explainn$plot()`
 
 Plot the results of the Feature Attribution method for single data
 points
@@ -274,7 +274,7 @@ Note that when the `abcnn` model is `tabnet-abc`,
 
 ------------------------------------------------------------------------
 
-### Method `plot_global()`
+### `explainn$plot_global()`
 
 Plot the results of the Feature Attribution method for the global
 dataset
@@ -296,7 +296,7 @@ dataset
 
 ------------------------------------------------------------------------
 
-### Method [`boxplot()`](https://rdrr.io/r/graphics/boxplot.html)
+### `explainn$boxplot()`
 
 Alias for `plot_global` for tabular and signal data
 
@@ -312,7 +312,7 @@ Alias for `plot_global` for tabular and signal data
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `explainn$clone()`
 
 The objects of this class are cloneable with this method.
 

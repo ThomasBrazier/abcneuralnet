@@ -112,39 +112,39 @@ and to interpret properly the output of the model.</p>
 <dd><p>an <code>abcnn</code> object</p></dd>
 
 
-<dt><code>method</code></dt>
+    <dt><code>method</code></dt>
 <dd><p>the <code>innsight</code> method to apply: <code>grad</code>, <code>cw</code>, <code>smoothgrad</code>, <code>intgrad</code>, <code>expgrad</code>, <code>lrp</code>, <code>deeplift</code>, <code>deepshap</code>, <code>shap</code>, <code>lime</code></p></dd>
 
 
-<dt><code>converter</code></dt>
+    <dt><code>converter</code></dt>
 <dd><p>the torch/luz model converted to an <code>innsight</code> object</p></dd>
 
 
-<dt><code>result</code></dt>
+    <dt><code>result</code></dt>
 <dd><p>the result of the explainability method</p></dd>
 
 
-<dt><code>model_method</code></dt>
+    <dt><code>model_method</code></dt>
 <dd><p>the method in the <code>abcnn</code> object</p></dd>
 
 
-<dt><code>variables</code></dt>
+    <dt><code>variables</code></dt>
 <dd><p>names of the variables (input dimensions)</p></dd>
 
 
-<dt><code>parameters</code></dt>
+    <dt><code>parameters</code></dt>
 <dd><p>names of the parameters to estimate (output dimensions)</p></dd>
 
 
-<dt><code>ensemble_num_model</code></dt>
+    <dt><code>ensemble_num_model</code></dt>
 <dd><p>index of the model to explain in Deep Ensemble (default is first model)</p></dd>
 
 
-<dt><code>scale_input</code></dt>
+    <dt><code>scale_input</code></dt>
 <dd><p>method used to scale input dimensions</p></dd>
 
 
-<dt><code>input_summary</code></dt>
+    <dt><code>input_summary</code></dt>
 <dd><p>summary statistics for the input scaling method</p></dd>
 
 
@@ -155,8 +155,7 @@ and to interpret properly the output of the model.</p>
 
 <div class="section">
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
-
-<ul><li><p><a href="#method-explainn-new"><code>explainn$new()</code></a></p></li>
+<p></p><ul><li><p><a href="#method-explainn-initialize"><code>explainn$new()</code></a></p></li>
 <li><p><a href="#method-explainn-print"><code>explainn$print()</code></a></p></li>
 <li><p><a href="#method-explainn-run"><code>explainn$run()</code></a></p></li>
 <li><p><a href="#method-explainn-get_result"><code>explainn$get_result()</code></a></p></li>
@@ -164,47 +163,44 @@ and to interpret properly the output of the model.</p>
 <li><p><a href="#method-explainn-plot_global"><code>explainn$plot_global()</code></a></p></li>
 <li><p><a href="#method-explainn-boxplot"><code>explainn$boxplot()</code></a></p></li>
 <li><p><a href="#method-explainn-clone"><code>explainn$clone()</code></a></p></li>
-</ul></div><p></p><hr><a id="method-explainn-new"></a><div class="section">
-<h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
+</ul></div><p></p><hr><a id="method-explainn-initialize"></a><div class="section">
+<h3 id="explainn-new-"><code>explainn$new()</code><a class="anchor" aria-label="anchor" href="#explainn-new-"></a></h3>
 <p>Create a new <code>explainn</code> object</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/explainn.html">explainn</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">x</span>, method <span class="op">=</span> <span class="st">"cw"</span>, ensemble_num_model <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>x</code></dt>
 <dd><p>an <code>abcnn</code> model</p></dd>
 
-
-<dt><code>method</code></dt>
+      <dt><code>method</code></dt>
 <dd><p>the explainability method to use (see <code>innsight</code> for details) (defauls is <code>cw</code>)</p></dd>
 
-
-<dt><code>ensemble_num_model</code></dt>
+      <dt><code>ensemble_num_model</code></dt>
 <dd><p>index of the model to explain in Deep Ensemble (default is first model)</p></dd>
 
 
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-explainn-print"></a><div class="section">
-<h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-explainn-print"></a><div class="section">
+<h3 id="explainn-print-"><code>explainn$print()</code><a class="anchor" aria-label="anchor" href="#explainn-print-"></a></h3>
 <p>Print the converter</p><div class="section">
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
+</div>
 
-</div><p></p><hr><a id="method-explainn-run"></a><div class="section">
-<h3 id="method-run-">Method <code>run()</code><a class="anchor" aria-label="anchor" href="#method-run-"></a></h3>
+<p></p><hr><a id="method-explainn-run"></a><div class="section">
+<h3 id="explainn-run-"><code>explainn$run()</code><a class="anchor" aria-label="anchor" href="#explainn-run-"></a></h3>
 <p>Apply the <code>method</code> to the passed <code>data</code> to be explained</p>
 <p>The method is run on a <code>data</code> object (see <code>innsight</code> manual)</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span><span class="va">data</span>, data_ref <span class="op">=</span> <span class="cn">NULL</span>, method <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>data</code></dt>
 <dd><p>(array, data.frame, torch_tensor or list)
@@ -213,103 +209,94 @@ an array, data.frame, torch_tensor or array-like format of size (batch_size, dim
 a list with the corresponding input data (according to the upper point) for each of the input layers.</p>
 <p>Note: For the model-agnostic methods, only models with a single input and output layer is allowed!</p></dd>
 
-
-<dt><code>data_ref</code></dt>
+      <dt><code>data_ref</code></dt>
 <dd><p>(array, data.frame or torch_tensor)
 The dataset to which the method is to be applied. These must have the same format as the input data of the passed model and has to be either matrix, an array, a data.frame or a torch_tensor.
 Note: For the model-agnostic methods, only models with a single input and output layer is allowed!</p></dd>
 
-
-<dt><code>method</code></dt>
+      <dt><code>method</code></dt>
 <dd><p>The method to run. Change the method specified in <code>new()</code></p></dd>
 
 
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-explainn-get_result"></a><div class="section">
-<h3 id="method-get-result-">Method <code>get_result()</code><a class="anchor" aria-label="anchor" href="#method-get-result-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-explainn-get_result"></a><div class="section">
+<h3 id="explainn-get-result-"><code>explainn$get_result()</code><a class="anchor" aria-label="anchor" href="#explainn-get-result-"></a></h3>
 <p>Get the results of the Feature Attribution method</p><div class="section">
 <h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">get_result</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"array"</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>type</code></dt>
 <dd><p>the results can be returned as an <code>array</code>, <code>data.frame</code>, or <code>torch_tensor</code></p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="details-1">Details<a class="anchor" aria-label="anchor" href="#details-1"></a></h4>
 <p>Note that when the <code>abcnn</code> model is <code>tabnet-abc</code>, <code>get_result()</code> returns importances weigths of the fitted model.</p>
 </div>
 
+</div>
 
-</div><p></p><hr><a id="method-explainn-plot"></a><div class="section">
-<h3 id="method-plot-">Method <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code><a class="anchor" aria-label="anchor" href="#method-plot-"></a></h3>
+<p></p><hr><a id="method-explainn-plot"></a><div class="section">
+<h3 id="explainn-plot-"><code>explainn$plot()</code><a class="anchor" aria-label="anchor" href="#explainn-plot-"></a></h3>
 <p>Plot the results of the Feature Attribution method
 for single data points</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">plot</span><span class="op">(</span>as_plotly <span class="op">=</span> <span class="cn">FALSE</span>, type <span class="op">=</span> <span class="st">"barplot"</span>, output_label <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>as_plotly</code></dt>
 <dd><p>If <code>TRUE</code>, plot the figure as a plotly object (default = <code>FALSE</code>)</p></dd>
 
-
-<dt><code>type</code></dt>
+      <dt><code>type</code></dt>
 <dd><p>a character value. The type of plot for <code>Tabnet</code>,
 passed to the Tabnet autoplot method.
 Either <code>barplot</code> for importance scores averaged across masks,
 <code>mask_agg</code>, for a single heatmap of aggregated mask importance per predictor along the dataset,
 or <code>steps</code> for one heatmap at each mask step.</p></dd>
 
-
-<dt><code>output_label</code></dt>
+      <dt><code>output_label</code></dt>
 <dd><p>character, the names of the variables to plot (if NULL, all variables are plotted)</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="details-2">Details<a class="anchor" aria-label="anchor" href="#details-2"></a></h4>
 <p>Note that when the <code>abcnn</code> model is <code>tabnet-abc</code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> returns the <code>autoplot()</code> function on the results of the <code>tabnet</code> model.</p>
 </div>
 
+</div>
 
-</div><p></p><hr><a id="method-explainn-plot_global"></a><div class="section">
-<h3 id="method-plot-global-">Method <code>plot_global()</code><a class="anchor" aria-label="anchor" href="#method-plot-global-"></a></h3>
+<p></p><hr><a id="method-explainn-plot_global"></a><div class="section">
+<h3 id="explainn-plot-global-"><code>explainn$plot_global()</code><a class="anchor" aria-label="anchor" href="#explainn-plot-global-"></a></h3>
 <p>Plot the results of the Feature Attribution method for the global dataset</p><div class="section">
 <h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">plot_global</span><span class="op">(</span>as_plotly <span class="op">=</span> <span class="cn">FALSE</span>, output_label <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>as_plotly</code></dt>
 <dd><p>If <code>TRUE</code>, plot the figure as a plotly object (default = <code>FALSE</code>)</p></dd>
 
-
-<dt><code>output_label</code></dt>
+      <dt><code>output_label</code></dt>
 <dd><p>character, the names of the variables to plot (if NULL, all variables are plotted)</p></dd>
 
 
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-explainn-boxplot"></a><div class="section">
-<h3 id="method-boxplot-">Method <code><a href="https://rdrr.io/r/graphics/boxplot.html" class="external-link">boxplot()</a></code><a class="anchor" aria-label="anchor" href="#method-boxplot-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-explainn-boxplot"></a><div class="section">
+<h3 id="explainn-boxplot-"><code>explainn$boxplot()</code><a class="anchor" aria-label="anchor" href="#explainn-boxplot-"></a></h3>
 <p>Alias for <code>plot_global</code> for tabular and signal data</p><div class="section">
 <h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">boxplot</span><span class="op">(</span>as_plotly <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>as_plotly</code></dt>
 <dd><p>If <code>TRUE</code>, plot the figure as a plotly object (default = <code>FALSE</code>)</p></dd>
@@ -318,14 +305,14 @@ or <code>steps</code> for one heatmap at each mask step.</p></dd>
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-explainn-clone"></a><div class="section">
-<h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-explainn-clone"></a><div class="section">
+<h3 id="explainn-clone-"><code>explainn$clone()</code><a class="anchor" aria-label="anchor" href="#explainn-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
 <h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
@@ -336,6 +323,7 @@ or <code>steps</code> for one heatmap at each mask step.</p></dd>
 
 </div>
 
+
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -343,7 +331,7 @@ or <code>steps</code> for one heatmap at each mask step.</p></dd>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Brazier Thomas.</p>
+  <p>Developed by Thomas <a href="mailto:brazier.thomas@gmail.com" class="email">brazier.thomas@gmail.com</a> Brazier.</p>
 </div>
 
 <div class="pkgdown-footer-right">

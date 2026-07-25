@@ -16,10 +16,6 @@ A `R6::abcnn` object
 an `abcnn` object that can be used to fit(), predict() and plot
 predictions
 
-Returns a list with n random samples for each observed sample
-
-Returns metrics computed on the cross-validation dataset
-
 ## Details
 
 Four methods are available for parameter inference. The two core methods
@@ -295,15 +291,18 @@ The hyperparameters of the neural network can be configured in the
 
 - `aleatoric_uncertainty`:
 
-  aleatoric uncertainty for each observed sample
+  aleatoric uncertainty (standard deviation, in the scaled space) for
+  each observed sample
 
 - `epistemic_uncertainty`:
 
-  epistemic uncertainty for each observed sample
+  epistemic uncertainty (standard deviation, in the scaled space) for
+  each observed sample
 
 - `overall_uncertainty`:
 
-  overall uncertainty for each observed sample (epistemic + aleatoric)
+  overall uncertainty for each observed sample,
+  `sqrt(var_epistemic + var_aleatoric)`
 
 - `epistemic_conformal_quantile`:
 
@@ -611,15 +610,17 @@ Sinica*, 1595–1618.
 
 - `aleatoric_uncertainty`:
 
-  aleatoric uncertainty
+  aleatoric uncertainty, as a standard deviation in the scaled space
 
 - `epistemic_uncertainty`:
 
-  epistemic uncertainty
+  epistemic uncertainty, as a standard deviation in the scaled space
 
 - `overall_uncertainty`:
 
-  overall uncertainty
+  overall uncertainty `sqrt(var_epistemic + var_aleatoric)`, in the
+  scaled space. Use `predictions()` to obtain uncertainties and credible
+  intervals on the original parameter scale.
 
 - `epistemic_conformal_quantile`:
 
@@ -687,7 +688,7 @@ Sinica*, 1595–1618.
 
 ### Public methods
 
-- [`abcnn$new()`](#method-abcnn-new)
+- [`abcnn$new()`](#method-abcnn-initialize)
 
 - [`abcnn$fit()`](#method-abcnn-fit)
 
@@ -717,7 +718,7 @@ Sinica*, 1595–1618.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `abcnn$new()`
 
 Create a new `abcnn` object
 
@@ -892,11 +893,15 @@ Create a new `abcnn` object
 
 - `weight_regularizer`:
 
-  `concrete dropout` regularization term for weights
+  `concrete dropout` a numerical value, regularization term for weights
+  in Concrete Dropout, set to "auto" if you want it to be computed at
+  fit time
 
 - `dropout_regularizer`:
 
-  `concrete dropout` regularization term for dropout
+  `concrete dropout` a numerical value, regularization term for dropout
+  in Concrete Dropout, set to "auto" if you want it to be computed at
+  fit time
 
 - `num_networks`:
 
@@ -921,7 +926,7 @@ Create a new `abcnn` object
 
 ------------------------------------------------------------------------
 
-### Method `fit()`
+### `abcnn$fit()`
 
 Train the neural network
 
@@ -933,7 +938,7 @@ The neural network is trained with `luz` and `torch`
 
 ------------------------------------------------------------------------
 
-### Method [`predict()`](https://rdrr.io/r/stats/predict.html)
+### `abcnn$predict()`
 
 Predict parameters from a vector/array of observed summary statistics
 
@@ -952,7 +957,7 @@ is also performed at this step on an independent calibration set.
 
 ------------------------------------------------------------------------
 
-### Method [`dataloader()`](https://torch.mlverse.org/docs/reference/dataloader.html)
+### `abcnn$dataloader()`
 
 Prepare the torch dataloader from sumstat/theta (input/target)
 
@@ -964,7 +969,7 @@ Build and return a dataloader object
 
 ------------------------------------------------------------------------
 
-### Method `conformal_prediction()`
+### `abcnn$conformal_prediction()`
 
 Estimate a calibrated credible interval with Conformal Prediction
 
@@ -974,17 +979,66 @@ Estimate a calibrated credible interval with Conformal Prediction
 
 ------------------------------------------------------------------------
 
-### Method `predictions()`
+### `abcnn$predictions()`
 
-Returns a tidy tibble with predictions and credible intervals
+Returns a tidy data frame with predictions, uncertainties and credible
+intervals
 
 #### Usage
 
     abcnn$predictions()
 
+#### Details
+
+All quantities are returned on the original parameter scale.
+
+Credible intervals are returned as explicit `lower`/`upper` bounds
+rather than as a half-width around the mean. The bounds are built in the
+scaled space in which the network was trained, and only then mapped back
+one endpoint at a time. Because every scaling method is monotone
+increasing, this preserves the conformal coverage guarantee exactly. It
+also means that under the non-linear `log` and `logit` scalings the
+intervals are asymmetric around `predictive_mean`, and that they always
+stay within the support implied by the scaling.
+
+The columns returned are:
+
+- `sample` index of the observed sample
+
+- `parameter` name of the parameter
+
+- `predictive_mean` the point estimate
+
+- `epistemic_uncertainty`, `aleatoric_uncertainty`,
+  `overall_uncertainty` standard deviations, carried to the original
+  scale with the delta method (see
+  [`scaler_grad()`](https://thomasbrazier.github.io/abcneuralnet/reference/scaler_grad.md)).
+  Exact for `none`, `minmax`, `robustscaler` and `normalization`; a
+  local linearisation for `log` and `logit`.
+
+- `epistemic_conformal_lower`, `epistemic_conformal_upper` the
+  conformalized credible interval based on the epistemic uncertainty
+  alone
+
+- `overall_conformal_lower`, `overall_conformal_upper` the conformalized
+  credible interval based on the overall uncertainty
+
+- `posterior_median`, `posterior_lower_ci`, `posterior_upper_ci`
+  quantiles of the sampled posterior (`NA` for `deep ensemble`, which
+  does not draw posterior samples)
+
+Note that under `log` and `logit` scaling, `predictive_mean` is the
+back-transform of the mean computed in the scaled space. By Jensen's
+inequality it is a median-like point estimate rather than the posterior
+mean on the original scale.
+
+#### Returns
+
+a `data.frame` with one row per observed sample and per parameter
+
 ------------------------------------------------------------------------
 
-### Method [`summary()`](https://rdrr.io/r/base/summary.html)
+### `abcnn$summary()`
 
 Print a summary of the `abcnn` object
 
@@ -994,7 +1048,7 @@ Print a summary of the `abcnn` object
 
 ------------------------------------------------------------------------
 
-### Method `plot_training()`
+### `abcnn$plot_training()`
 
 Plot the training curves (training/validation)
 
@@ -1011,7 +1065,7 @@ Plot the training curves (training/validation)
 
 ------------------------------------------------------------------------
 
-### Method `plot_prediction()`
+### `abcnn$plot_prediction()`
 
 Plot predicted values and their credible intervals
 
@@ -1030,7 +1084,14 @@ Plot predicted values and their credible intervals
   The type of uncertainty to plot, whether `conformal` credible
   intervals (default), the `uncertainty` estimated (square root of the
   variance) or the `posterior quantile`, that are credible intervals
-  computed on the distribution of posteriors.
+  computed on the distribution of posteriors. The `conformal` and
+  `posterior quantile` bounds are obtained by transforming the interval
+  endpoints back to the original scale, so they are exact under any
+  scaling method and always remain within the support of the parameter.
+  The `uncertainty` band is a symmetric `mean +/- sd` band built from a
+  delta-method approximation of the standard deviation; under the
+  non-linear `log` and `logit` scalings it is only a local linearisation
+  and may extend beyond that support.
 
 - `epistemic_uncertainty`:
 
@@ -1043,7 +1104,7 @@ Plot predicted values and their credible intervals
 
 ------------------------------------------------------------------------
 
-### Method `plot_posterior()`
+### `abcnn$plot_posterior()`
 
 Plot the distributions of estimates and predictions
 
@@ -1072,7 +1133,14 @@ Plot the distributions of estimates and predictions
   The type of uncertainty to plot, whether `conformal` credible
   intervals (default), the `uncertainty` estimated (square root of the
   variance) or the `posterior quantile`, that are credible intervals
-  computed on the distribution of posteriors.
+  computed on the distribution of posteriors. The `conformal` and
+  `posterior quantile` bounds are obtained by transforming the interval
+  endpoints back to the original scale, so they are exact under any
+  scaling method and always remain within the support of the parameter.
+  The `uncertainty` band is a symmetric `mean +/- sd` band built from a
+  delta-method approximation of the standard deviation; under the
+  non-linear `log` and `logit` scalings it is only a local linearisation
+  and may extend beyond that support.
 
 - `epistemic_uncertainty`:
 
@@ -1081,13 +1149,13 @@ Plot the distributions of estimates and predictions
 
 ------------------------------------------------------------------------
 
-### Method `draw_from_posterior()`
+### `abcnn$draw_from_posterior()`
 
 Draw random samples from the posterior distribution
 
 #### Usage
 
-    abcnn$draw_from_posterior(n = 1)
+    abcnn$draw_from_posterior(n = 1, seed = NA)
 
 #### Arguments
 
@@ -1095,9 +1163,29 @@ Draw random samples from the posterior distribution
 
   the number of samples to draw from posterior
 
+- `seed`:
+
+  a custom seed for drawing parameters
+
+#### Details
+
+For every observed sample, `n` values are drawn per parameter from a
+normal distribution centred on the predictive mean, with the overall
+(aleatoric + epistemic) uncertainty as standard deviation.
+
+The draws are made in the scaled space the network was trained in, then
+transformed back one draw at a time. As the scaling is monotone, the
+draws respect the support implied by `scale_target`, in the same way as
+the credible intervals returned by `predictions()`.
+
+#### Returns
+
+Returns a list with one `data.frame` per observed sample, of `n` rows
+and one column per parameter, on the original parameter scale
+
 ------------------------------------------------------------------------
 
-### Method `cross_validation()`
+### `abcnn$cross_validation()`
 
 Compute cross-validation metrics by comparing ground truth and
 predictions on unseen pseudo-observed data (i.e. simulations)
@@ -1143,9 +1231,13 @@ Metrics:
   cross-validation (if `cross_validation_data` is not provided, the
   function returns the `cross_validation_predictions` already computed)
 
+#### Returns
+
+Returns metrics computed on the cross-validation dataset
+
 ------------------------------------------------------------------------
 
-### Method `plot_cross_validation()`
+### `abcnn$plot_cross_validation()`
 
 Plot the cross-validation scatter plot
 
@@ -1155,7 +1247,7 @@ Plot the cross-validation scatter plot
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `abcnn$clone()`
 
 The objects of this class are cloneable with this method.
 

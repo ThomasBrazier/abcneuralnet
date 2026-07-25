@@ -24,6 +24,9 @@
 - [`inv_logit()`](https://thomasbrazier.github.io/abcneuralnet/reference/inv_logit.md)
   : The backward logit transform
 
+- [`inv_logit_grad()`](https://thomasbrazier.github.io/abcneuralnet/reference/inv_logit_grad.md)
+  : The derivative of the backward logit transform
+
 - [`load_abcnn()`](https://thomasbrazier.github.io/abcneuralnet/reference/load_abcnn.md)
   :
 
@@ -44,3 +47,6 @@
 
 - [`scaler()`](https://thomasbrazier.github.io/abcneuralnet/reference/scaler.md)
   : A scaling function for targets and inputs
+
+- [`scaler_grad()`](https://thomasbrazier.github.io/abcneuralnet/reference/scaler_grad.md)
+  : The gradient of the backward scaling transform

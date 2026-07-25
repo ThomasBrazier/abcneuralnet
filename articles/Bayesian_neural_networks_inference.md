@@ -1,6 +1,6 @@
 # Bayesian Deep Learning and Approximate Bayesian Computation for parameter inference
 
-![](reference/figures/logo.png)
+![](logo.png)
 
 ## Introduction
 
@@ -242,7 +242,7 @@ facilitates informed model checking and interpretation.
 ![Two different types of uncertainty estimated with Concrete Dropout and
 Deep Ensemble methods in the ‘abcneuralnet’ package. The aleatoric
 uncertainty (data-driven) is in orange, and the epistemic uncertainty
-(model-driven) is in purple.](../inst/extdata/epistemic_aleatoric.jpeg)
+(model-driven) is in purple.](epistemic_aleatoric.jpeg)
 
 Two different types of uncertainty estimated with Concrete Dropout and
 Deep Ensemble methods in the ‘abcneuralnet’ package. The aleatoric
@@ -316,15 +316,14 @@ abc$summary()
 #> ABC parameter inference with the method: concrete dropout 
 #> 
 #> 
-#> |Sample           |   Size|
-#> |:----------------|------:|
-#> |Training         | 1800.0|
-#> |Testing split    |    0.1|
-#> |Testing          |  180.0|
-#> |Evaluation split |    0.1|
-#> |Evaluation       |  200.0|
-#> |Conformal        | 1000.0|
-#> |Observed         | 1000.0|
+#> |Sample      | Size| Proportion|
+#> |:-----------|----:|----------:|
+#> |Simulations | 2000|         NA|
+#> |Training    |  600|         NA|
+#> |Testing     |  200|        0.1|
+#> |Evaluation  |  200|        0.1|
+#> |Conformal   | 1000|         NA|
+#> |Observed    | 1000|         NA|
 #> 
 #> Is CUDA available? [1] FALSE
 #> 
@@ -439,7 +438,7 @@ training data split in three partitions: training, validation (also
 called testing) and evaluation. Training and validation are computed at
 the end of each epoch. The black horizontal line is the loss computed on
 the evaluation dataset at the end of the training
-procedure.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-7-1.png)
+procedure.](figure/unnamed-chunk-7-1.png)
 
 The training curve of the neural network across 30 epochs, computed on
 training data split in three partitions: training, validation (also
@@ -479,11 +478,12 @@ Print the already computed cross-validation error metrics:
 ``` r
 
 abc$cross_validation()
-#> # A tibble: 1 × 10
-#>   parameter     n   mae   mse  rmse  nmae   cor   cov mean_epistemic_interval
-#>   <chr>     <int> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl>                   <dbl>
-#> 1 y1         1000 0.843  1.11  1.05  7.05 0.882  3.84                    4.72
-#> # ℹ 1 more variable: mean_overall_interval <dbl>
+#> Error in `dplyr::summarise()`:
+#> ℹ In argument: `mean_epistemic_interval =
+#>   mean(.data$epistemic_conformal_upper - .data$epistemic_conformal_lower)`.
+#> ℹ In group 1: `parameter = "y1"`.
+#> Caused by error in `.data$epistemic_conformal_upper`:
+#> ! Column `epistemic_conformal_upper` not found in `.data`.
 ```
 
 Plot the cross-validation scatter plot (predicted ~ ground truth) with
@@ -494,7 +494,9 @@ Conformal Credible Intervals:
 abc$plot_cross_validation()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-11-1.png)
+![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-11-1.png)
+
+plot of chunk unnamed-chunk-11
 
 ### Estimates and uncertainty with the **Concrete Dropout** method
 
@@ -508,7 +510,18 @@ abc$predict()
 ```
 
 You can get predictions with their associated uncertainties and
-Conformal Credibility Intervals as a tidy data frame:
+Conformal Credibility Intervals as a tidy data frame.
+
+Credible Intervals are returned as explicit bounds
+(`overall_conformal_lower`/`overall_conformal_upper`, and their
+`epistemic_` counterparts) rather than as a half-width around the mean.
+The bounds are computed in the scaled space in which the network was
+trained and each endpoint is then transformed back individually. Since
+every scaling method is monotone, this preserves the conformal coverage
+guarantee exactly and keeps the bounds within the range of the
+parameter. Under the non-linear `log` and `logit` scalings the intervals
+are therefore asymmetric around `predictive_mean`, and must be used as
+bounds rather than reconstructed from the mean.
 
 ``` r
 
@@ -560,18 +573,12 @@ ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_conformal_e_upper, ymax = ci_conformal_e_lower), alpha = 0.4, fill = "purple") +
   geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_conformal_upper, ymax = ci_conformal_lower), alpha = 0.3, fill = "green") +
   theme_bw()
+#> Error in `geom_ribbon()`:
+#> ! Problem while computing aesthetics.
+#> ℹ Error occurred in the 4th layer.
+#> Caused by error:
+#> ! object 'ci_conformal_e_upper' not found
 ```
-
-![Predictions as a function of simulated parameter. The purple ribbon is
-the Conformal Credible Interval based on the epistemic unvertainty
-alone. The green ribbon is the Conformal Credible Interval based on the
-overall
-unvertainty.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-16-1.png)
-
-Predictions as a function of simulated parameter. The purple ribbon is
-the Conformal Credible Interval based on the epistemic unvertainty
-alone. The green ribbon is the Conformal Credible Interval based on the
-overall unvertainty.
 
 There are different Credible Intervals and uncertainty measures
 provided. I recommend to use the overall Conformal Credible Interval in
@@ -610,8 +617,7 @@ ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
 
 ![Predictions as a function of simulated parameters. The epistemic
 uncertainty (red) and aleatoric uncertainty (blue) were estimated with
-Concrete Dropout (Gal et
-2017).](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-17-1.png)
+Concrete Dropout (Gal et 2017).](figure/unnamed-chunk-17-1.png)
 
 Predictions as a function of simulated parameters. The epistemic
 uncertainty (red) and aleatoric uncertainty (blue) were estimated with
@@ -633,8 +639,7 @@ abc$plot_prediction(uncertainty_type = "uncertainty")
 
 ![Prediction results with uncertainty quantification. Red line shows
 mean predictions, blue ribbon indicates aleatoric uncertainty, and red
-ribbon shows epistemic
-uncertainty.](Bayesian_neural_networks_inference_files/figure-html/concrete_prediction-1.png)
+ribbon shows epistemic uncertainty.](figure/concrete_prediction-1.png)
 
 Prediction results with uncertainty quantification. Red line shows mean
 predictions, blue ribbon indicates aleatoric uncertainty, and red ribbon
@@ -654,7 +659,7 @@ abc$plot_prediction(uncertainty_type = "conformal")
 
 ![Conformal credible intervals (green) compared to epistemic uncertainty
 intervals (purple). Conformal intervals provide calibrated coverage
-guarantees.](Bayesian_neural_networks_inference_files/figure-html/concrete_conformal-1.png)
+guarantees.](figure/concrete_conformal-1.png)
 
 Conformal credible intervals (green) compared to epistemic uncertainty
 intervals (purple). Conformal intervals provide calibrated coverage
@@ -681,7 +686,9 @@ and below):
 abc$plot_cross_validation()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-18-1.png)
+![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18-1.png)
+
+plot of chunk unnamed-chunk-18
 
 If you have the same number of input and output parameters (e.g., x1 and
 x2 as input, y1 and y2 as output), then the default representation in
@@ -696,7 +703,9 @@ abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
 #> Back-transform scaled parameters with method: none
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-19-1.png)
+![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19-1.png)
+
+plot of chunk unnamed-chunk-19
 
 ### Plotting posteriors for individual observations
 
@@ -711,7 +720,9 @@ abc$plot_posterior(sample = 700, prior = TRUE, uncertainty_type = "uncertainty")
 #> Back-transform scaled posteriors with method: none
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-20-1.png)
+![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20-1.png)
+
+plot of chunk unnamed-chunk-20
 
 ``` r
 
@@ -732,7 +743,7 @@ abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "conformal") +
 ![Distribution of approximate posterior estimates with predictive means
 and credible intervals. The prior distribution is plotted underneath
 (white bars) to compare priors and
-posteriors.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-21-1.png)
+posteriors.](figure/unnamed-chunk-21-1.png)
 
 Distribution of approximate posterior estimates with predictive means
 and credible intervals. The prior distribution is plotted underneath
@@ -849,7 +860,8 @@ df_deepensemble = list(df_train = df_train,
                        df_observed = df_observed)
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-25-1.png)
+    #> Error in `loadNamespace()`:
+    #> ! there is no package called 'ggpubr'
 
 ### Deep Ensemble Training
 
@@ -892,7 +904,9 @@ Checking the model training:
 abc_ensemble$plot_training()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-29-1.png)
+![plot of chunk unnamed-chunk-29](figure/unnamed-chunk-29-1.png)
+
+plot of chunk unnamed-chunk-29
 
 ### Variation in Uncertainty Quantification across different regions
 
@@ -910,7 +924,9 @@ abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
 #> Back-transform scaled parameters with method: none
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-32-1.png)
+![plot of chunk unnamed-chunk-32](figure/unnamed-chunk-32-1.png)
+
+plot of chunk unnamed-chunk-32
 
 ``` r
 
@@ -918,7 +934,9 @@ abc_ensemble$plot_prediction(uncertainty_type = "conformal")
 #> Back-transform scaled parameters with method: none
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-33-1.png)
+![plot of chunk unnamed-chunk-33](figure/unnamed-chunk-33-1.png)
+
+plot of chunk unnamed-chunk-33
 
 The uncertainty, especially epistemic uncertainty, increases in unseen
 regions during training. In addition, the aleatoric uncertainty
@@ -932,7 +950,9 @@ abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
 #> Back-transform scaled parameters with method: none
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-34-1.png)
+![plot of chunk unnamed-chunk-34](figure/unnamed-chunk-34-1.png)
+
+plot of chunk unnamed-chunk-34
 
 ``` r
 
@@ -942,7 +962,9 @@ abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
 #> Back-transform scaled parameters with method: none
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-35-1.png)
+![plot of chunk unnamed-chunk-35](figure/unnamed-chunk-35-1.png)
+
+plot of chunk unnamed-chunk-35
 
 ``` r
 
@@ -952,7 +974,9 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 #> Back-transform scaled parameters with method: none
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-36-1.png)
+![plot of chunk unnamed-chunk-36](figure/unnamed-chunk-36-1.png)
+
+plot of chunk unnamed-chunk-36
 
 ## Case Study 3: Model Interpretability and Feature Importance in a high-dimensional dataset
 
@@ -998,7 +1022,9 @@ ggplot(theta.train, aes(x = theta1, y = theta2)) +
   geom_point(data = theta.test, aes(x = theta1, y = theta2), color = "red", alpha = 0.5)
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-40-1.png)
+![plot of chunk unnamed-chunk-40](figure/unnamed-chunk-40-1.png)
+
+plot of chunk unnamed-chunk-40
 
 ### Training a Deep Ensemble model
 
@@ -1025,15 +1051,14 @@ deepensemble_highdim$summary()
 #> ABC parameter inference with the method: deep ensemble 
 #> 
 #> 
-#> |Sample           |    Size|
-#> |:----------------|-------:|
-#> |Training         | 18000.0|
-#> |Testing split    |     0.1|
-#> |Testing          |  1800.0|
-#> |Evaluation split |     0.1|
-#> |Evaluation       |  2000.0|
-#> |Conformal        |  1000.0|
-#> |Observed         |  1000.0|
+#> |Sample      |  Size| Proportion|
+#> |:-----------|-----:|----------:|
+#> |Simulations | 20000|         NA|
+#> |Training    | 15000|         NA|
+#> |Testing     |  2000|        0.1|
+#> |Evaluation  |  2000|        0.1|
+#> |Conformal   |  1000|         NA|
+#> |Observed    |  1000|         NA|
 #> 
 #> Is CUDA available? [1] FALSE
 #> 
@@ -1057,7 +1082,7 @@ deepensemble_highdim$summary()
 | Early stopping callback | FALSE |
 | Patience for early stopping | 4 |
 | Learning rate | 0.001 |
-| L2 weight decay | 1e-05 |
+| L2 weight decay | 1e-04 |
 | Method for ABC | loclinear |
 | Tolerance rate (ABC) | 0.1 |
 | Number of posterior samples (mc dropout and concrete dropout) | 1000 |
@@ -1074,7 +1099,9 @@ deepensemble_highdim$fit()
 deepensemble_highdim$plot_training()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-44-1.png)
+![plot of chunk unnamed-chunk-44](figure/unnamed-chunk-44-1.png)
+
+plot of chunk unnamed-chunk-44
 
 ### Model Interpretability and Feature Importance
 
@@ -1114,8 +1141,7 @@ exp$plot()
 
 ![Feature importance visualization using DeepLIFT attribution methods,
 for the first sample output prediction. Colors indicate the contribution
-of each feature to the final
-prediction.](Bayesian_neural_networks_inference_files/figure-html/explainn_plot-1.png)
+of each feature to the final prediction.](figure/explainn_plot-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods, for
 the first sample output prediction. Colors indicate the contribution of
@@ -1131,8 +1157,7 @@ exp$plot_global()
 
 ![Feature importance visualization using DeepLIFT attribution methods,
 summarized across the 1,000 smaples. Colors indicate the contribution of
-each feature to the final
-prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-47-1.png)
+each feature to the final prediction.](figure/unnamed-chunk-47-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods,
 summarized across the 1,000 smaples. Colors indicate the contribution of
@@ -1149,16 +1174,16 @@ prediction:
 # - the two output parameters
 exp$get_result()[1,1:10,1:2]
 #>                    theta1        theta2
-#> expectation  0.1581784040 -0.0293746442
-#> variance    -0.0067209438  0.0051860828
-#> mad         -0.0113320528  0.0022572633
-#> x1          -0.0002234288 -0.0007863209
-#> x2          -0.0014728972  0.0008869880
-#> x3          -0.0044262190 -0.0004458995
-#> x4          -0.0021220739 -0.0012857376
-#> x5          -0.0008280979 -0.0002281859
-#> x6          -0.0034867872  0.0039487351
-#> x7          -0.0011872359  0.0017892550
+#> expectation  0.1581784040 -0.0293746460
+#> variance    -0.0067209438  0.0051860819
+#> mad         -0.0113320518  0.0022572633
+#> x1          -0.0002234270 -0.0007863209
+#> x2          -0.0014728967  0.0008869882
+#> x3          -0.0044262144 -0.0004459003
+#> x4          -0.0021220690 -0.0012857376
+#> x5          -0.0008280979 -0.0002281855
+#> x6          -0.0034867853  0.0039487351
+#> x7          -0.0011872391  0.0017892555
 ```
 
 SmoothGrad is another method, which can also be interpreted as local and
@@ -1183,7 +1208,7 @@ exp$plot()
 
 ![Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
-prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-50-1.png)
+prediction.](figure/unnamed-chunk-50-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
@@ -1196,7 +1221,7 @@ exp$plot_global()
 
 ![Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
-prediction.](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-51-1.png)
+prediction.](figure/unnamed-chunk-51-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods.
 Colors indicate the contribution of each feature to the final
@@ -1209,17 +1234,17 @@ predictions:
 
 exp$get_result()[1:5,1:10,1]
 #>      expectation   variance         mad            x1           x2
-#> [1,]   0.2736824 -0.2361407 -0.10348825  0.0008184988 -0.005054448
-#> [2,]   0.2612956 -0.2012542 -0.09363259 -0.0063137524 -0.003924967
-#> [3,]   0.2704200 -0.2463815 -0.10075987 -0.0051730163 -0.004306837
-#> [4,]   0.2605524 -0.2452051 -0.09112359  0.0055238153 -0.009021315
-#> [5,]   0.2594152 -0.2264047 -0.09708515  0.0009386174 -0.002489849
-#>                 x3            x4            x5            x6            x7
-#> [1,] -0.0048971586 -0.0003639736 -0.0021883326 -0.0024726717 -0.0017994788
-#> [2,]  0.0005236236 -0.0043728487 -0.0037100806 -0.0025572933  0.0018177551
-#> [3,]  0.0022181917 -0.0014854625 -0.0036594721  0.0008888186  0.0003675284
-#> [4,]  0.0011710138 -0.0034440586 -0.0035113939  0.0026196537  0.0001059149
-#> [5,] -0.0029001099 -0.0011976192  0.0008689014  0.0004568155  0.0016093898
+#> [1,]   0.2736825 -0.2361407 -0.10348824  0.0008184963 -0.005054448
+#> [2,]   0.2612956 -0.2012542 -0.09363259 -0.0063137538 -0.003924967
+#> [3,]   0.2704200 -0.2463815 -0.10075986 -0.0051730182 -0.004306838
+#> [4,]   0.2605524 -0.2452051 -0.09112358  0.0055238158 -0.009021315
+#> [5,]   0.2594152 -0.2264047 -0.09708515  0.0009386177 -0.002489848
+#>                 x3           x4            x5            x6            x7
+#> [1,] -0.0048971558 -0.000363975 -0.0021883326 -0.0024726717 -0.0017994770
+#> [2,]  0.0005236256 -0.004372850 -0.0037100802 -0.0025572935  0.0018177561
+#> [3,]  0.0022181931 -0.001485463 -0.0036594709  0.0008888189  0.0003675274
+#> [4,]  0.0011710153 -0.003444058 -0.0035113934  0.0026196539  0.0001059127
+#> [5,] -0.0029001101 -0.001197621  0.0008689022  0.0004568154  0.0016093889
 ```
 
 ## ABC Integration with TabNet
@@ -1263,15 +1288,14 @@ tabnetabc$summary()
 #> ABC parameter inference with the method: tabnet-abc 
 #> 
 #> 
-#> |Sample           |  Size|
-#> |:----------------|-----:|
-#> |Training         | 9e+03|
-#> |Testing split    | 1e-01|
-#> |Testing          | 9e+02|
-#> |Evaluation split | 1e-01|
-#> |Evaluation       | 1e+03|
-#> |Conformal        | 1e+03|
-#> |Observed         | 1e+03|
+#> |Sample      |  Size| Proportion|
+#> |:-----------|-----:|----------:|
+#> |Simulations | 10000|         NA|
+#> |Training    |  7000|         NA|
+#> |Testing     |  1000|        0.1|
+#> |Evaluation  |  1000|        0.1|
+#> |Conformal   |  1000|         NA|
+#> |Observed    |  1000|         NA|
 #> 
 #> Is CUDA available? [1] FALSE
 #> 
@@ -1312,7 +1336,9 @@ tabnetabc$fit()
 tabnetabc$plot_training()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-56-1.png)
+![plot of chunk unnamed-chunk-56](figure/unnamed-chunk-56-1.png)
+
+plot of chunk unnamed-chunk-56
 
 ### Model performance
 
@@ -1324,8 +1350,7 @@ tabnetabc$plot_prediction(uncertainty_type = "posterior quantile",
 ```
 
 ![TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter
-values.](Bayesian_neural_networks_inference_files/figure-html/tabnet_performance-1.png)
+to true parameter values.](figure/tabnet_performance-1.png)
 
 TabNet-ABC performance showing posterior quantile predictions compared
 to true parameter values.
@@ -1350,7 +1375,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 ![Scatter plot comparing TabNet-ABC predictions to exact posterior
 means. The shaded region represents 95% credible
-intervals.](Bayesian_neural_networks_inference_files/figure-html/tabnet_accuracy-1.png)
+intervals.](figure/tabnet_accuracy-1.png)
 
 Scatter plot comparing TabNet-ABC predictions to exact posterior means.
 The shaded region represents 95% credible intervals.
@@ -1373,21 +1398,27 @@ exp$run(data = sumstats.test)
 exp$plot()
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-60-1.png)
+![plot of chunk unnamed-chunk-60](figure/unnamed-chunk-60-1.png)
+
+plot of chunk unnamed-chunk-60
 
 ``` r
 
 exp$plot(type = "mask_agg")
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-61-1.png)
+![plot of chunk unnamed-chunk-61](figure/unnamed-chunk-61-1.png)
+
+plot of chunk unnamed-chunk-61
 
 ``` r
 
 exp$plot(type = "steps")
 ```
 
-![](Bayesian_neural_networks_inference_files/figure-html/unnamed-chunk-62-1.png)
+![plot of chunk unnamed-chunk-62](figure/unnamed-chunk-62-1.png)
+
+plot of chunk unnamed-chunk-62
 
 ## FAQ
 
@@ -1659,21 +1690,23 @@ Bayesian Parameter Inference.” *Bioinformatics* 35 (10): 1720–28.
 ``` r
 
 sessionInfo()
-#> R version 4.6.1 (2026-06-24)
+#> R version 4.5.2 (2025-10-31)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 24.04.4 LTS
+#> Running under: Ubuntu 26.04 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
-#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
+#> BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.1 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.1;  LAPACK version 3.12.0
 #> 
 #> locale:
-#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
-#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
-#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
-#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
+#>  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+#>  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+#>  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+#>  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+#>  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+#> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
 #> 
-#> time zone: UTC
+#> time zone: Etc/UTC
 #> tzcode source: system (glibc)
 #> 
 #> attached base packages:
@@ -1683,60 +1716,56 @@ sessionInfo()
 #>  [1] kableExtra_1.4.1   lubridate_1.9.5    forcats_1.0.1      stringr_1.6.0     
 #>  [5] dplyr_1.2.1        purrr_1.2.2        readr_2.2.0        tidyr_1.3.2       
 #>  [9] tibble_3.3.1       tidyverse_2.0.0    torch_0.17.0       ggplot2_4.0.3     
-#> [13] abcneuralnet_0.3.0
+#> [13] abcneuralnet_0.3.0 testthat_3.3.2    
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] splines_4.6.1        rminer_1.5.0         hardhat_1.4.3       
+#>   [1] splines_4.5.2        rminer_1.5.0         hardhat_1.4.3       
 #>   [4] janitor_2.2.1        abc.data_1.1         pROC_1.19.0.1       
-#>   [7] rpart_4.1.27         tabnet_0.9.1         lifecycle_1.0.5     
-#>  [10] rstatix_1.1.0        Rdpack_2.6.6         bundle_0.1.3        
-#>  [13] doParallel_1.0.17    globals_0.19.1       processx_3.9.0      
+#>   [7] rpart_4.1.24         tabnet_0.9.1         lifecycle_1.0.5     
+#>  [10] Rdpack_2.6.6         bundle_0.1.3         doParallel_1.0.17   
+#>  [13] rprojroot_2.1.1      globals_0.19.1       processx_3.9.0      
 #>  [16] lattice_0.22-9       MASS_7.3-65          backports_1.5.1     
-#>  [19] magrittr_2.0.5       sass_0.4.10          rmarkdown_2.31      
-#>  [22] jquerylib_0.1.4      yaml_2.3.12          plotrix_3.8-14      
-#>  [25] rlist_0.4.6.2        otel_0.2.0           luz_0.5.2           
-#>  [28] ConsRank_3.0         cowplot_1.2.0        RColorBrewer_1.1-3  
-#>  [31] abind_1.4-8          multcomp_1.4-31      coro_1.1.0          
-#>  [34] nnet_7.3-20          TH.data_1.1-5        sandwich_3.1-2      
-#>  [37] ipred_0.9-15         lava_1.9.2           listenv_1.0.0       
-#>  [40] adabag_5.1           MatrixModels_0.5-4   parallelly_1.48.0   
-#>  [43] pkgdown_2.2.1        svglite_2.2.2        codetools_0.2-20    
-#>  [46] coin_1.4-5           xml2_1.6.0           shape_1.4.6.1       
-#>  [49] tidyselect_1.2.1     farver_2.1.2         matrixStats_1.5.0   
-#>  [52] stats4_4.6.1         jsonlite_2.0.0       caret_7.0-1         
-#>  [55] e1071_1.7-17         Formula_1.2-5        survival_3.8-6      
-#>  [58] iterators_1.0.14     systemfonts_1.3.2    foreach_1.5.2       
-#>  [61] tools_4.6.1          progress_1.2.3       ragg_1.5.2          
-#>  [64] Rcpp_1.1.2           glue_1.8.1           prodlim_2026.03.11  
-#>  [67] mgcv_1.9-4           xfun_0.60            safetensors_0.2.1   
-#>  [70] withr_3.0.3          fastmap_1.2.0        SparseM_1.84-2      
-#>  [73] callr_3.8.0          digest_0.6.39        timechange_0.4.0    
-#>  [76] R6_2.6.1             textshaping_1.0.5    gtools_3.9.5        
-#>  [79] utf8_1.2.6           generics_0.1.4       pls_2.9-0           
-#>  [82] data.table_1.18.4    recipes_1.3.3        class_7.3-23        
-#>  [85] prettyunits_1.2.0    htmlwidgets_1.6.4    innsight_0.3.2      
-#>  [88] ModelMetrics_1.2.2.2 pkgconfig_2.0.3      strucchange_1.5-4   
-#>  [91] gtable_0.3.6         parsnip_1.6.0        timeDate_4052.112   
-#>  [94] dials_1.4.4          modeltools_0.2-24    party_1.3-21        
-#>  [97] abc_2.2.2            S7_0.2.2             workflows_1.3.0     
-#> [100] furrr_0.4.0          htmltools_0.5.9      carData_3.0-6       
-#> [103] scales_1.4.0         gower_1.0.2          snakecase_0.11.1    
-#> [106] knitr_1.51           rstudioapi_0.19.0    tzdb_0.5.0          
-#> [109] reshape2_1.4.5       checkmate_2.3.4      nlme_3.1-169        
-#> [112] proxy_0.4-29         cachem_1.1.0         zoo_1.8-15          
-#> [115] rsample_1.3.2        parallel_4.6.1       libcoin_1.0-13      
-#> [118] desc_1.4.3           pillar_1.11.1        grid_4.6.1          
-#> [121] vctrs_0.7.3          tune_2.1.0           ggpubr_1.0.0        
-#> [124] randomForest_4.7-1.2 car_3.1-5            yardstick_1.4.0     
-#> [127] evaluate_1.0.5       Cubist_0.6.0         zeallot_0.2.0       
-#> [130] mvtnorm_1.4-2        cli_3.6.6            locfit_1.5-9.12     
-#> [133] compiler_4.6.1       rlang_1.3.0          crayon_1.5.3        
-#> [136] ggsignif_0.6.4       future.apply_1.20.2  labeling_0.4.3      
-#> [139] ps_1.9.3             plyr_1.8.9           fs_2.1.0            
-#> [142] mda_0.5-5            stringi_1.8.7        viridisLite_0.4.3   
-#> [145] glmnet_5.0           quantreg_6.1         Matrix_1.7-5        
-#> [148] hms_1.1.4            bit64_4.8.2          future_1.75.0       
-#> [151] kknn_1.4.1           kernlab_0.9-33       rbibutils_2.4.1     
-#> [154] broom_1.0.13         igraph_2.3.3         bslib_0.11.0        
-#> [157] xgboost_3.2.1.1      bit_4.6.0            DiceDesign_1.10
+#>  [19] magrittr_2.0.5       rmarkdown_2.31       plotrix_3.8-14      
+#>  [22] rlist_0.4.6.2        otel_0.2.0           luz_0.5.2           
+#>  [25] pkgbuild_1.4.8       ConsRank_3.0         RColorBrewer_1.1-3  
+#>  [28] multcomp_1.4-31      pkgload_1.5.3        coro_1.1.0          
+#>  [31] nnet_7.3-20          TH.data_1.1-5        sandwich_3.1-2      
+#>  [34] ipred_0.9-15         lava_1.9.2           listenv_1.0.0       
+#>  [37] adabag_5.1           MatrixModels_0.5-4   parallelly_1.48.0   
+#>  [40] svglite_2.2.2        codetools_0.2-20     coin_1.4-5          
+#>  [43] xml2_1.6.0           tidyselect_1.2.1     shape_1.4.6.1       
+#>  [46] farver_2.1.2         matrixStats_1.5.0    stats4_4.5.2        
+#>  [49] jsonlite_2.0.0       caret_7.0-1          e1071_1.7-17        
+#>  [52] survival_3.8-6       iterators_1.0.14     systemfonts_1.3.2   
+#>  [55] foreach_1.5.2        tools_4.5.2          progress_1.2.3      
+#>  [58] Rcpp_1.1.2           glue_1.8.1           prodlim_2026.03.11  
+#>  [61] mgcv_1.9-4           xfun_0.60            safetensors_0.2.1   
+#>  [64] withr_3.0.3          fastmap_1.2.0        SparseM_1.84-2      
+#>  [67] callr_3.8.0          digest_0.6.39        timechange_0.4.0    
+#>  [70] R6_2.6.1             textshaping_1.0.5    gtools_3.9.5        
+#>  [73] generics_0.1.4       pls_2.9-0            data.table_1.18.4   
+#>  [76] recipes_1.3.3        class_7.3-23         prettyunits_1.2.0   
+#>  [79] innsight_0.3.2       ModelMetrics_1.2.2.2 pkgconfig_2.0.3     
+#>  [82] strucchange_1.5-4    gtable_0.3.6         parsnip_1.6.0       
+#>  [85] timeDate_4052.112    dials_1.4.4          modeltools_0.2-24   
+#>  [88] party_1.3-21         abc_2.2.2            S7_0.2.2            
+#>  [91] workflows_1.3.0      furrr_0.4.0          brio_1.1.5          
+#>  [94] htmltools_0.5.9      scales_1.4.0         gower_1.0.2         
+#>  [97] snakecase_0.11.1     knitr_1.51           rstudioapi_0.19.0   
+#> [100] tzdb_0.5.0           reshape2_1.4.5       checkmate_2.3.4     
+#> [103] nlme_3.1-168         proxy_0.4-29         zoo_1.8-15          
+#> [106] rsample_1.3.2        parallel_4.5.2       libcoin_1.0-13      
+#> [109] desc_1.4.3           pillar_1.11.1        grid_4.5.2          
+#> [112] vctrs_0.7.3          tune_2.1.0           randomForest_4.7-1.2
+#> [115] yardstick_1.4.0      evaluate_1.0.5       Cubist_0.6.0        
+#> [118] zeallot_0.2.0        mvtnorm_1.4-2        cli_3.6.6           
+#> [121] locfit_1.5-9.12      compiler_4.5.2       rlang_1.3.0         
+#> [124] crayon_1.5.3         future.apply_1.20.2  labeling_0.4.3      
+#> [127] ps_1.9.3             plyr_1.8.9           fs_2.1.0            
+#> [130] mda_0.5-5            stringi_1.8.7        viridisLite_0.4.3   
+#> [133] glmnet_5.0           quantreg_6.1         Matrix_1.7-4        
+#> [136] hms_1.1.4            bit64_4.8.2          future_1.75.0       
+#> [139] kknn_1.4.1           kernlab_0.9-33       rbibutils_2.4.1     
+#> [142] igraph_2.3.3         bit_4.6.0            xgboost_3.2.1.1     
+#> [145] DiceDesign_1.10
 ```
