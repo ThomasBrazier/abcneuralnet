@@ -151,7 +151,10 @@ inv_logit_grad = function(z, a, b, n) {
 #' @param type is `forward` when scaling inputs or targets and `backward` when back-transforming targets at prediction time
 #'
 #' @return a data frame with scaled values
-#' 
+#'
+#' @importFrom stats plogis
+#' @importFrom stats qlogis
+#'
 #' @export
 #'
 scaler = function(x, sum_stats, method = "minmax", type = "forward") {
@@ -375,13 +378,19 @@ cross_val = function(cross_validation_param,
 #'
 #' The function returns all the sample sizes of training, testing, evaluation, conformal prediction and observed for an `abcnn` object.
 #'
+#' The sizes are the ones the `dataloader()` method builds: the evaluation and
+#' testing sets are proportions of all the simulations, and the training set is
+#' whatever is left once they and the conformal calibration set are taken out.
+#'
 #' @param object an `abcnn` R6 class object
 #'
 #' @import torch
 #'
 #' @export
 #'
-#' @return a `data.frame` with sample sizes
+#' @return a `data.frame` with one row per sample set, an integer `Size` column
+#' and a `Proportion` column that is `NA` for the sets which are not defined as
+#' a proportion of the simulations
 #'
 samples_abcnn = function(object) {
 
@@ -393,22 +402,27 @@ samples_abcnn = function(object) {
   n_testing = round(n_total * object$test_split, digits = 0)
   n_training = n_total - n_evaluation - n_testing - object$num_conformal
 
+  # Sizes and proportions are kept in separate columns. Mixing counts and
+  # proportions in a single numeric column coerces the counts to a common type,
+  # so they print with a decimal part.
   samples = data.frame(Sample = c("Simulations",
                                   "Training",
-                                  "Testing split",
                                   "Testing",
-                                  "Evaluation split",
                                   "Evaluation",
                                   "Conformal",
                                   "Observed"),
-                       Size = c(n_total,
-                                n_training,
-                                object$test_split,
-                                n_testing,
-                                object$validation_split,
-                                n_evaluation,
-                                object$num_conformal,
-                                nrow(object$observed)))
+                       Size = as.integer(c(n_total,
+                                           n_training,
+                                           n_testing,
+                                           n_evaluation,
+                                           object$num_conformal,
+                                           nrow(object$observed))),
+                       Proportion = c(NA,
+                                      NA,
+                                      object$test_split,
+                                      object$validation_split,
+                                      NA,
+                                      NA))
 
   return(samples)
 }

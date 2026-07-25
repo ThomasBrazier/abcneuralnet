@@ -7,10 +7,6 @@
 A \code{R6::abcnn} object
 
 an \code{abcnn} object that can be used to fit(), predict() and plot predictions
-
-Returns a list with n random samples for each observed sample
-
-Returns metrics computed on the cross-validation dataset
 }
 \description{
 \code{abcnn} constructs a \code{R6} class object for parameter inference with ABC and neural networks.
@@ -164,11 +160,11 @@ or modified directly in the corresponding public \code{slot}.
 
 \item{\code{predictive_mean}}{values predicted by the model for each observed sample}
 
-\item{\code{aleatoric_uncertainty}}{aleatoric uncertainty for each observed sample}
+\item{\code{aleatoric_uncertainty}}{aleatoric uncertainty (standard deviation, in the scaled space) for each observed sample}
 
-\item{\code{epistemic_uncertainty}}{epistemic uncertainty for each observed sample}
+\item{\code{epistemic_uncertainty}}{epistemic uncertainty (standard deviation, in the scaled space) for each observed sample}
 
-\item{\code{overall_uncertainty}}{overall uncertainty for each observed sample (epistemic + aleatoric)}
+\item{\code{overall_uncertainty}}{overall uncertainty for each observed sample, \code{sqrt(var_epistemic + var_aleatoric)}}
 
 \item{\code{epistemic_conformal_quantile}}{the quantile factor to get the conformalized credible interval for epistemic uncertainty}
 
@@ -234,178 +230,180 @@ abc = abcnn$new(theta,
 \insertRef{jiang2017learning}{abcneuralnet}
 }
 \seealso{
-\code{\link[R6:R6Class]{R6::R6()}}
+\code{\link[R6:R6]{R6::R6()}}
 }
 \section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{theta}}{parameters of the pseudo-observed samples (i.e. simulations)}
+  \if{html}{\out{<div class="r6-fields">}}
+  \describe{
+    \item{\code{theta}}{parameters of the pseudo-observed samples (i.e. simulations)}
 
-\item{\code{sumstat}}{summary statistics of the pseudo-observed samples (i.e. simulations)}
+    \item{\code{sumstat}}{summary statistics of the pseudo-observed samples (i.e. simulations)}
 
-\item{\code{observed}}{summary statistics of the observed samples}
+    \item{\code{observed}}{summary statistics of the observed samples}
 
-\item{\code{model}}{the \code{luz} model}
+    \item{\code{model}}{the \code{luz} model}
 
-\item{\code{method}}{the ABC-NN method used, whether \code{tabnet-abc}, \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout}, \verb{concrete dropout} or \verb{deep ensemble}}
+    \item{\code{method}}{the ABC-NN method used, whether \code{tabnet-abc}, \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout}, \verb{concrete dropout} or \verb{deep ensemble}}
 
-\item{\code{scale_input}}{the scaling method for summary statistics}
+    \item{\code{scale_input}}{the scaling method for summary statistics}
 
-\item{\code{scale_target}}{the scaling method for targets (i.e. theta)}
+    \item{\code{scale_target}}{the scaling method for targets (i.e. theta)}
 
-\item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
+    \item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
 
-\item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
+    \item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
 
-\item{\code{validation_split}}{proportion of training samples to retain for validation at the end of training}
+    \item{\code{validation_split}}{proportion of training samples to retain for validation at the end of training}
 
-\item{\code{num_conformal}}{number of training samples to retain for conformal prediction (not used during training)}
+    \item{\code{num_conformal}}{number of training samples to retain for conformal prediction (not used during training)}
 
-\item{\code{credible_interval_p}}{proportion, the level of significance for credible intervals}
+    \item{\code{credible_interval_p}}{proportion, the level of significance for credible intervals}
 
-\item{\code{test_split}}{proportion of training samples to retain for testing (at each training iteration)}
+    \item{\code{test_split}}{proportion of training samples to retain for testing (at each training iteration)}
 
-\item{\code{dropout}}{dropout rate to apply in \verb{monte carlo dropout} and \verb{gaussian monte carlo dropout}}
+    \item{\code{dropout}}{dropout rate to apply in \verb{monte carlo dropout} and \verb{gaussian monte carlo dropout}}
 
-\item{\code{batch_size}}{batch size in \code{luz}}
+    \item{\code{batch_size}}{batch size in \code{luz}}
 
-\item{\code{epochs}}{number of epochs for training}
+    \item{\code{epochs}}{number of epochs for training}
 
-\item{\code{early_stopping}}{logical, whether to do early stopping in \code{luz} (not implemented yet for the \verb{deep ensemble} method)}
+    \item{\code{early_stopping}}{logical, whether to do early stopping in \code{luz} (not implemented yet for the \verb{deep ensemble} method)}
 
-\item{\code{callbacks}}{list of \code{luz} callbacks  (not implemented for the method 'deep ensemble')}
+    \item{\code{callbacks}}{list of \code{luz} callbacks  (not implemented for the method 'deep ensemble')}
 
-\item{\code{verbose}}{logical, whether to print messages and progress bars for the user}
+    \item{\code{verbose}}{logical, whether to print messages and progress bars for the user}
 
-\item{\code{patience}}{patience hyperparameter for \code{luz} \verb{early stopping}, the number of epochs without improving until stoping training}
+    \item{\code{patience}}{patience hyperparameter for \code{luz} \verb{early stopping}, the number of epochs without improving until stoping training}
 
-\item{\code{optimizer}}{\code{torch} custom optimizer}
+    \item{\code{optimizer}}{\code{torch} custom optimizer}
 
-\item{\code{learning_rate}}{learningrate in \code{luz}}
+    \item{\code{learning_rate}}{learningrate in \code{luz}}
 
-\item{\code{l2_weight_decay}}{L2 weight decay for regularization in the \code{torch::optimizer}}
+    \item{\code{l2_weight_decay}}{L2 weight decay for regularization in the \code{torch::optimizer}}
 
-\item{\code{variance_clamping}}{\code{c(min, max)} values for variance clamping during training}
+    \item{\code{variance_clamping}}{\code{c(min, max)} values for variance clamping during training}
 
-\item{\code{loss}}{custom \code{torch} loss function (nn module)}
+    \item{\code{loss}}{custom \code{torch} loss function (nn module)}
 
-\item{\code{tol}}{tolerance rate in \code{abc} for the \code{tabnet-abc} method}
+    \item{\code{tol}}{tolerance rate in \code{abc} for the \code{tabnet-abc} method}
 
-\item{\code{abc_method}}{\code{abc} method for \code{tabnet-abc}}
+    \item{\code{abc_method}}{\code{abc} method for \code{tabnet-abc}}
 
-\item{\code{num_posterior_samples}}{number of posterior samples to generate in \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout} and \verb{concrete dropout}}
+    \item{\code{num_posterior_samples}}{number of posterior samples to generate in \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout} and \verb{concrete dropout}}
 
-\item{\code{abc_keep_original_sumstats}}{(logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
+    \item{\code{abc_keep_original_sumstats}}{(logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
 If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
 If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
 The variable importances are the one computed with \code{tabnet}.}
 
-\item{\code{prior_length_scale}}{hyperparameter for \verb{concrete dropout}}
+    \item{\code{prior_length_scale}}{hyperparameter for \verb{concrete dropout}}
 
-\item{\code{weight_regularizer}}{hyperparameter for \verb{concrete dropout}}
+    \item{\code{weight_regularizer}}{hyperparameter for \verb{concrete dropout}}
 
-\item{\code{dropout_regularizer}}{hyperparameter for \verb{concrete dropout}}
+    \item{\code{dropout_regularizer}}{hyperparameter for \verb{concrete dropout}}
 
-\item{\code{num_networks}}{number of neural networks in \verb{deep ensemble}}
+    \item{\code{num_networks}}{number of neural networks in \verb{deep ensemble}}
 
-\item{\code{epsilon_adversarial}}{the factor by which perturbating training samples for adversarial training in \verb{deep ensemble}}
+    \item{\code{epsilon_adversarial}}{the factor by which perturbating training samples for adversarial training in \verb{deep ensemble}}
 
-\item{\code{device}}{device used in \code{luz} and \code{torch}, whether 'cpu' or 'cuda' (GPU)}
+    \item{\code{device}}{device used in \code{luz} and \code{torch}, whether 'cpu' or 'cuda' (GPU)}
 
-\item{\code{input_dim}}{number of input dimensions (columns in summary statistics)}
+    \item{\code{input_dim}}{number of input dimensions (columns in summary statistics)}
 
-\item{\code{output_dim}}{number of output dimensions (columns in theta, the number of variables to predict)}
+    \item{\code{output_dim}}{number of output dimensions (columns in theta, the number of variables to predict)}
 
-\item{\code{n_train}}{number of samples for training}
+    \item{\code{n_train}}{number of samples for training}
 
-\item{\code{sumstat_names}}{names of the summary statistics}
+    \item{\code{sumstat_names}}{names of the summary statistics}
 
-\item{\code{output_names}}{neural network output names (mean and variance)}
+    \item{\code{output_names}}{neural network output names (mean and variance)}
 
-\item{\code{theta_names}}{theta names (variables to predict)}
+    \item{\code{theta_names}}{theta names (variables to predict)}
 
-\item{\code{n_obs}}{number of observations (rows in 'observed')}
+    \item{\code{n_obs}}{number of observations (rows in 'observed')}
 
-\item{\code{prior_lower}}{lower boundaries of priors (for plotting)}
+    \item{\code{prior_lower}}{lower boundaries of priors (for plotting)}
 
-\item{\code{prior_upper}}{upper boundaries of priors (for plotting)}
+    \item{\code{prior_upper}}{upper boundaries of priors (for plotting)}
 
-\item{\code{fitted}}{a model fitted with \code{luz}}
+    \item{\code{fitted}}{a model fitted with \code{luz}}
 
-\item{\code{evaluation}}{numerical value of the evaluation metric}
+    \item{\code{evaluation}}{numerical value of the evaluation metric}
 
-\item{\code{eval_metrics}}{list of custom metrics to use at evaluation (not implemented yet)}
+    \item{\code{eval_metrics}}{list of custom metrics to use at evaluation (not implemented yet)}
 
-\item{\code{posterior_samples}}{array of all posterior samples predicted in \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout} and \verb{concrete dropout}}
+    \item{\code{posterior_samples}}{array of all posterior samples predicted in \verb{monte carlo dropout}, \verb{gaussian monte carlo dropout} and \verb{concrete dropout}}
 
-\item{\code{quantile_posterior}}{quantiles of the posterior distributions, given the credible interval significance required}
+    \item{\code{quantile_posterior}}{quantiles of the posterior distributions, given the credible interval significance required}
 
-\item{\code{predictive_mean}}{mean predicted value}
+    \item{\code{predictive_mean}}{mean predicted value}
 
-\item{\code{aleatoric_uncertainty}}{aleatoric uncertainty}
+    \item{\code{aleatoric_uncertainty}}{aleatoric uncertainty, as a standard deviation in the scaled space}
 
-\item{\code{epistemic_uncertainty}}{epistemic uncertainty}
+    \item{\code{epistemic_uncertainty}}{epistemic uncertainty, as a standard deviation in the scaled space}
 
-\item{\code{overall_uncertainty}}{overall uncertainty}
+    \item{\code{overall_uncertainty}}{overall uncertainty \code{sqrt(var_epistemic + var_aleatoric)}, in the scaled space.
+Use \code{predictions()} to obtain uncertainties and credible intervals on the original parameter scale.}
 
-\item{\code{epistemic_conformal_quantile}}{conformal quantile of epistemic uncertainty calibrated with conformal prediction}
+    \item{\code{epistemic_conformal_quantile}}{conformal quantile of epistemic uncertainty calibrated with conformal prediction}
 
-\item{\code{overall_conformal_quantile}}{conformal quantile of overall uncertainty calibrated with conformal prediction}
+    \item{\code{overall_conformal_quantile}}{conformal quantile of overall uncertainty calibrated with conformal prediction}
 
-\item{\code{dropout_rates}}{dropout rates inferred by \verb{concrete dropout} (not implemented yet)}
+    \item{\code{dropout_rates}}{dropout rates inferred by \verb{concrete dropout} (not implemented yet)}
 
-\item{\code{input_summary}}{summary statistics of input data for scaling}
+    \item{\code{input_summary}}{summary statistics of input data for scaling}
 
-\item{\code{target_summary}}{summary statistics of target data (theta) for scaling}
+    \item{\code{target_summary}}{summary statistics of target data (theta) for scaling}
 
-\item{\code{sumstat_adj}}{scaled training summary statistics}
+    \item{\code{sumstat_adj}}{scaled training summary statistics}
 
-\item{\code{observed_adj}}{scaled observed summary statistics}
+    \item{\code{observed_adj}}{scaled observed summary statistics}
 
-\item{\code{theta_adj}}{scaled training target}
+    \item{\code{theta_adj}}{scaled training target}
 
-\item{\code{calibration_theta}}{theta saved for calibration with conformal prediction}
+    \item{\code{calibration_theta}}{theta saved for calibration with conformal prediction}
 
-\item{\code{calibration_sumstat}}{summary statistics saved for calibration with conformal prediction}
+    \item{\code{calibration_sumstat}}{summary statistics saved for calibration with conformal prediction}
 
-\item{\code{ncores}}{number of cores for parallel procedures}
+    \item{\code{ncores}}{number of cores for parallel procedures}
 
-\item{\code{seed}}{a random seed when initializing the network}
+    \item{\code{seed}}{a random seed when initializing the network}
 
-\item{\code{cross_validation_data}}{the unseen dataset for cross-validation}
+    \item{\code{cross_validation_data}}{the unseen dataset for cross-validation}
 
-\item{\code{cross_validation_predictions}}{predictions for the cross-validation dataset}
+    \item{\code{cross_validation_predictions}}{predictions for the cross-validation dataset}
 
-\item{\code{call}}{the call to the new() initialisation function}
-}
-\if{html}{\out{</div>}}
+    \item{\code{call}}{the call to the new() initialisation function}
+  }
+  \if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-abcnn-new}{\code{abcnn$new()}}
-\item \href{#method-abcnn-fit}{\code{abcnn$fit()}}
-\item \href{#method-abcnn-predict}{\code{abcnn$predict()}}
-\item \href{#method-abcnn-dataloader}{\code{abcnn$dataloader()}}
-\item \href{#method-abcnn-conformal_prediction}{\code{abcnn$conformal_prediction()}}
-\item \href{#method-abcnn-predictions}{\code{abcnn$predictions()}}
-\item \href{#method-abcnn-summary}{\code{abcnn$summary()}}
-\item \href{#method-abcnn-plot_training}{\code{abcnn$plot_training()}}
-\item \href{#method-abcnn-plot_prediction}{\code{abcnn$plot_prediction()}}
-\item \href{#method-abcnn-plot_posterior}{\code{abcnn$plot_posterior()}}
-\item \href{#method-abcnn-draw_from_posterior}{\code{abcnn$draw_from_posterior()}}
-\item \href{#method-abcnn-cross_validation}{\code{abcnn$cross_validation()}}
-\item \href{#method-abcnn-plot_cross_validation}{\code{abcnn$plot_cross_validation()}}
-\item \href{#method-abcnn-clone}{\code{abcnn$clone()}}
-}
+  \itemize{
+    \item \href{#method-abcnn-initialize}{\code{abcnn$new()}}
+    \item \href{#method-abcnn-fit}{\code{abcnn$fit()}}
+    \item \href{#method-abcnn-predict}{\code{abcnn$predict()}}
+    \item \href{#method-abcnn-dataloader}{\code{abcnn$dataloader()}}
+    \item \href{#method-abcnn-conformal_prediction}{\code{abcnn$conformal_prediction()}}
+    \item \href{#method-abcnn-predictions}{\code{abcnn$predictions()}}
+    \item \href{#method-abcnn-summary}{\code{abcnn$summary()}}
+    \item \href{#method-abcnn-plot_training}{\code{abcnn$plot_training()}}
+    \item \href{#method-abcnn-plot_prediction}{\code{abcnn$plot_prediction()}}
+    \item \href{#method-abcnn-plot_posterior}{\code{abcnn$plot_posterior()}}
+    \item \href{#method-abcnn-draw_from_posterior}{\code{abcnn$draw_from_posterior()}}
+    \item \href{#method-abcnn-cross_validation}{\code{abcnn$cross_validation()}}
+    \item \href{#method-abcnn-plot_cross_validation}{\code{abcnn$plot_cross_validation()}}
+    \item \href{#method-abcnn-clone}{\code{abcnn$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-abcnn-new"></a>}}
-\if{latex}{\out{\hypertarget{method-abcnn-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new \code{abcnn} object
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$new(
+\if{html}{\out{<a id="method-abcnn-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-abcnn-initialize}{}}}
+\subsection{\code{abcnn$new()}}{
+  Create a new \code{abcnn} object
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$new(
   theta,
   sumstat,
   observed,
@@ -441,260 +439,303 @@ Create a new \code{abcnn} object
   epsilon_adversarial = 0,
   ncores = 1,
   seed = round(runif(1, 0, 10000), digits = 0)
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{theta}}{parameters of the pseudo-observed samples (i.e. simulations)}
-
-\item{\code{sumstat}}{summary statistics of the pseudo-observed samples (i.e. simulations)}
-
-\item{\code{observed}}{summary statistics of the observed samples}
-
-\item{\code{model}}{a \code{luz} model}
-
-\item{\code{method}}{the ABC-NN method used}
-
-\item{\code{scale_input}}{the scaling method for summary statistics, whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
-
-\item{\code{scale_target}}{the scaling method for targets (i.e. theta), whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
-
-\item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
-
-\item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
-
-\item{\code{validation_split}}{proportion of samples retained for validation at the end of training}
-
-\item{\code{num_conformal}}{number of samples retained for conformal prediction}
-
-\item{\code{credible_interval_p}}{significance level for the credible interval, between 0 and 1}
-
-\item{\code{test_split}}{proportion of samples retained for test at each training iteration}
-
-\item{\code{dropout}}{dropout rate}
-
-\item{\code{batch_size}}{batch size}
-
-\item{\code{epochs}}{number of epochs for training}
-
-\item{\code{early_stopping}}{whether to do early stopping (not implemented for the method 'deep ensemble')}
-
-\item{\code{verbose}}{whether to print messages}
-
-\item{\code{patience}}{patience hyperparameter for early stopping. See \code{luz::luz_callback_early_stopping()} (not implemented yet for \verb{deep ensemble})}
-
-\item{\code{optimizer}}{\code{torch} optimizer nn module}
-
-\item{\code{learning_rate}}{learning rate}
-
-\item{\code{l2_weight_decay}}{L2 weigth decay (regularization)}
-
-\item{\code{variance_clamping}}{\code{c(min, max)} values for variance clamping during training}
-
-\item{\code{loss}}{\code{torch} nn loss function}
-
-\item{\code{abc_method}}{ABC sampling method in \code{abc} function (only for \code{tabnet-abc})}
-
-\item{\code{tol}}{tolerance rate for \code{abc} functions (only for \code{tabnet-abc})}
-
-\item{\code{abc_keep_original_sumstats}}{(logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{theta}}{parameters of the pseudo-observed samples (i.e. simulations)}
+      \item{\code{sumstat}}{summary statistics of the pseudo-observed samples (i.e. simulations)}
+      \item{\code{observed}}{summary statistics of the observed samples}
+      \item{\code{model}}{a \code{luz} model}
+      \item{\code{method}}{the ABC-NN method used}
+      \item{\code{scale_input}}{the scaling method for summary statistics, whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
+      \item{\code{scale_target}}{the scaling method for targets (i.e. theta), whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
+      \item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
+      \item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
+      \item{\code{validation_split}}{proportion of samples retained for validation at the end of training}
+      \item{\code{num_conformal}}{number of samples retained for conformal prediction}
+      \item{\code{credible_interval_p}}{significance level for the credible interval, between 0 and 1}
+      \item{\code{test_split}}{proportion of samples retained for test at each training iteration}
+      \item{\code{dropout}}{dropout rate}
+      \item{\code{batch_size}}{batch size}
+      \item{\code{epochs}}{number of epochs for training}
+      \item{\code{early_stopping}}{whether to do early stopping (not implemented for the method 'deep ensemble')}
+      \item{\code{verbose}}{whether to print messages}
+      \item{\code{patience}}{patience hyperparameter for early stopping. See \code{luz::luz_callback_early_stopping()} (not implemented yet for \verb{deep ensemble})}
+      \item{\code{optimizer}}{\code{torch} optimizer nn module}
+      \item{\code{learning_rate}}{learning rate}
+      \item{\code{l2_weight_decay}}{L2 weigth decay (regularization)}
+      \item{\code{variance_clamping}}{\code{c(min, max)} values for variance clamping during training}
+      \item{\code{loss}}{\code{torch} nn loss function}
+      \item{\code{abc_method}}{ABC sampling method in \code{abc} function (only for \code{tabnet-abc})}
+      \item{\code{tol}}{tolerance rate for \code{abc} functions (only for \code{tabnet-abc})}
+      \item{\code{abc_keep_original_sumstats}}{(logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
 If a proportion p (> 0 and < 1) is given, then the original summary statistics with a relative importance > p are kept.
 If an integer n >= 1 is given,  then the n most important original summary statistics are kept.
 The variable importances are the one computed with \code{tabnet}.}
-
-\item{\code{num_posterior_samples}}{number of samples to generate for the posterior distribution}
-
-\item{\code{prior_length_scale}}{prior length scale hyperparameter value}
-
-\item{\code{weight_regularizer}}{\verb{concrete dropout} regularization term for weights}
-
-\item{\code{dropout_regularizer}}{\verb{concrete dropout} regularization term for dropout}
-
-\item{\code{num_networks}}{number of networks in \verb{deep ensemble}}
-
-\item{\code{epsilon_adversarial}}{the amount of perturbation for adversarial training in \verb{deep ensemble} (experimental)}
-
-\item{\code{ncores}}{number of cores for parallelized steps}
-
-\item{\code{seed}}{a random seed}
-
-\item{\code{callbacks}}{custom callbacks}
+      \item{\code{num_posterior_samples}}{number of samples to generate for the posterior distribution}
+      \item{\code{prior_length_scale}}{prior length scale hyperparameter value}
+      \item{\code{weight_regularizer}}{\verb{concrete dropout} a numerical value, regularization term for weights in Concrete Dropout, set to "auto" if you want it to be computed at fit time}
+      \item{\code{dropout_regularizer}}{\verb{concrete dropout} a numerical value, regularization term for dropout in Concrete Dropout, set to "auto" if you want it to be computed at fit time}
+      \item{\code{num_networks}}{number of networks in \verb{deep ensemble}}
+      \item{\code{epsilon_adversarial}}{the amount of perturbation for adversarial training in \verb{deep ensemble} (experimental)}
+      \item{\code{ncores}}{number of cores for parallelized steps}
+      \item{\code{seed}}{a random seed}
+      \item{\code{callbacks}}{custom callbacks}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
-\if{html}{\out{</div>}}
-}
-}
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-fit"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-fit}{}}}
-\subsection{Method \code{fit()}}{
-Train the neural network
+\subsection{\code{abcnn$fit()}}{
+  Train the neural network
 
 The neural network is trained with \code{luz} and \code{torch}
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$fit()}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$fit()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-predict"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-predict}{}}}
-\subsection{Method \code{predict()}}{
-Predict parameters from a vector/array of observed summary statistics
+\subsection{\code{abcnn$predict()}}{
+  Predict parameters from a vector/array of observed summary statistics
 
 Predict theta for the observed summary statistics.
 Conformal prediction is also performed at this step on an independent calibration set.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$predict(data = NULL)}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$predict(data = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{data}}{a new set of data to predict}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{data}}{a new set of data to predict}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-dataloader"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-dataloader}{}}}
-\subsection{Method \code{dataloader()}}{
-Prepare the torch dataloader from sumstat/theta (input/target)
+\subsection{\code{abcnn$dataloader()}}{
+  Prepare the torch dataloader from sumstat/theta (input/target)
 
 Build and return a dataloader object
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$dataloader()}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$dataloader()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-conformal_prediction"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-conformal_prediction}{}}}
-\subsection{Method \code{conformal_prediction()}}{
-Estimate a calibrated credible interval with Conformal Prediction
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$conformal_prediction()}\if{html}{\out{</div>}}
+\subsection{\code{abcnn$conformal_prediction()}}{
+  Estimate a calibrated credible interval with Conformal Prediction
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$conformal_prediction()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-predictions"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-predictions}{}}}
-\subsection{Method \code{predictions()}}{
-Returns a tidy tibble with predictions and credible intervals
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$predictions()}\if{html}{\out{</div>}}
+\subsection{\code{abcnn$predictions()}}{
+  Returns a tidy data frame with predictions, uncertainties and credible intervals
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$predictions()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Details}{
+    All quantities are returned on the original parameter scale.
+
+Credible intervals are returned as explicit \code{lower}/\code{upper} bounds rather
+than as a half-width around the mean. The bounds are built in the scaled
+space in which the network was trained, and only then mapped back one
+endpoint at a time. Because every scaling method is monotone increasing,
+this preserves the conformal coverage guarantee exactly. It also means
+that under the non-linear \code{log} and \code{logit} scalings the intervals are
+asymmetric around \code{predictive_mean}, and that they always stay within the
+support implied by the scaling.
+
+The columns returned are:
+\itemize{
+\item \code{sample} index of the observed sample
+\item \code{parameter} name of the parameter
+\item \code{predictive_mean} the point estimate
+\item \code{epistemic_uncertainty}, \code{aleatoric_uncertainty}, \code{overall_uncertainty}
+standard deviations, carried to the original scale with the delta method
+(see \code{scaler_grad()}). Exact for \code{none}, \code{minmax}, \code{robustscaler} and
+\code{normalization}; a local linearisation for \code{log} and \code{logit}.
+\item \code{epistemic_conformal_lower}, \code{epistemic_conformal_upper} the conformalized
+credible interval based on the epistemic uncertainty alone
+\item \code{overall_conformal_lower}, \code{overall_conformal_upper} the conformalized
+credible interval based on the overall uncertainty
+\item \code{posterior_median}, \code{posterior_lower_ci}, \code{posterior_upper_ci} quantiles of
+the sampled posterior (\code{NA} for \verb{deep ensemble}, which does not draw posterior samples)
 }
 
+Note that under \code{log} and \code{logit} scaling, \code{predictive_mean} is the
+back-transform of the mean computed in the scaled space. By Jensen's
+inequality it is a median-like point estimate rather than the posterior
+mean on the original scale.
+  }
+  \subsection{Returns}{
+    a \code{data.frame} with one row per observed sample and per parameter
+  }
 }
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-summary"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-summary}{}}}
-\subsection{Method \code{summary()}}{
-Print a summary of the \code{abcnn} object
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$summary()}\if{html}{\out{</div>}}
+\subsection{\code{abcnn$summary()}}{
+  Print a summary of the \code{abcnn} object
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$summary()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-plot_training"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-plot_training}{}}}
-\subsection{Method \code{plot_training()}}{
-Plot the training curves (training/validation)
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_training(discard_first = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{abcnn$plot_training()}}{
+  Plot the training curves (training/validation)
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$plot_training(discard_first = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{discard_first}}{Discard the first epoch, as it may have a large loss compared to next ones (for plotting only)}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{discard_first}}{Discard the first epoch, as it may have a large loss compared to next ones (for plotting only)}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-plot_prediction"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-plot_prediction}{}}}
-\subsection{Method \code{plot_prediction()}}{
-Plot predicted values and their credible intervals
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_prediction(
+\subsection{\code{abcnn$plot_prediction()}}{
+  Plot predicted values and their credible intervals
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$plot_prediction(
   uncertainty_type = "conformal",
   epistemic_uncertainty = TRUE,
   plot_type = "line"
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{uncertainty_type}}{The type of uncertainty to plot, whether \code{conformal} credible intervals (default),
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{uncertainty_type}}{The type of uncertainty to plot, whether \code{conformal} credible intervals (default),
 the \code{uncertainty} estimated (square root of the variance) or the \verb{posterior quantile}, that are credible intervals
-computed on the distribution of posteriors.}
+computed on the distribution of posteriors.
+The \code{conformal} and \verb{posterior quantile} bounds are obtained by transforming the interval endpoints back to the
+original scale, so they are exact under any scaling method and always remain within the support of the parameter.
+The \code{uncertainty} band is a symmetric \verb{mean +/- sd} band built from a delta-method approximation of the standard
+deviation; under the non-linear \code{log} and \code{logit} scalings it is only a local linearisation and may extend beyond
+that support.}
+      \item{\code{epistemic_uncertainty}}{logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.}
+      \item{\code{plot_type}}{The type of plot, whether a \code{line} or \code{errorbar} around points}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
 
-\item{\code{epistemic_uncertainty}}{logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.}
-
-\item{\code{plot_type}}{The type of plot, whether a \code{line} or \code{errorbar} around points}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-plot_posterior"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-plot_posterior}{}}}
-\subsection{Method \code{plot_posterior()}}{
-Plot the distributions of estimates and predictions
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_posterior(
+\subsection{\code{abcnn$plot_posterior()}}{
+  Plot the distributions of estimates and predictions
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$plot_posterior(
   sample = 1,
   prior = TRUE,
   uncertainty_type = "conformal",
   epistemic_uncertainty = TRUE
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{sample}}{Index of the sample to plot}
-
-\item{\code{prior}}{logical, whether to plot the prior underneath the posterior and prediction}
-
-\item{\code{uncertainty_type}}{The type of uncertainty to plot, whether \code{conformal} credible intervals (default),
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{sample}}{Index of the sample to plot}
+      \item{\code{prior}}{logical, whether to plot the prior underneath the posterior and prediction}
+      \item{\code{uncertainty_type}}{The type of uncertainty to plot, whether \code{conformal} credible intervals (default),
 the \code{uncertainty} estimated (square root of the variance) or the \verb{posterior quantile}, that are credible intervals
-computed on the distribution of posteriors.}
+computed on the distribution of posteriors.
+The \code{conformal} and \verb{posterior quantile} bounds are obtained by transforming the interval endpoints back to the
+original scale, so they are exact under any scaling method and always remain within the support of the parameter.
+The \code{uncertainty} band is a symmetric \verb{mean +/- sd} band built from a delta-method approximation of the standard
+deviation; under the non-linear \code{log} and \code{logit} scalings it is only a local linearisation and may extend beyond
+that support.}
+      \item{\code{epistemic_uncertainty}}{logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
 
-\item{\code{epistemic_uncertainty}}{logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-draw_from_posterior"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-draw_from_posterior}{}}}
-\subsection{Method \code{draw_from_posterior()}}{
-Draw random samples from the posterior distribution
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$draw_from_posterior(n = 1)}\if{html}{\out{</div>}}
+\subsection{\code{abcnn$draw_from_posterior()}}{
+  Draw random samples from the posterior distribution
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$draw_from_posterior(n = 1, seed = NA)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{n}}{the number of samples to draw from posterior}
+      \item{\code{seed}}{a custom seed for drawing parameters}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Details}{
+    For every observed sample, \code{n} values are drawn per parameter from a
+normal distribution centred on the predictive mean, with the overall
+(aleatoric + epistemic) uncertainty as standard deviation.
+
+The draws are made in the scaled space the network was trained in, then
+transformed back one draw at a time. As the scaling is monotone, the
+draws respect the support implied by \code{scale_target}, in the same way as
+the credible intervals returned by \code{predictions()}.
+  }
+  \subsection{Returns}{
+    Returns a list with one \code{data.frame} per observed sample, of \code{n}
+rows and one column per parameter, on the original parameter scale
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{n}}{the number of samples to draw from posterior}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-cross_validation"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-cross_validation}{}}}
-\subsection{Method \code{cross_validation()}}{
-Compute cross-validation metrics by comparing ground truth
+\subsection{\code{abcnn$cross_validation()}}{
+  Compute cross-validation metrics by comparing ground truth
 and predictions on unseen pseudo-observed data (i.e. simulations)
 
 Metrics:
@@ -709,48 +750,56 @@ Metrics:
 \item \code{mean_epistemic_interval} mean epistemic conformal credible interval
 \item \code{mean_overall_interval} mean overall conformal credible interval
 }
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$cross_validation(
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$cross_validation(
   cross_validation_param = NULL,
   cross_validation_sumstats = NULL
-)}\if{html}{\out{</div>}}
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{cross_validation_param}}{the parameters in unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
+      \item{\code{cross_validation_sumstats}}{the summary statistics of unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Returns metrics computed on the cross-validation dataset
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{cross_validation_param}}{the parameters in unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
-
-\item{\code{cross_validation_sumstats}}{the summary statistics of unseen simulations on which to compute cross-validation (if \code{cross_validation_data} is not provided, the function returns the \code{cross_validation_predictions} already computed)}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-plot_cross_validation"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-plot_cross_validation}{}}}
-\subsection{Method \code{plot_cross_validation()}}{
-Plot the cross-validation scatter plot
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$plot_cross_validation()}\if{html}{\out{</div>}}
+\subsection{\code{abcnn$plot_cross_validation()}}{
+  Plot the cross-validation scatter plot
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$plot_cross_validation()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abcnn-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-abcnn-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{abcnn$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{abcnn$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{abcnn$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

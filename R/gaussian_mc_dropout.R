@@ -85,7 +85,7 @@ build_gaussian_mcdropout_model = function(optimizer = optim_adam,
                                  dropout = 0.5,
                                  learning_rate = 0.001,
                                  L2_weigth_decay = 1e-5) {
-  model = gaussian_mc_dropout_model %>%
+  model = gaussian_mc_model %>%
     luz::setup(optimizer = optimizer,
           loss = loss) %>%
     set_hparams(num_input_dim = input_dim,

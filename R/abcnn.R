@@ -216,6 +216,13 @@
 #'
 #' @importFrom Rdpack reprompt
 #' @importFrom cli cli_progress_along
+#' @importFrom knitr kable
+#' @importFrom stats median
+#' @importFrom stats quantile
+#' @importFrom stats rnorm
+#' @importFrom stats runif
+#' @importFrom stats sd
+#' @importFrom stats var
 #'
 #' @return an `abcnn` object that can be used to fit(), predict() and plot predictions
 #'

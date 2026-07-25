@@ -1,5 +1,6 @@
 ^abcneuralnet\.Rproj$
 ^\.Rproj\.user$
+^\.devcontainer$
 ^LICENSE\.md$
 ^doc$
 ^Meta$
@@ -7,3 +8,4 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^inst/extdata$

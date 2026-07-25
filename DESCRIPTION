@@ -30,9 +30,7 @@ Description:
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
-Suggests: 
-    knitr,
+Suggests:
     rmarkdown,
     testthat (>= 3.0.0)
 Imports:
@@ -41,25 +39,21 @@ Imports:
     Rdpack,
     abc,
     bundle,
+    cli,
     dplyr,
     ggplot2,
-    ggpubr,
     innsight,
     janitor,
+    knitr,
     luz,
-    plotly,
+    rminer,
+    stats,
+    tabnet,
     tibble,
     tidyr,
-    tidyverse,
-    torch,
-    tabnet,
-    devtools,
-    assertthat,
-    here,
-    kableExtra,
-    rminer,
-    cli
+    torch
 VignetteBuilder: knitr
 RdMacros: Rdpack
 Config/testthat/edition: 3
 URL: https://thomasbrazier.github.io/abcneuralnet/
+Config/roxygen2/version: 8.0.0
