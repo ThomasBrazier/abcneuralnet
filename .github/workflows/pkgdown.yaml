@@ -40,6 +40,11 @@ jobs:
         run: |
           torch::install_torch()
         shell: Rscript {0}
+        
+      - name: Install additional R dependencies
+        run: |
+          install.packages(c("spatstat", "mvtnorm", "MCMCpack"))
+        shell: Rscript {0}
 
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)

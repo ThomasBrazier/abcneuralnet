@@ -32,6 +32,11 @@ jobs:
           torch::install_torch()
         shell: Rscript {0}
 
+      - name: Install additional R dependencies
+        run: |
+          install.packages(c("spatstat", "mvtnorm", "MCMCpack"))
+        shell: Rscript {0}
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
