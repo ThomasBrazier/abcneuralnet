@@ -26,7 +26,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup, echo = F, eval = F}
+```{r setup, echo = T, eval = F}
 # Install ABCNeuralNet
 devtools::install_github("ThomasBrazier/abcneuralnet")
 
@@ -36,7 +36,7 @@ torch::install_torch()
 ```
 
 
-```{r setup3, echo = F}
+```{r setup3, echo = T}
 library(abcneuralnet)
 library(ggplot2)
 library(torch)
@@ -171,8 +171,10 @@ where $w = 2$, $b = 8$, and $\sigma = 1$. This controlled setting allows us to v
 I simulated 2,000 training samples and 1,000 test samples with a simple linear function. There is only one parameter to estimate, and one input variable.
 
 
-```{r toy_data_1, echo = F, eval=T}
-n_train = 100000 # Number of data points
+```{r toy_data_1, echo = T, eval=T}
+set.seed(42)
+
+n_train = 10000 # Number of data points
 n_obs = 1000 # Validation size
 
 gen_data_1d = function(n) {
@@ -204,19 +206,8 @@ df_concrete = list(X_train = X_train,
 ```
 
 
-```{r save_toy1, echo=F, eval = F}
-# Save the dataset
-saveRDS(df_concrete, "../inst/extdata/df_concrete.rds")
-```
 
-
-```{r load_toy1, echo=F}
-# Load it back
-df_concrete = readRDS("../inst/extdata/df_concrete.rds")
-```
-
-
-```{r dataset_toy1, echo=F}
+```{r dataset_toy1, echo=T}
 X_train = df_concrete$X_train
 Y_train = df_concrete$Y_train
 
@@ -267,17 +258,11 @@ abc$summary()
 
 
 
-```{r, echo = T, eval = F}
+```{r, echo = T, eval = T}
 # Use the fit() method to train the neural network
 abc$fit()
 ```
 
-
-```{r, echo=F, eval= T}
-# save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
-
-abc = load_abcnn(prefix = "../inst/extdata/abc_concrete")
-```
 
 
 The `abcnn` object is a `R6Class` object, providing a modern Object-Oriented Programming (OOP) approach. All the settings and data of an `abcnn` object can be accessed in public slots. For example, the `torch` model can be accessed with `abcnn$fitted$model`, and the `luz` fitted model can be accessed with `abcnn$fitted`. It means that `abcnn` objects allows very flexible approaches, where you can plot and visualize data and outputs, and define new functions easily. For example, I could wish to plot the evolution of the loss value at each iteration (epoch) during the training. This is the regular training curve used to assess training quality in every deep learning model.
@@ -330,9 +315,10 @@ abc = load_abcnn(prefix = "../path/abc_concrete")
 Re-use the generative model to generate a new dataset of unseen simulations with ground truth:
 
 
-```{r toy_data_2, echo = F, eval = F}
+```{r toy_data_2, echo = T, eval = T}
 n_crossval = 1000 # Validation size
 
+set.seed(72)
 crossval = gen_data_1d(n_crossval)
 
 theta_crossval = data.frame(y1 = crossval$Y)
@@ -342,7 +328,7 @@ sumstats_crossval = data.frame(x1 = crossval$X)
 
 Compute the cross-validation error metrics:
 
-```{r, echo = T, eval = F}
+```{r, echo = T, eval = T}
 abc$cross_validation(theta_crossval,
                      sumstats_crossval)
 ```
@@ -368,13 +354,8 @@ abc$plot_cross_validation()
 After the model is efficiently trained and the training quality has been assessed, parameter estimates can be predicted with `abc$predict()`. I predicted parameters for 1,000 simulated samples (summary statistics):
 
 
-```{r, echo = T, eval = F}
+```{r, echo = T, eval = T}
 abc$predict()
-```
-
-
-```{r, echo=F, eval=F}
-save_abcnn(abc, prefix = "../inst/extdata/abc_concrete")
 ```
 
 
@@ -392,7 +373,7 @@ head(abc$predictions())
 The trained model provides separate estimates of aleatoric and epistemic uncertainty:
 
 
-```{r, echo = F}
+```{r, echo = T}
 df_predicted = abc$predictions()
 
 df_predicted$uncertainty_a_upper = df_predicted$predictive_mean + df_predicted$aleatoric_uncertainty
@@ -493,10 +474,10 @@ For specific observations, we can examine the approximate posterior distribution
 
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-abc$plot_posterior(sample = 700, prior = TRUE, uncertainty_type = "uncertainty") +
-  geom_vline(xintercept = Y_obs[700], color = "red", size = 1.5)
-Y_obs[700]
-abc$predictive_mean$y1[700]
+abc$plot_posterior(sample = 701, prior = TRUE, uncertainty_type = "uncertainty") +
+  geom_vline(xintercept = Y_obs[701], color = "red", size = 1.5)
+Y_obs[701]
+abc$predictive_mean$y1[701]
 ```
 
 
@@ -530,7 +511,8 @@ where $\epsilon_1, \epsilon_2$ represent heteroscedastic noise with varying magn
 
 We simulate two parameters and two summary statistics, with missing data (gaps) and different amounts of random noise in the two parts of the dataset:
 
-```{r, echo = T, eval = F}
+```{r, echo = T, eval = T}
+set.seed(87)
 # Parameters of simulated input x
 data_range = 7
 data_step = 0.0005
@@ -610,26 +592,6 @@ df_deepensemble = list(df_train = df_train,
 ```
 
 
-```{r, echo = F, eval = F}
-# Save the dataset
-saveRDS(df_deepensemble, "../inst/extdata/df_deepensemble.rds")
-```
-
-```{r, echo = F}
-# Load it back
-df_deepensemble = readRDS("../inst/extdata/df_deepensemble.rds")
-
-df_train = df_deepensemble$df_train
-df_observed = df_deepensemble$df_observed
-
-train_x = df_train[, c("x1", "x2")]
-train_y = df_train[, c("y1", "y2")]
-observed_x  = df_observed[, c("x1", "x2")]
-observed_y  = df_observed[, c("y1", "y2")]
-```
-
-
-
 
 ```{r, echo = F, fig.height = 4, fig.width = 8, fig.align="center"}
 # Plot the simulated data
@@ -677,16 +639,10 @@ abc_ensemble = abcnn$new(theta,
 ```
 
 
-```{r, echo = T, eval = F}
+```{r, echo = T, eval = T}
 abc_ensemble$fit()
 ```
 
-
-```{r, echo = F}
-# save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
-
-abc_ensemble = load_abcnn(prefix = "../inst/extdata/abc_ensemble")
-```
 
 
 Checking the model training:
@@ -697,29 +653,18 @@ abc_ensemble$plot_training()
 
 
 
-
-
-<!-- ```{r, echo = T} -->
-<!-- abc_ensemble$cross_validation(true_param[1:100,], -->
-<!--                               observed[1:100,]) -->
-
-<!-- abc_ensemble$plot_cross_validation() -->
-<!-- ``` -->
-
-
-
-
-
-
-
 ## Variation in Uncertainty Quantification across different regions
 
 
-```{r, echo = T, eval = F}
+Predict on new data. Predictions are almost instantaneous with Deep Ensemble, as only one forward pass is necessary contrary to Dropout methods.
+
+```{r, echo = T, eval = T}
 abc_ensemble$predict()
 ```
 
-```{r, echo = F, eval = F}
+Save the result:
+
+```{r, echo = T, eval = F}
 save_abcnn(abc_ensemble, prefix = "../inst/extdata/abc_ensemble")
 ```
 
@@ -739,7 +684,7 @@ abc_ensemble$plot_prediction(uncertainty_type = "conformal")
 ```
 
 
-The uncertainty, especially epistemic uncertainty, increases in unseen regions during training. In addition, the aleatoric uncertainty increases in regions with higher variance (i.e. noise) in data:
+The uncertainty, especially epistemic uncertainty, increases in unseen regions during training. In addition, the aleatoric uncertainty increases in regions with higher variance (i.e. noise) in data. In the sace of a sample within the training distribution where there is not a lot of noise in the data, both epistemic and overall conformal prediction intervals converge and are narrow around the prediction:
 
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
@@ -748,11 +693,20 @@ The uncertainty, especially epistemic uncertainty, increases in unseen regions d
 abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
 ```
 
+
+For samples in a region with a lot of noise in the data, both the overall and epistemic conformal prediction intervals increase:
+
+
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 # Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
 # which(abc$observed < 5 & abc$observed > 4)
 abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
 ```
+
+
+When predicting out of the training distribution, the epistemic conformal prediction interval increases a lot compared to the overall:
+
+
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
 # Print a sample with -1 < x1 < 1 (out of training distribution)
@@ -780,7 +734,7 @@ In addition we add 50 noisy random summary statistics simulated according to a u
 
 
 
-```{r, eval=F, echo=F}
+```{r, echo=F, message=F}
 ########################################################
 #               Simulation of                          #
 #           a Gaussian toy example                     #
@@ -793,6 +747,8 @@ library(MCMCpack) # for the inverse gamma distribution
 #====================================
 # Homoscedastic Normal toy model
 #====================================
+set.seed(65)
+
 # Sample size of y
 n = 10
 # Inverse gamma parameters
@@ -1000,14 +956,6 @@ homoscedastic_normal = function(alpha = 4,
 
 
 dataset = homoscedastic_normal(alpha, beta, n, N, p, offset)
-
-saveRDS(dataset, "../inst/extdata/normal_toy_model.Rds")
-```
-
-
-
-```{r, echo = F}
-dataset = readRDS("../inst/extdata/normal_toy_model.Rds")
 ```
 
 
@@ -1022,14 +970,6 @@ theta.test = dataset$y.test
 
 # The exact value to find
 theta.exact = dataset$y.exact
-```
-
-
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
-ggplot(theta.train, aes(x = theta1, y = theta2)) +
-  geom_point() +
-  geom_point(data = theta.test, aes(x = theta1, y = theta2), color = "red", alpha = 0.5)
-
 ```
 
 
@@ -1057,15 +997,8 @@ deepensemble_highdim$summary()
 
 
 
-```{r, eval = F}
+```{r, eval = T}
 deepensemble_highdim$fit()
-```
-
-
-<!-- With adversarial training, the training and validation losses are different (adversarial perturbation is applied on training only), yet the training curve is smoother after a strong perturbation at the beginning: -->
-
-```{r, echo = F, eval=T}
-deepensemble_highdim = load_abcnn(prefix = "../inst/extdata/deepensemble_highdim")
 ```
 
 
@@ -1075,81 +1008,75 @@ deepensemble_highdim$plot_training()
 
 
 
-<!-- ## Model performance -->
+## Model performance
 
 
-<!-- Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience): -->
+Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience):
 
 
-<!-- ```{r, echo = T} -->
-<!-- true.theta = data.frame(theta1 = theta.exact$mean.theta1, -->
-<!--                         theta2 = theta.exact$mean.theta2) -->
+```{r, echo = T}
+true.theta = data.frame(theta1 = theta.exact$mean.theta1,
+                        theta2 = theta.exact$mean.theta2)
 
-<!-- deepensemble_highdim$cross_validation(true.theta, -->
-<!--                                       sumstats.test) -->
+deepensemble_highdim$cross_validation(true.theta,
+                                      sumstats.test)
 
-<!-- deepensemble_highdim$plot_cross_validation() -->
-<!-- ``` -->
-
-
-<!-- Plot the predictions on the observed summary statistics: -->
-
-<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."} -->
-<!-- deepensemble_highdim$predict() -->
-
-<!-- deepensemble_highdim$plot_prediction(uncertainty_type = "conformal") -->
-<!-- ``` -->
+deepensemble_highdim$plot_cross_validation()
+```
 
 
-```{r, echo = F, eval=F}
-save_abcnn(deepensemble_highdim, prefix = "../inst/extdata/deepensemble_highdim")
+Plot the predictions on the observed summary statistics:
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
+deepensemble_highdim$predict()
+
+deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
+```
+
+
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+df = deepensemble_highdim$predictions() %>%
+  filter(parameter == "theta1")
+
+df$true.theta = theta.exact[1:1000,"mean.theta1"]
+
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = overall_conformal_lower,
+                  ymax = overall_conformal_upper),
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "Deep Ensemble Predictive check Theta 1") +
+  theme_bw()
 ```
 
 
 
-<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."} -->
-<!-- df = deepensemble_highdim$predictions() %>% -->
-<!--   filter(parameter == "theta1") -->
 
-<!-- df$true.theta = theta.exact[1:1000,"mean.theta1"] -->
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."}
+df = deepensemble_highdim$predictions() %>%
+  filter(parameter == "theta2")
 
-<!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
-<!--   geom_ribbon(aes(ymin = overall_conformal_lower, -->
-<!--                   ymax = overall_conformal_upper),  -->
-<!--               fill = "lightgrey", alpha = 0.5) + -->
-<!--   geom_point(alpha = 0.6) + -->
-<!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->
-<!--   labs(x = "True Posterior Mean", y = "Predicted Mean", -->
-<!--        title = "Deep Ensemble Predictive check Theta 1") + -->
-<!--   theme_bw() -->
-<!-- ``` -->
+df$true.theta = theta.exact[1:1000,"mean.theta2"]
 
-
-
-
-<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Scatter plot comparing DeepEnsemble predictions to exact posterior means. The shaded region represents 95% credible intervals."} -->
-<!-- df = deepensemble_highdim$predictions() %>% -->
-<!--   filter(parameter == "theta2") -->
-
-<!-- df$true.theta = theta.exact[1:1000,"mean.theta2"] -->
-
-<!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
-<!--   geom_ribbon(aes(ymin = overall_conformal_lower, -->
-<!--                   ymax = overall_conformal_upper),  -->
-<!--               fill = "lightgrey", alpha = 0.5) + -->
-<!--   geom_point(alpha = 0.6) + -->
-<!--   geom_smooth(method = "lm", se = FALSE, color = "red") + -->
-<!--   labs(x = "True Posterior Mean", y = "Predicted Mean", -->
-<!--        title = "Deep Ensemble Predictive check Theta 2") + -->
-<!--   theme_bw() -->
-<!-- ``` -->
+ggplot(df, aes(x = true.theta, y = predictive_mean)) +
+  geom_ribbon(aes(ymin = overall_conformal_lower,
+                  ymax = overall_conformal_upper),
+              fill = "lightgrey", alpha = 0.5) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "True Posterior Mean", y = "Predicted Mean",
+       title = "Deep Ensemble Predictive check Theta 2") +
+  theme_bw()
+```
 
 
 
 
-<!-- ```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Prediction for a single point."} -->
-<!-- deepensemble_highdim$plot_posterior(100) -->
-<!-- ``` -->
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Prediction for a single point."}
+deepensemble_highdim$plot_posterior(100)
+```
 
 
 
@@ -1218,13 +1145,13 @@ exp$run(data = sumstats.test[1:1000,],
         method = "smoothgrad")
 ```
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using SmoothGrad attribution methods. Colors indicate the contribution of each feature to the final prediction."}
 exp$plot()
 ```
 
 
 
-```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using DeepLIFT attribution methods. Colors indicate the contribution of each feature to the final prediction."}
+```{r, echo = T, fig.height = 4, fig.width = 8, fig.cap="Feature importance visualization using SmoothGrad attribution methods. Colors indicate the contribution of each feature to the final prediction."}
 exp$plot_global()
 ```
 
@@ -1272,13 +1199,8 @@ tabnetabc$summary()
 
 
 
-```{r, eval = F}
+```{r, eval = T}
 tabnetabc$fit()
-```
-
-
-```{r, echo = F, eval=T}
-tabnetabc = load_abcnn(prefix = "../inst/extdata/tabnetabc")
 ```
 
 
@@ -1292,11 +1214,6 @@ tabnetabc$plot_training()
 tabnetabc$predict()
 ```
 
-
-
-```{r, echo = F, eval=F}
-save_abcnn(tabnetabc, prefix = "../inst/extdata/tabnetabc")
-```
 
 
 ## Model performance
@@ -1327,28 +1244,12 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 
 
-<!-- ```{r, fig.height = 4, fig.width = 8, fig.align="center"} -->
-<!-- tabnetabc$plot_prediction(uncertainty_type = "posterior quantile", plot_type = "errorbar") -->
-<!-- ``` -->
+
+```{r, message=F, echo=TRUE, message = F, warning=F, fig.height = 4, fig.width = 8, fig.align="center"}
+tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
+```
 
 
-<!-- ```{r, message=F, echo=TRUE, fig.height = 4, fig.width = 8, fig.align="center"} -->
-<!-- tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile") -->
-<!-- ``` -->
-
-
-<!-- ```{r, message=F, echo=TRUE, fig.height = 4, fig.width = 8, fig.align="center"} -->
-<!-- df = tabnetabc$predictions() %>% -->
-<!--   filter(parameter == "theta1") -->
-
-<!-- df$true.theta = theta.exact[1:1000,"mean.theta1"] -->
-
-<!-- ggplot(df, aes(x = true.theta, y = predictive_mean)) + -->
-<!--   geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), fill = "lightgrey", alpha = 0.5) + -->
-<!--   geom_point() + -->
-<!--   geom_smooth(method = "lm") + -->
-<!--   theme_bw() -->
-<!-- ``` -->
 
 
 
