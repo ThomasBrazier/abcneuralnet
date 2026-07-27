@@ -33,7 +33,7 @@ precompute = function() {
   owd = setwd(dir)
   on.exit(setwd(owd), add = TRUE)
 
-  knitr::knit(input = "Bayesian_neural_networks_inference_orig.Rmd",
+  knitr::knit(input = "Bayesian_neural_networks_inference_orig.Rmd.precompute",
               output = "Bayesian_neural_networks_inference.Rmd")
 }
 
