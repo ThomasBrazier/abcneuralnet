@@ -2,18 +2,18 @@
 
 ## Authors
 
-- **Thomas brazier.thomas@gmail.com Brazier**. Author, maintainer.
+- **Thomas Brazier**. Author, maintainer.
 
 ## Citation
 
-Brazier Tb (2026). *abcneuralnet: Bayesian Deep Learning and Approximate
-Bayesian Computation for Parameter Inference*. R package version 0.3.0,
+Brazier T (2026). *abcneuralnet: Bayesian Deep Learning and Approximate
+Bayesian Computation for Parameter Inference*. R package version 0.3.1,
 <https://thomasbrazier.github.io/abcneuralnet/>.
 
     @Manual{,
       title = {abcneuralnet: Bayesian Deep Learning and Approximate Bayesian Computation for Parameter Inference},
-      author = {Thomas brazier.thomas@gmail.com Brazier},
+      author = {Thomas Brazier},
       year = {2026},
-      note = {R package version 0.3.0},
+      note = {R package version 0.3.1},
       url = {https://thomasbrazier.github.io/abcneuralnet/},
     }
