@@ -65,7 +65,7 @@
 <p><img src="logo.png" style="width: 100px; position:absolute; top:0; right:0; padding:10px;"></p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install ABCNeuralNet</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/install-deprecated.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"ThomasBrazier/abcneuralnet"</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"ThomasBrazier/abcneuralnet"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Install C++ dependencies of torch (e.g. CUDA, lantern)</span></span>
 <span><span class="fu">torch</span><span class="fu">::</span><span class="fu"><a href="https://torch.mlverse.org/docs/reference/install_torch.html" class="external-link">install_torch</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -1450,7 +1450,7 @@ to true parameter values.
 </div>
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">predictions</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta1"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta1"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Back-transform scaled parameters with method: minmax</span></span>
 <span></span>
 <span><span class="va">df</span><span class="op">$</span><span class="va">true.theta</span> <span class="op">=</span> <span class="va">theta.exact</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="st">"mean.theta1"</span><span class="op">]</span></span>
@@ -1472,7 +1472,7 @@ means. The shaded region represents 95% credible intervals.
 </div>
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="va">deepensemble_highdim</span><span class="op">$</span><span class="fu">predictions</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta2"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta2"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Back-transform scaled parameters with method: minmax</span></span>
 <span></span>
 <span><span class="va">df</span><span class="op">$</span><span class="va">true.theta</span> <span class="op">=</span> <span class="va">theta.exact</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="st">"mean.theta2"</span><span class="op">]</span></span>
@@ -1799,7 +1799,7 @@ to true parameter values.
 </div>
 <div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="va">tabnetabc</span><span class="op">$</span><span class="fu">predictions</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta1"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"theta1"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Back-transform scaled parameters with method: none</span></span>
 <span></span>
 <span><span class="va">df</span><span class="op">$</span><span class="va">true.theta</span> <span class="op">=</span> <span class="va">theta.exact</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">1000</span>,<span class="st">"mean.theta1"</span><span class="op">]</span></span>
