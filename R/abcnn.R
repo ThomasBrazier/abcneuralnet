@@ -414,6 +414,11 @@ abcnn = R6::R6Class("abcnn",
     #' @param num_networks number of networks in `deep ensemble`
     #' @param epsilon_adversarial the amount of perturbation for adversarial training in `deep ensemble` (experimental)
     #' @param ncores number of cores for parallelized steps
+<<<<<<< HEAD
+=======
+    #' @param abc_transf a vector of character strings passed directly to 'abc' indicating the kind of transformation to be applied to the parameter values. The possible values are "log", "logit", and "none" (default), when no is transformation applied.
+    #' @param abc_logit.bounds a matrix of bounds if transf is "logit", passed directly to 'abc'. The matrix has as many lines as parameters (including the ones that are not "logit" transformed) and 2 columns. First column is the minimum bound and second column is the maximum bound.
+>>>>>>> parent of 6fcf485 (Add transf and logit.bounds to internal abc function)
     #' @param seed a random seed
     #'
     initialize = function(theta,
