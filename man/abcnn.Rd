@@ -70,7 +70,7 @@ or modified directly in the corresponding public \code{slot}.
 
 \item{\code{model}}{the \code{luz} model}
 
-\item{\code{method}}{the ABC-NN method used}
+\item{\code{method}}{the ABCNN method used, either "monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"}
 
 \item{\code{scale_input}}{the scaling method for summary statistics}
 
@@ -449,13 +449,15 @@ Use \code{predictions()} to obtain uncertainties and credible intervals on the o
       \item{\code{sumstat}}{summary statistics of the pseudo-observed samples (i.e. simulations)}
       \item{\code{observed}}{summary statistics of the observed samples}
       \item{\code{model}}{a \code{luz} model}
-      \item{\code{method}}{the ABC-NN method used}
+      \item{\code{method}}{the ABC-NN method used, either "monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"}
       \item{\code{scale_input}}{the scaling method for summary statistics, whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
       \item{\code{scale_target}}{the scaling method for targets (i.e. theta), whether \code{minmax}, \code{robustscaler}, \code{normalization}, \code{log}, \code{logit} or \code{none}}
       \item{\code{num_hidden_layers}}{number of hidden layers in the neural network}
       \item{\code{num_hidden_dim}}{number of hidden dimensions (neurons) in each hidden layer}
       \item{\code{validation_split}}{proportion of samples retained for validation at the end of training}
-      \item{\code{num_conformal}}{number of samples retained for conformal prediction}
+      \item{\code{num_conformal}}{number of samples retained for conformal prediction.
+Forced to \code{0} with a warning for \code{tabnet-abc}, whose calibration set is
+held out neither of the TabNet fit nor of the ABC reference table.}
       \item{\code{credible_interval_p}}{significance level for the credible interval, between 0 and 1}
       \item{\code{test_split}}{proportion of samples retained for test at each training iteration}
       \item{\code{dropout}}{dropout rate}
@@ -589,6 +591,12 @@ credible interval based on the overall uncertainty
 \item \code{posterior_median}, \code{posterior_lower_ci}, \code{posterior_upper_ci} quantiles of
 the sampled posterior (\code{NA} for \verb{deep ensemble}, which does not draw posterior samples)
 }
+
+The four conformal columns are \code{NA} for \code{tabnet-abc}, which does not
+support conformal prediction; use the posterior quantile columns instead.
+For \verb{monte carlo dropout} the overall uncertainty reduces to the
+epistemic one, so \verb{overall_conformal_*} is identical to
+\verb{epistemic_conformal_*}.
 
 Note that under \code{log} and \code{logit} scaling, \code{predictive_mean} is the
 back-transform of the mean computed in the scaled space. By Jensen's

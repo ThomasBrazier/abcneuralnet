@@ -32,6 +32,9 @@ for (method in methods) {
       validation_split = 0.2,
       early_stopping = FALSE,
       num_posterior_samples = 1000,
+      # `tabnet-abc` does not support conformal prediction and forces this to 0
+      # with a warning; ask for 0 up front so the workflow runs warning-free
+      num_conformal = if (method == "tabnet-abc") 0 else 1000,
       verbose = FALSE
     )
 
@@ -99,7 +102,15 @@ for (method in methods) {
 
     pred = abc$predictions()
     expect_true(pred$epistemic_uncertainty > 0)
-    expect_true(pred$epistemic_conformal_lower < pred$epistemic_conformal_upper)
+    if (method == "tabnet-abc") {
+      # Conformal prediction is not available for this method
+      expect_true(is.na(pred$epistemic_conformal_lower))
+      expect_true(is.na(pred$epistemic_conformal_upper))
+      expect_true(is.na(pred$overall_conformal_lower))
+      expect_true(is.na(pred$overall_conformal_upper))
+    } else {
+      expect_true(pred$epistemic_conformal_lower < pred$epistemic_conformal_upper)
+    }
     if (method != "deep ensemble") {
       expect_true(pred$posterior_lower_ci < pred$posterior_upper_ci)
     }

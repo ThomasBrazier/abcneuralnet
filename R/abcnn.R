@@ -24,7 +24,8 @@
 #' @param abc_keep_original_sumstats (logical or numeric) Whether to merge the new set of summary statistics with the original ones (TRUE), or just keep the new ones (FALSE, default value).
 #' @param num_posterior_samples the number of posterior samples to predict with the `concrete dropout` and `monte carlo dropout` methods
 #' @param credible_interval_p the alpha value for the quantile credible interval (default=0.95, with alpha/2 and 1 - alpha/2 quantiles)
-#' @param num_conformal the number of training samples retained for Conformal Prediction (default=1,000)
+#' @param num_conformal the number of training samples retained for Conformal Prediction (default=1,000).
+#' Forced to `0` for `tabnet-abc`, which does not support conformal prediction.
 #' @param kernel the kernel function, either `rbf` or `epanechnikov`
 #' @param sampling the ABC sampling function, either `rejection` or `importance`
 #' @param length_scale the length scale parameter of the `rbf` kernel
@@ -386,7 +387,9 @@ abcnn = R6::R6Class("abcnn",
     #' @param num_hidden_layers number of hidden layers in the neural network
     #' @param num_hidden_dim number of hidden dimensions (neurons) in each hidden layer
     #' @param validation_split proportion of samples retained for validation at the end of training
-    #' @param num_conformal number of samples retained for conformal prediction
+    #' @param num_conformal number of samples retained for conformal prediction.
+    #' Forced to `0` with a warning for `tabnet-abc`, whose calibration set is
+    #' held out neither of the TabNet fit nor of the ABC reference table.
     #' @param credible_interval_p significance level for the credible interval, between 0 and 1
     #' @param test_split proportion of samples retained for test at each training iteration
     #' @param dropout dropout rate
@@ -538,6 +541,22 @@ abcnn = R6::R6Class("abcnn",
       self$ncores = ncores
       self$seed = seed
 
+      # Split conformal prediction needs the calibration set held out of
+      # everything used to build the predictor. `tabnet-abc` fails that twice:
+      # `dataloader()` hands `tabnet_fit()` all the simulations rather than
+      # `train_idx`, and the ABC reference table at prediction time is the full
+      # simulation set, so each calibration point is matched against itself at
+      # distance 0. Both shrink the calibration scores relative to a real
+      # observation, so the quantile is too small and the interval under-covers.
+      # Use the posterior quantile intervals instead.
+      if (self$method == "tabnet-abc" && num_conformal > 0) {
+        warning("Conformal prediction is not available for 'tabnet-abc': the ",
+                "calibration set is not held out of the TabNet fit nor of the ",
+                "ABC reference table. Setting 'num_conformal' to 0. Use the ",
+                "'posterior quantile' intervals instead.")
+        self$num_conformal = 0
+      }
+
       # Init default value for clamping the variance estimate, or let the user set it
       # if (variance_clamping & !is.numeric(variance_clamping)) {
       #   if (method == "concrete dropout") {
@@ -628,9 +647,6 @@ abcnn = R6::R6Class("abcnn",
       set.seed(as.integer(self$seed))
 
       if (is.null(model)) {
-        # if (self$method == "tabnet-abc") {
-        #   self$num_conformal = 0
-        # }
         if (self$method == "monte carlo dropout") {
           self$model = mc_dropout_model %>%
             luz::setup(optimizer = self$optimizer,
@@ -1550,29 +1566,41 @@ abcnn = R6::R6Class("abcnn",
 
       # Compute the conformal quantile
       alpha = 1 - self$credible_interval_p
+      level = ((n_cal + 1) * (1 - alpha)) / n_cal
 
-      # q_level = ceiling((n_cal + 1)*(1 - alpha))/n_cal
-      # qhat = sort(scores_epistemic)[q_level*n_cal]
-      # # It is the same as above
-      # quantile(scores_epistemic, ((n_cal + 1)*(1 - alpha))/n_cal, na.rm = TRUE)
+      conformal_quantile = function(scores, label) {
+        q = apply(scores, 2, function(x) {
+          n_bad = sum(!is.finite(x))
+          if (n_bad > 0) {
+            warning(sprintf(paste0("%d of %d %s conformal scores are not ",
+                                   "finite (the estimated uncertainty is zero ",
+                                   "or missing for those calibration samples). ",
+                                   "They are ranked as the largest scores, ",
+                                   "which widens the interval."),
+                            n_bad, length(x), label))
+          }
+          # A non-finite score is the worst possible one: the model claims no
+          # spread, so the point is never covered. Rank it at the top rather
+          # than dropping it, which keeps the sample size at `n_cal` and
+          # preserves the finite-sample guarantee.
+          x[!is.finite(x)] = Inf
+          # `type = 1` is the inverse ECDF: the
+          # ceiling((n_cal + 1) * (1 - alpha))-th smallest score, which is the
+          # split-conformal quantile exactly. The default type 7 interpolates
+          # between order statistics, which undershoots it, and interpolating
+          # against an `Inf` gives `NaN`.
+          quantile(x, level, na.rm = FALSE, names = FALSE, type = 1)
+        })
 
-      # For the new data sample x, approximation of Eπ[θ | x] and confidence set for θ :
-      # apply(scores_epistemic, 2, function(x) sort(x[q_level * n_cal]))
+        q = as.data.frame(t(q))
+        colnames(q) = self$theta_names
+        return(q)
+      }
 
-      epistemic_conformal_quantile = apply(scores_epistemic, 2,
-                                           function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal,
-                                                                na.rm = TRUE))
-      epistemic_conformal_quantile = as.data.frame(t(epistemic_conformal_quantile))
-      colnames(epistemic_conformal_quantile) = abcnn_conformal$theta_names
-
-      overall_conformal_quantile = apply(scores_overall, 2,
-                                         function(x) quantile(x, ((n_cal + 1)*(1 - alpha))/n_cal,
-                                                              na.rm = TRUE))
-      overall_conformal_quantile = as.data.frame(t(overall_conformal_quantile))
-      colnames(overall_conformal_quantile) = abcnn_conformal$theta_names
-
-      self$epistemic_conformal_quantile = epistemic_conformal_quantile
-      self$overall_conformal_quantile = overall_conformal_quantile
+      self$epistemic_conformal_quantile = conformal_quantile(scores_epistemic,
+                                                             "epistemic")
+      self$overall_conformal_quantile = conformal_quantile(scores_overall,
+                                                           "overall")
 
       # Clean up deep copies
       # TODO optim
@@ -1610,6 +1638,12 @@ abcnn = R6::R6Class("abcnn",
     #' credible interval based on the overall uncertainty
     #' * `posterior_median`, `posterior_lower_ci`, `posterior_upper_ci` quantiles of
     #' the sampled posterior (`NA` for `deep ensemble`, which does not draw posterior samples)
+    #'
+    #' The four conformal columns are `NA` for `tabnet-abc`, which does not
+    #' support conformal prediction; use the posterior quantile columns instead.
+    #' For `monte carlo dropout` the overall uncertainty reduces to the
+    #' epistemic one, so `overall_conformal_*` is identical to
+    #' `epistemic_conformal_*`.
     #'
     #' Note that under `log` and `logit` scaling, `predictive_mean` is the
     #' back-transform of the mean computed in the scaled space. By Jensen's
@@ -1869,6 +1903,15 @@ abcnn = R6::R6Class("abcnn",
                                epistemic_uncertainty = TRUE,
                               plot_type = "line") {
 
+      # `conformal` is the default, so a user who never asked for it would
+      # otherwise get an empty plot: the conformal columns are all `NA` for
+      # `tabnet-abc`, which does not support conformal prediction.
+      if (self$method == "tabnet-abc" && uncertainty_type == "conformal") {
+        warning("Conformal prediction is not available for 'tabnet-abc'. ",
+                "Plotting the 'posterior quantile' credible intervals instead.")
+        uncertainty_type = "posterior quantile"
+      }
+
       # if only few samples, force the type of plot = errorbar
       if (self$n_obs < 3) {
         plot_type = "errorbar"
@@ -1992,6 +2035,15 @@ abcnn = R6::R6Class("abcnn",
       # Dim 1 is number of MC samples (predictions)
       # Dim 2 is number of observations
       # Dim 3 is parameters (mu + sigma)
+
+      # `conformal` is the default, so a user who never asked for it would
+      # otherwise get an empty plot: the conformal columns are all `NA` for
+      # `tabnet-abc`, which does not support conformal prediction.
+      if (self$method == "tabnet-abc" && uncertainty_type == "conformal") {
+        warning("Conformal prediction is not available for 'tabnet-abc'. ",
+                "Plotting the 'posterior quantile' credible intervals instead.")
+        uncertainty_type = "posterior quantile"
+      }
 
       if (is.null(self$fitted)) {
         warning("The model has not been fitted.")
@@ -2213,11 +2265,25 @@ abcnn = R6::R6Class("abcnn",
       pred = self$cross_validation_predictions
       pred$true_value = tidy_param$true_value
 
-      pred$ci_overall_upper = pred$overall_conformal_upper
-      pred$ci_overall_lower = pred$overall_conformal_lower
+      # The conformal columns are all `NA` for `tabnet-abc`, which does not
+      # support conformal prediction, so fall back to the posterior quantiles
+      # rather than drawing empty error bars.
+      if (self$method == "tabnet-abc") {
+        warning("Conformal prediction is not available for 'tabnet-abc'. ",
+                "Plotting the 'posterior quantile' credible intervals instead.")
 
-      pred$ci_e_upper = pred$epistemic_conformal_upper
-      pred$ci_e_lower = pred$epistemic_conformal_lower
+        pred$ci_overall_upper = pred$posterior_upper_ci
+        pred$ci_overall_lower = pred$posterior_lower_ci
+
+        pred$ci_e_upper = pred$posterior_upper_ci
+        pred$ci_e_lower = pred$posterior_lower_ci
+      } else {
+        pred$ci_overall_upper = pred$overall_conformal_upper
+        pred$ci_overall_lower = pred$overall_conformal_lower
+
+        pred$ci_e_upper = pred$epistemic_conformal_upper
+        pred$ci_e_lower = pred$epistemic_conformal_lower
+      }
 
 
       # Sort and index observations

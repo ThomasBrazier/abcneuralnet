@@ -44,7 +44,9 @@ fit_abcnn = function(method, training, observed, num_posterior_samples = 500) {
                   batch_size = 64,
                   epochs = 5,
                   num_networks = 3,
-                  num_conformal = 100,
+                  # `tabnet-abc` does not support conformal prediction and
+                  # forces this to 0 with a warning; ask for 0 up front
+                  num_conformal = if (method == "tabnet-abc") 0 else 100,
                   num_posterior_samples = num_posterior_samples,
                   tol = 0.1,
                   validation_split = 0.1,
@@ -231,8 +233,16 @@ for (method in methods) {
     expect_true(all(predictions$sample == 1))
     expect_equal(predictions$parameter, colnames(training$theta))
     expect_true(all(is.finite(predictions$predictive_mean)))
-    expect_true(all(predictions$epistemic_conformal_lower < predictions$epistemic_conformal_upper))
-    expect_true(all(predictions$overall_conformal_lower < predictions$overall_conformal_upper))
+    if (method == "tabnet-abc") {
+      # Conformal prediction is not available for this method
+      expect_true(all(is.na(predictions$epistemic_conformal_lower)))
+      expect_true(all(is.na(predictions$epistemic_conformal_upper)))
+      expect_true(all(is.na(predictions$overall_conformal_lower)))
+      expect_true(all(is.na(predictions$overall_conformal_upper)))
+    } else {
+      expect_true(all(predictions$epistemic_conformal_lower < predictions$epistemic_conformal_upper))
+      expect_true(all(predictions$overall_conformal_lower < predictions$overall_conformal_upper))
+    }
 
     # The methods reading those slots must also handle the single row
     expect_no_error(abc$plot_prediction())
