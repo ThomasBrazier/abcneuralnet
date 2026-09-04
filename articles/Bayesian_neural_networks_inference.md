@@ -15,6 +15,8 @@ torch::install_torch()
 ``` r
 
 library(abcneuralnet)
+#> Error in `library()`:
+#> ! aucun package nommé 'abcneuralnet' n'est trouvé
 library(ggplot2)
 library(torch)
 library(tidyverse)
@@ -369,6 +371,8 @@ abc = abcnn$new(theta,
             l2_weight_decay = 1e-5,
             learning_rate = 0.001,
             seed = 6295)
+#> Error:
+#> ! objet 'abcnn' introuvable
 ```
 
 You can have a summary of your `abcnn` object at any time with
@@ -377,49 +381,9 @@ You can have a summary of your `abcnn` object at any time with
 ``` r
 
 abc$summary()
-#> ===================================================
-#> ABC Neural Net. Bayesian Deep learning and ABC.
-#> ===================================================
-#> ABC parameter inference with the method: concrete dropout 
-#> 
-#> 
-#> |Sample      |  Size| Proportion|
-#> |:-----------|-----:|----------:|
-#> |Simulations | 10000|         NA|
-#> |Training    |  7000|         NA|
-#> |Testing     |  1000|        0.1|
-#> |Evaluation  |  1000|        0.1|
-#> |Conformal   |  1000|         NA|
-#> |Observed    |  1000|         NA|
-#> 
-#> Is CUDA available? [1] FALSE
-#> 
-#> Device is: torch_device(type='cpu') 
-#> 
-#> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "concrete dropout", 
-#>     scale_input = "none", scale_target = "none", num_hidden_layers = 3, 
-#>     num_hidden_dim = 128, batch_size = 32, epochs = 20, learning_rate = 0.001, 
-#>     l2_weight_decay = 1e-05, seed = 6295)
+#> Error:
+#> ! objet 'abc' introuvable
 ```
-
-| Hyperparameter | Value |
-|:---|:---|
-| Method | concrete dropout |
-| Scaling for inputs (summary statistics) | none |
-| Scaling for targets (theta) | none |
-| Number hidden layers | 3 |
-| Number hidden dimensions | 128 |
-| Batch size | 32 |
-| Epochs | 20 |
-| Early stopping callback | FALSE |
-| Patience for early stopping | 4 |
-| Learning rate | 0.001 |
-| L2 weight decay | 1e-05 |
-| Method for ABC | loclinear |
-| Tolerance rate (ABC) | 0.1 |
-| Number of posterior samples (mc dropout and concrete dropout) | 1000 |
-| Dropout rate | 0.5 |
-| Number of networks (deep ensemble) | 5 |
 
 ### Model training and performance
 
@@ -427,37 +391,8 @@ abc$summary()
 
 # Use the fit() method to train the neural network
 abc$fit()
-#> ===================================================
-#> ABC Neural Net. Bayesian Deep learning and ABC.
-#> ===================================================
-#> ABC parameter inference with the method: concrete dropout 
-#> 
-#> 
-#> |Sample      |  Size| Proportion|
-#> |:-----------|-----:|----------:|
-#> |Simulations | 10000|         NA|
-#> |Training    |  7000|         NA|
-#> |Testing     |  1000|        0.1|
-#> |Evaluation  |  1000|        0.1|
-#> |Conformal   |  1000|         NA|
-#> |Observed    |  1000|         NA|
-#> 
-#> Is CUDA available? [1] FALSE
-#> 
-#> Device is: torch_device(type='cpu') 
-#> 
-#> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "concrete dropout", 
-#>     scale_input = "none", scale_target = "none", num_hidden_layers = 3, 
-#>     num_hidden_dim = 128, batch_size = 32, epochs = 20, learning_rate = 0.001, 
-#>     l2_weight_decay = 1e-05, seed = 6295)
-#> [1] "Evaluation"
-#> # A tibble: 1 × 2
-#>   metric value
-#>   <chr>  <dbl>
-#> 1 loss    38.9
-#> A `luz_module_evaluation`
-#> ── Results ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#> loss: 38.9433
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 The `abcnn` object is a `R6Class` object, providing a modern
@@ -487,32 +422,16 @@ curve of the deep learning model.
 
 # The luz fitted model
 abc$fitted
-#> A `luz_module_fitted`
-#> ── Time ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#> • Total time: 3m 37.4s
-#> • Avg time per training epoch: 9.8s
-#> 
-#> ── Results ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#> Metrics observed in the last epoch.
-#> 
-#> ℹ Training:
-#> loss: 38.5895
-#> 
-#> ── Model ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#> An `nn_module` containing 33,543 parameters.
-#> 
-#> ── Modules ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#> • concrete_dropout: <nn_sequential> #33,283 parameters
-#> • linear_mu: <nn_linear> #129 parameters
-#> • linear_logvar: <nn_linear> #129 parameters
-#> • conc_drop_mu: <nn_concrete_dropout> #1 parameters
-#> • conc_drop_logvar: <nn_concrete_dropout> #1 parameters
+#> Error:
+#> ! objet 'abc' introuvable
 
 # The number of dimensions (i.e. neurons) and layers
 abc$num_hidden_dim
-#> [1] 128
+#> Error:
+#> ! objet 'abc' introuvable
 abc$num_hidden_layers
-#> [1] 3
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 Plotting the training curve is a really common procedure for fitting
@@ -529,20 +448,9 @@ Plot the training curve of the deep learning model to check model fit:
 ``` r
 
 abc$plot_training()
+#> Error:
+#> ! objet 'abc' introuvable
 ```
-
-![The training curve of the neural network across 30 epochs, computed on
-training data split in three partitions: training, validation (also
-called testing) and evaluation. Training and validation are computed at
-the end of each epoch. The black horizontal line is the loss computed on
-the evaluation dataset at the end of the training
-procedure.](figure/unnamed-chunk-25-1.png)
-
-The training curve of the neural network across 30 epochs, computed on
-training data split in three partitions: training, validation (also
-called testing) and evaluation. Training and validation are computed at
-the end of each epoch. The black horizontal line is the loss computed on
-the evaluation dataset at the end of the training procedure.
 
 Note that sometimes the heteroscedastic loss value can be negative with
 the Concrete Dropout method. It can be confusing as MSE losses are
@@ -580,17 +488,8 @@ Compute the cross-validation error metrics:
 
 abc$cross_validation(theta_crossval,
                      sumstats_crossval)
-#> [1] "Predictions with 1000 samples."
-#> 
-#> 
-#> Performing conformal prediction
-#> 
-#> [1] "Predictions with 1000 samples."
-#> Back-transform scaled parameters with method: none
-#> # A tibble: 1 × 10
-#>   parameter     n   mae   mse  rmse  nmae   cor   cov mean_epistemic_interval mean_overall_interval
-#>   <chr>     <int> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl>                   <dbl>                 <dbl>
-#> 1 y1         1000 0.813  1.03  1.02  5.94 0.891  4.29                    5.11                  4.04
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 Print the already computed cross-validation error metrics:
@@ -598,10 +497,8 @@ Print the already computed cross-validation error metrics:
 ``` r
 
 abc$cross_validation()
-#> # A tibble: 1 × 10
-#>   parameter     n   mae   mse  rmse  nmae   cor   cov mean_epistemic_interval mean_overall_interval
-#>   <chr>     <int> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl>                   <dbl>                 <dbl>
-#> 1 y1         1000 0.813  1.03  1.02  5.94 0.891  4.29                    5.11                  4.04
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 Plot the cross-validation scatter plot (predicted ~ ground truth) with
@@ -610,11 +507,9 @@ Conformal Credible Intervals:
 ``` r
 
 abc$plot_cross_validation()
+#> Error:
+#> ! objet 'abc' introuvable
 ```
-
-![plot of chunk unnamed-chunk-29](figure/unnamed-chunk-29-1.png)
-
-plot of chunk unnamed-chunk-29
 
 ### Estimates and uncertainty with the **Concrete Dropout** method
 
@@ -625,12 +520,8 @@ predicted parameters for 1,000 simulated samples (summary statistics):
 ``` r
 
 abc$predict()
-#> [1] "Predictions with 1000 samples."
-#> 
-#> 
-#> Performing conformal prediction
-#> 
-#> [1] "Predictions with 1000 samples."
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 You can get predictions with their associated uncertainties and
@@ -650,21 +541,8 @@ bounds rather than reconstructed from the mean.
 ``` r
 
 head(abc$predictions())
-#> Back-transform scaled parameters with method: none
-#>   sample parameter predictive_mean epistemic_uncertainty aleatoric_uncertainty overall_uncertainty epistemic_conformal_lower
-#> 1      1        y1       10.601369             0.4721973              1.096624            1.193966                  7.470954
-#> 2      2        y1        7.766645             0.2547675              1.118807            1.147447                  6.077673
-#> 3      3        y1        7.592340             0.2594116              1.095239            1.125541                  5.872580
-#> 4      4        y1        7.376805             0.2631224              1.075434            1.107155                  5.632444
-#> 5      5        y1        9.655092             0.4105554              1.099401            1.173558                  6.933329
-#> 6      6        y1        4.925185             0.5379088              1.038986            1.169973                  1.359138
-#>   epistemic_conformal_upper overall_conformal_lower overall_conformal_upper posterior_median posterior_lower_ci posterior_upper_ci
-#> 1                 13.731784                8.549176               12.653562        10.694034           9.646818          11.211327
-#> 2                  9.455616                5.794409                9.738881         7.794255           7.227952           8.200615
-#> 3                  9.312099                5.657755                9.526924         7.616380           7.071207           8.037649
-#> 4                  9.121165                5.473824                9.279786         7.384099           6.853655           7.826929
-#> 5                 12.376854                7.637976               11.672208         9.732057           8.481791          10.226108
-#> 6                  8.491231                2.914230                6.936139         4.856439           4.459275           6.475613
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 The trained model provides separate estimates of aleatoric and epistemic
@@ -673,24 +551,45 @@ uncertainty:
 ``` r
 
 df_predicted = abc$predictions()
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc' introuvable
 
 df_predicted$uncertainty_a_upper = df_predicted$predictive_mean + df_predicted$aleatoric_uncertainty
+#> Error:
+#> ! objet 'df_predicted' introuvable
 df_predicted$uncertainty_a_lower = df_predicted$predictive_mean - df_predicted$aleatoric_uncertainty
+#> Error:
+#> ! objet 'df_predicted' introuvable
 
 df_predicted$uncertainty_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
+#> Error:
+#> ! objet 'df_predicted' introuvable
 df_predicted$uncertainty_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
+#> Error:
+#> ! objet 'df_predicted' introuvable
 
 # The Conformal Credible Intervals are already returned as bounds on the
 # original scale, so they are used directly rather than added to the mean
 df_predicted$ci_conformal_upper = df_predicted$overall_conformal_upper
+#> Error:
+#> ! objet 'df_predicted' introuvable
 df_predicted$ci_conformal_lower = df_predicted$overall_conformal_lower
+#> Error:
+#> ! objet 'df_predicted' introuvable
 
 df_predicted$ci_conformal_e_upper = df_predicted$epistemic_conformal_upper
+#> Error:
+#> ! objet 'df_predicted' introuvable
 df_predicted$ci_conformal_e_lower = df_predicted$epistemic_conformal_lower
+#> Error:
+#> ! objet 'df_predicted' introuvable
 
 df_predicted$x = X_obs
+#> Error:
+#> ! objet 'df_predicted' introuvable
 df_predicted$y_true = Y_obs
+#> Error:
+#> ! objet 'df_predicted' introuvable
 
 df_training = data.frame(x = X_train,
                          y = Y_train)
@@ -707,17 +606,9 @@ ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_conformal_e_upper, ymax = ci_conformal_e_lower), alpha = 0.4, fill = "purple") +
   geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = ci_conformal_upper, ymax = ci_conformal_lower), alpha = 0.3, fill = "green") +
   theme_bw()
+#> Error:
+#> ! objet 'df_predicted' introuvable
 ```
-
-![Predictions as a function of simulated parameter. The purple ribbon is
-the Conformal Credible Interval based on the epistemic unvertainty
-alone. The green ribbon is the Conformal Credible Interval based on the
-overall unvertainty.](figure/unnamed-chunk-33-1.png)
-
-Predictions as a function of simulated parameter. The purple ribbon is
-the Conformal Credible Interval based on the epistemic unvertainty
-alone. The green ribbon is the Conformal Credible Interval based on the
-overall unvertainty.
 
 There are different Credible Intervals and uncertainty measures
 provided. I recommend to use the overall Conformal Credible Interval in
@@ -752,15 +643,9 @@ ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
   geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = uncertainty_a_lower, ymax = uncertainty_a_upper), alpha = 0.3, fill = "blue") +
   geom_ribbon(data = df_predicted, aes(x = x, y = predictive_mean, ymin = uncertainty_e_lower, ymax = uncertainty_e_upper), alpha = 0.3, fill = "red") +
   theme_bw()
+#> Error:
+#> ! objet 'df_predicted' introuvable
 ```
-
-![Predictions as a function of simulated parameters. The epistemic
-uncertainty (red) and aleatoric uncertainty (blue) were estimated with
-Concrete Dropout (Gal et 2017).](figure/unnamed-chunk-34-1.png)
-
-Predictions as a function of simulated parameters. The epistemic
-uncertainty (red) and aleatoric uncertainty (blue) were estimated with
-Concrete Dropout (Gal et 2017).
 
 The aleatoric uncertainty is constant across the dataset, as the
 variance in the data is homogeneous (i.e. homoscedasticity), while the
@@ -773,16 +658,9 @@ The raw uncertainty estimated with **Concrete Dropout**:
 ``` r
 
 abc$plot_prediction(uncertainty_type = "uncertainty")
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc' introuvable
 ```
-
-![Prediction results with uncertainty quantification. Red line shows
-mean predictions, blue ribbon indicates aleatoric uncertainty, and red
-ribbon shows epistemic uncertainty.](figure/concrete_prediction-1.png)
-
-Prediction results with uncertainty quantification. Red line shows mean
-predictions, blue ribbon indicates aleatoric uncertainty, and red ribbon
-shows epistemic uncertainty.
 
 The epistemic uncertainty increases at the edges of the distribution of
 the training dataset.
@@ -793,16 +671,9 @@ estimates with guaranteed coverage properties (Baragatti et al. 2024):
 ``` r
 
 abc$plot_prediction(uncertainty_type = "conformal")
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc' introuvable
 ```
-
-![Conformal credible intervals (green) compared to epistemic uncertainty
-intervals (purple). Conformal intervals provide calibrated coverage
-guarantees.](figure/concrete_conformal-1.png)
-
-Conformal credible intervals (green) compared to epistemic uncertainty
-intervals (purple). Conformal intervals provide calibrated coverage
-guarantees.
 
 The epistemic Conformal Credible Intervals, based on the epistemic
 uncertainty as a proxy of uncertainty, are very sensitive to variance in
@@ -823,11 +694,9 @@ and below):
 ``` r
 
 abc$plot_cross_validation()
+#> Error:
+#> ! objet 'abc' introuvable
 ```
-
-![plot of chunk unnamed-chunk-35](figure/unnamed-chunk-35-1.png)
-
-plot of chunk unnamed-chunk-35
 
 If you have the same number of input and output parameters (e.g., x1 and
 x2 as input, y1 and y2 as output), then the default representation in
@@ -839,12 +708,9 @@ represented side by side and the X axis is meaningless (the
 ``` r
 
 abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc' introuvable
 ```
-
-![plot of chunk unnamed-chunk-36](figure/unnamed-chunk-36-1.png)
-
-plot of chunk unnamed-chunk-36
 
 ### Plotting posteriors for individual observations
 
@@ -855,45 +721,26 @@ distribution:
 
 abc$plot_posterior(sample = 701, prior = TRUE, uncertainty_type = "uncertainty") +
   geom_vline(xintercept = Y_obs[701], color = "red", size = 1.5)
-#> Back-transform scaled parameters with method: none 
-#> Back-transform scaled posteriors with method: none
-```
-
-![plot of chunk unnamed-chunk-37](figure/unnamed-chunk-37-1.png)
-
-plot of chunk unnamed-chunk-37
-
-``` r
-
+#> Error:
+#> ! objet 'abc' introuvable
 Y_obs[701]
 #> [1] 3.832962
 abc$predictive_mean$y1[701]
-#> [1] 4.420083
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 ``` r
 
 abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "conformal") +
   geom_vline(xintercept = Y_obs[501], color = "red", size = 1.5)
-#> Back-transform scaled parameters with method: none 
-#> Back-transform scaled posteriors with method: none
-```
-
-![Distribution of approximate posterior estimates with predictive means
-and credible intervals. The prior distribution is plotted underneath
-(white bars) to compare priors and
-posteriors.](figure/unnamed-chunk-38-1.png)
-
-Distribution of approximate posterior estimates with predictive means
-and credible intervals. The prior distribution is plotted underneath
-(white bars) to compare priors and posteriors.
-
-``` r
-
+#> Error:
+#> ! objet 'abc' introuvable
 Y_obs[501]
 #> [1] 10.05836
 abc$predictive_mean$y1[501]
-#> [1] 10.09593
+#> Error:
+#> ! objet 'abc' introuvable
 ```
 
 ## Case study 2: Nonlinear multivariate regression with **Deep Ensemble**
@@ -1000,9 +847,9 @@ df_deepensemble = list(df_train = df_train,
                        df_observed = df_observed)
 ```
 
-![plot of chunk unnamed-chunk-40](figure/unnamed-chunk-40-1.png)
+![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21-1.png)
 
-plot of chunk unnamed-chunk-40
+plot of chunk unnamed-chunk-21
 
 ### Deep Ensemble Training
 
@@ -1031,34 +878,15 @@ abc_ensemble = abcnn$new(theta,
             num_hidden_dim = 512,
             batch_size = 128,
             seed = 4722)
+#> Error:
+#> ! objet 'abcnn' introuvable
 ```
 
 ``` r
 
 abc_ensemble$fit()
-#> ===================================================
-#> ABC Neural Net. Bayesian Deep learning and ABC.
-#> ===================================================
-#> ABC parameter inference with the method: deep ensemble 
-#> 
-#> 
-#> |Sample      |  Size| Proportion|
-#> |:-----------|-----:|----------:|
-#> |Simulations | 20004|         NA|
-#> |Training    | 15004|         NA|
-#> |Testing     |  2000|        0.1|
-#> |Evaluation  |  2000|        0.1|
-#> |Conformal   |  1000|         NA|
-#> |Observed    |  1000|         NA|
-#> 
-#> Is CUDA available? [1] FALSE
-#> 
-#> Device is: torch_device(type='cpu') 
-#> 
-#> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", 
-#>     scale_input = "minmax", scale_target = "none", num_hidden_layers = 3, 
-#>     num_hidden_dim = 512, batch_size = 128, epochs = 20, num_networks = 5, 
-#>     seed = 4722)
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
 
 Checking the model training:
@@ -1066,11 +894,9 @@ Checking the model training:
 ``` r
 
 abc_ensemble$plot_training()
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
-
-![plot of chunk unnamed-chunk-43](figure/unnamed-chunk-43-1.png)
-
-plot of chunk unnamed-chunk-43
 
 ### Variation in Uncertainty Quantification across different regions
 
@@ -1081,12 +907,8 @@ methods.
 ``` r
 
 abc_ensemble$predict()
-#> [1] "Predictions with 1000 samples."
-#> 
-#> 
-#> Performing conformal prediction
-#> 
-#> [1] "Predictions with 1000 samples."
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
 
 Save the result:
@@ -1102,22 +924,16 @@ across different data regions:
 ``` r
 
 abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
-
-![plot of chunk unnamed-chunk-46](figure/unnamed-chunk-46-1.png)
-
-plot of chunk unnamed-chunk-46
 
 ``` r
 
 abc_ensemble$plot_prediction(uncertainty_type = "conformal")
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
-
-![plot of chunk unnamed-chunk-47](figure/unnamed-chunk-47-1.png)
-
-plot of chunk unnamed-chunk-47
 
 The uncertainty, especially epistemic uncertainty, increases in unseen
 regions during training. In addition, the aleatoric uncertainty
@@ -1131,12 +947,9 @@ prediction intervals converge and are narrow around the prediction:
 # Print a sample with -5 < x1 < -4 (within the distribution with a low noise)
 # which(abc$observed < -4 & abc$observed > -5)
 abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
-
-![plot of chunk unnamed-chunk-48](figure/unnamed-chunk-48-1.png)
-
-plot of chunk unnamed-chunk-48
 
 For samples in a region with a lot of noise in the data, both the
 overall and epistemic conformal prediction intervals increase:
@@ -1146,12 +959,9 @@ overall and epistemic conformal prediction intervals increase:
 # Print a sample with 4 < x1 < 5 (within the distribution with a high noise)
 # which(abc$observed < 5 & abc$observed > 4)
 abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
-
-![plot of chunk unnamed-chunk-49](figure/unnamed-chunk-49-1.png)
-
-plot of chunk unnamed-chunk-49
 
 When predicting out of the training distribution, the epistemic
 conformal prediction interval increases a lot compared to the overall:
@@ -1161,12 +971,9 @@ conformal prediction interval increases a lot compared to the overall:
 # Print a sample with -1 < x1 < 1 (out of training distribution)
 # which(abc$observed < 1 & abc$observed > -1)
 abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'abc_ensemble' introuvable
 ```
-
-![plot of chunk unnamed-chunk-50](figure/unnamed-chunk-50-1.png)
-
-plot of chunk unnamed-chunk-50
 
 ## Case Study 3: Model Interpretability and Feature Importance in a high-dimensional dataset
 
@@ -1221,89 +1028,28 @@ deepensemble_highdim = abcnn$new(theta.train,
             batch_size = 64,
             l2_weight_decay = 1e-4,
             seed = 42)
+#> Error:
+#> ! objet 'abcnn' introuvable
 
 
 deepensemble_highdim$summary()
-#> ===================================================
-#> ABC Neural Net. Bayesian Deep learning and ABC.
-#> ===================================================
-#> ABC parameter inference with the method: deep ensemble 
-#> 
-#> 
-#> |Sample      |  Size| Proportion|
-#> |:-----------|-----:|----------:|
-#> |Simulations | 20000|         NA|
-#> |Training    | 15000|         NA|
-#> |Testing     |  2000|        0.1|
-#> |Evaluation  |  2000|        0.1|
-#> |Conformal   |  1000|         NA|
-#> |Observed    |  1000|         NA|
-#> 
-#> Is CUDA available? [1] FALSE
-#> 
-#> Device is: torch_device(type='cpu') 
-#> 
-#> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", 
-#>     scale_input = "minmax", scale_target = "minmax", num_hidden_layers = 3, 
-#>     num_hidden_dim = 256, batch_size = 64, epochs = 20, l2_weight_decay = 1e-04, 
-#>     seed = 42)
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 ```
-
-| Hyperparameter | Value |
-|:---|:---|
-| Method | deep ensemble |
-| Scaling for inputs (summary statistics) | minmax |
-| Scaling for targets (theta) | minmax |
-| Number hidden layers | 3 |
-| Number hidden dimensions | 256 |
-| Batch size | 64 |
-| Epochs | 20 |
-| Early stopping callback | FALSE |
-| Patience for early stopping | 4 |
-| Learning rate | 0.001 |
-| L2 weight decay | 1e-04 |
-| Method for ABC | loclinear |
-| Tolerance rate (ABC) | 0.1 |
-| Number of posterior samples (mc dropout and concrete dropout) | 1000 |
-| Dropout rate | 0.5 |
-| Number of networks (deep ensemble) | 5 |
 
 ``` r
 
 deepensemble_highdim$fit()
-#> ===================================================
-#> ABC Neural Net. Bayesian Deep learning and ABC.
-#> ===================================================
-#> ABC parameter inference with the method: deep ensemble 
-#> 
-#> 
-#> |Sample      |  Size| Proportion|
-#> |:-----------|-----:|----------:|
-#> |Simulations | 20000|         NA|
-#> |Training    | 15000|         NA|
-#> |Testing     |  2000|        0.1|
-#> |Evaluation  |  2000|        0.1|
-#> |Conformal   |  1000|         NA|
-#> |Observed    |  1000|         NA|
-#> 
-#> Is CUDA available? [1] FALSE
-#> 
-#> Device is: torch_device(type='cpu') 
-#> 
-#> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "deep ensemble", 
-#>     scale_input = "minmax", scale_target = "minmax", num_hidden_layers = 3, 
-#>     num_hidden_dim = 256, batch_size = 64, epochs = 20, l2_weight_decay = 1e-04, 
-#>     seed = 42)
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 ```
 
 ``` r
 
 deepensemble_highdim$plot_training()
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 ```
-
-![plot of chunk unnamed-chunk-55](figure/unnamed-chunk-55-1.png)
-
-plot of chunk unnamed-chunk-55
 
 ### Model performance
 
@@ -1317,55 +1063,37 @@ true.theta = data.frame(theta1 = theta.exact$mean.theta1,
 
 deepensemble_highdim$cross_validation(true.theta,
                                       sumstats.test)
-#> [1] "Predictions with 1000 samples."
-#> 
-#> 
-#> Performing conformal prediction
-#> 
-#> [1] "Predictions with 1000 samples."
-#> Back-transform scaled parameters with method: minmax
-#> # A tibble: 2 × 10
-#>   parameter     n    mae     mse   rmse  nmae   cor   cov mean_epistemic_interval mean_overall_interval
-#>   <chr>     <int>  <dbl>   <dbl>  <dbl> <dbl> <dbl> <dbl>                   <dbl>                 <dbl>
-#> 1 theta1     1000 0.0398 0.00270 0.0519 0.465 0.999 0.933                    1.33                  1.20
-#> 2 theta2     1000 0.0602 0.00770 0.0877 0.502 0.976 0.355                    1.72                  1.28
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 
 deepensemble_highdim$plot_cross_validation()
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 ```
-
-![plot of chunk unnamed-chunk-56](figure/unnamed-chunk-56-1.png)
-
-plot of chunk unnamed-chunk-56
 
 Plot the predictions on the observed summary statistics:
 
 ``` r
 
 deepensemble_highdim$predict()
-#> [1] "Predictions with 1000 samples."
-#> 
-#> 
-#> Performing conformal prediction
-#> 
-#> [1] "Predictions with 1000 samples."
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 
 deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
-#> Back-transform scaled parameters with method: minmax
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 ```
-
-![TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter values.](figure/unnamed-chunk-57-1.png)
-
-TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter values.
 
 ``` r
 
 df = deepensemble_highdim$predictions() %>%
   filter(parameter == "theta1")
-#> Back-transform scaled parameters with method: minmax
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 
 df$true.theta = theta.exact[1:1000,"mean.theta1"]
+#> Error in `$<-.data.frame`:
+#> ! le tableau de remplacement a 1000 lignes, le tableau remplacé en a 20004
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   geom_ribbon(aes(ymin = overall_conformal_lower,
@@ -1376,22 +1104,23 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   labs(x = "True Posterior Mean", y = "Predicted Mean",
        title = "Deep Ensemble Predictive check Theta 1") +
   theme_bw()
+#> Error in `geom_ribbon()`:
+#> ! Problem while computing aesthetics.
+#> ℹ Error occurred in the 1st layer.
+#> Caused by error:
+#> ! objet 'overall_conformal_lower' introuvable
 ```
-
-![Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible
-intervals.](figure/unnamed-chunk-58-1.png)
-
-Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible intervals.
 
 ``` r
 
 df = deepensemble_highdim$predictions() %>%
   filter(parameter == "theta2")
-#> Back-transform scaled parameters with method: minmax
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 
 df$true.theta = theta.exact[1:1000,"mean.theta2"]
+#> Error in `$<-.data.frame`:
+#> ! le tableau de remplacement a 1000 lignes, le tableau remplacé en a 20004
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   geom_ribbon(aes(ymin = overall_conformal_lower,
@@ -1402,24 +1131,19 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   labs(x = "True Posterior Mean", y = "Predicted Mean",
        title = "Deep Ensemble Predictive check Theta 2") +
   theme_bw()
+#> Error in `geom_ribbon()`:
+#> ! Problem while computing aesthetics.
+#> ℹ Error occurred in the 1st layer.
+#> Caused by error:
+#> ! objet 'overall_conformal_lower' introuvable
 ```
-
-![Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible
-intervals.](figure/unnamed-chunk-59-1.png)
-
-Scatter plot comparing DeepEnsemble predictions to exact posterior
-means. The shaded region represents 95% credible intervals.
 
 ``` r
 
 deepensemble_highdim$plot_posterior(100)
-#> Back-transform scaled parameters with method: minmax
+#> Error:
+#> ! objet 'deepensemble_highdim' introuvable
 ```
-
-![Prediction for a single point.](figure/unnamed-chunk-60-1.png)
-
-Prediction for a single point.
 
 ### Model Interpretability and Feature Importance
 
@@ -1447,23 +1171,21 @@ prediction.
 ``` r
 
 exp = explainn$new(deepensemble_highdim)
+#> Error:
+#> ! objet 'explainn' introuvable
 
 exp$run(data = sumstats.test[1:1000,],
         method = "deeplift")
+#> Error in `exp$run`:
+#> ! objet de type 'builtin' non indiçable
 ```
 
 ``` r
 
 exp$plot()
+#> Error in `exp$plot`:
+#> ! objet de type 'builtin' non indiçable
 ```
-
-![Feature importance visualization using DeepLIFT attribution methods,
-for the first sample output prediction. Colors indicate the contribution
-of each feature to the final prediction.](figure/explainn_plot-1.png)
-
-Feature importance visualization using DeepLIFT attribution methods, for
-the first sample output prediction. Colors indicate the contribution of
-each feature to the final prediction.
 
 Even if DeepLift is a local method, multiple samples can be passed and
 importance scores summarizzed across all samples’ predictions.
@@ -1471,15 +1193,9 @@ importance scores summarizzed across all samples’ predictions.
 ``` r
 
 exp$plot_global()
+#> Error in `exp$plot_global`:
+#> ! objet de type 'builtin' non indiçable
 ```
-
-![Feature importance visualization using DeepLIFT attribution methods,
-summarized across the 1,000 smaples. Colors indicate the contribution of
-each feature to the final prediction.](figure/unnamed-chunk-62-1.png)
-
-Feature importance visualization using DeepLIFT attribution methods,
-summarized across the 1,000 smaples. Colors indicate the contribution of
-each feature to the final prediction.
 
 The individual contributions of input variables to the subject
 prediction:
@@ -1491,17 +1207,8 @@ prediction:
 # - 10 first summary statistics
 # - the two output parameters
 exp$get_result()[1,1:10,1:2]
-#>                    theta1        theta2
-#> expectation  0.1618334949 -0.0325705484
-#> variance    -0.0066348240  0.0050269491
-#> mad         -0.0099019427  0.0008929950
-#> x1          -0.0010731217  0.0004772787
-#> x2           0.0013431844 -0.0002233239
-#> x3          -0.0008478618  0.0002514657
-#> x4           0.0015044919  0.0026225583
-#> x5           0.0001447744  0.0002012830
-#> x6           0.0007850530  0.0017604291
-#> x7          -0.0017573310 -0.0031582920
+#> Error in `exp$get_result`:
+#> ! objet de type 'builtin' non indiçable
 ```
 
 SmoothGrad is another method, which can also be interpreted as local and
@@ -1514,36 +1221,28 @@ for more details).
 ``` r
 
 exp = explainn$new(deepensemble_highdim)
+#> Error:
+#> ! objet 'explainn' introuvable
 
 exp$run(data = sumstats.test[1:1000,],
         method = "smoothgrad")
+#> Error in `exp$run`:
+#> ! objet de type 'builtin' non indiçable
 ```
 
 ``` r
 
 exp$plot()
+#> Error in `exp$plot`:
+#> ! objet de type 'builtin' non indiçable
 ```
-
-![Feature importance visualization using SmoothGrad attribution methods.
-Colors indicate the contribution of each feature to the final
-prediction.](figure/unnamed-chunk-65-1.png)
-
-Feature importance visualization using SmoothGrad attribution methods.
-Colors indicate the contribution of each feature to the final
-prediction.
 
 ``` r
 
 exp$plot_global()
+#> Error in `exp$plot_global`:
+#> ! objet de type 'builtin' non indiçable
 ```
-
-![Feature importance visualization using SmoothGrad attribution methods.
-Colors indicate the contribution of each feature to the final
-prediction.](figure/unnamed-chunk-66-1.png)
-
-Feature importance visualization using SmoothGrad attribution methods.
-Colors indicate the contribution of each feature to the final
-prediction.
 
 The individual contributions of input variables to individual
 predictions:
@@ -1551,12 +1250,8 @@ predictions:
 ``` r
 
 exp$get_result()[1:5,1:10,1]
-#>      expectation   variance         mad            x1            x2            x3            x4            x5            x6            x7
-#> [1,]   0.2683790 -0.2351933 -0.09878340  0.0016331869  1.343698e-03 -0.0010380116  0.0006672929 -0.0011226608  0.0018467242  3.367677e-05
-#> [2,]   0.2663781 -0.2046865 -0.09719737  0.0025592453  9.592294e-05 -0.0036371159  0.0005804934 -0.0076131197  0.0006643549 -4.347973e-06
-#> [3,]   0.2616821 -0.2365807 -0.09422367 -0.0009636884 -3.454776e-03 -0.0032377103 -0.0021944055  0.0042960383  0.0041048457  2.431569e-03
-#> [4,]   0.2509564 -0.2622837 -0.08266627 -0.0024184417 -7.665483e-03  0.0007829172  0.0026333525 -0.0026536314  0.0015529236 -3.180863e-04
-#> [5,]   0.2555846 -0.2226619 -0.09164830 -0.0007706676 -5.534437e-03 -0.0036885550  0.0017851513 -0.0003452587 -0.0023921498 -1.237880e-03
+#> Error in `exp$get_result`:
+#> ! objet de type 'builtin' non indiçable
 ```
 
 ## ABC Integration with TabNet
@@ -1591,89 +1286,28 @@ tabnetabc = abcnn$new(theta.train[1:10000,],
             abc_keep_original_sumstats = 10,
             abc_method = "loclinear",
             seed = 4567)
+#> Error:
+#> ! objet 'abcnn' introuvable
 
 
 tabnetabc$summary()
-#> ===================================================
-#> ABC Neural Net. Bayesian Deep learning and ABC.
-#> ===================================================
-#> ABC parameter inference with the method: tabnet-abc 
-#> 
-#> 
-#> |Sample      |  Size| Proportion|
-#> |:-----------|-----:|----------:|
-#> |Simulations | 10000|         NA|
-#> |Training    |  7000|         NA|
-#> |Testing     |  1000|        0.1|
-#> |Evaluation  |  1000|        0.1|
-#> |Conformal   |  1000|         NA|
-#> |Observed    |  1000|         NA|
-#> 
-#> Is CUDA available? [1] FALSE
-#> 
-#> Device is: torch_device(type='cpu') 
-#> 
-#> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "tabnet-abc", 
-#>     scale_input = "none", scale_target = "none", batch_size = 64, 
-#>     epochs = 30, abc_method = "loclinear", tol = 0.1, abc_keep_original_sumstats = 10, 
-#>     seed = 4567)
+#> Error:
+#> ! objet 'tabnetabc' introuvable
 ```
-
-| Hyperparameter                                                | Value      |
-|:--------------------------------------------------------------|:-----------|
-| Method                                                        | tabnet-abc |
-| Scaling for inputs (summary statistics)                       | none       |
-| Scaling for targets (theta)                                   | none       |
-| Number hidden layers                                          | 3          |
-| Number hidden dimensions                                      | 128        |
-| Batch size                                                    | 64         |
-| Epochs                                                        | 30         |
-| Early stopping callback                                       | FALSE      |
-| Patience for early stopping                                   | 4          |
-| Learning rate                                                 | 0.001      |
-| L2 weight decay                                               | 1e-05      |
-| Method for ABC                                                | loclinear  |
-| Tolerance rate (ABC)                                          | 0.1        |
-| Number of posterior samples (mc dropout and concrete dropout) | 1000       |
-| Dropout rate                                                  | 0.5        |
-| Number of networks (deep ensemble)                            | 5          |
 
 ``` r
 
 tabnetabc$fit()
-#> ===================================================
-#> ABC Neural Net. Bayesian Deep learning and ABC.
-#> ===================================================
-#> ABC parameter inference with the method: tabnet-abc 
-#> 
-#> 
-#> |Sample      |  Size| Proportion|
-#> |:-----------|-----:|----------:|
-#> |Simulations | 10000|         NA|
-#> |Training    |  7000|         NA|
-#> |Testing     |  1000|        0.1|
-#> |Evaluation  |  1000|        0.1|
-#> |Conformal   |  1000|         NA|
-#> |Observed    |  1000|         NA|
-#> 
-#> Is CUDA available? [1] FALSE
-#> 
-#> Device is: torch_device(type='cpu') 
-#> 
-#> Call: initialize(theta = ..1, sumstat = ..2, observed = ..3, method = "tabnet-abc", 
-#>     scale_input = "none", scale_target = "none", batch_size = 64, 
-#>     epochs = 30, abc_method = "loclinear", tol = 0.1, abc_keep_original_sumstats = 10, 
-#>     seed = 4567)
+#> Error:
+#> ! objet 'tabnetabc' introuvable
 ```
 
 ``` r
 
 tabnetabc$plot_training()
+#> Error:
+#> ! objet 'tabnetabc' introuvable
 ```
-
-![plot of chunk unnamed-chunk-70](figure/unnamed-chunk-70-1.png)
-
-plot of chunk unnamed-chunk-70
 
 ### Model performance
 
@@ -1681,22 +1315,20 @@ plot of chunk unnamed-chunk-70
 
 tabnetabc$plot_prediction(uncertainty_type = "posterior quantile",
                           plot_type = "errorbar")
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'tabnetabc' introuvable
 ```
-
-![TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter values.](figure/tabnet_performance-1.png)
-
-TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter values.
 
 ``` r
 
 df = tabnetabc$predictions() %>%
   filter(parameter == "theta1")
-#> Back-transform scaled parameters with method: none
+#> Error:
+#> ! objet 'tabnetabc' introuvable
 
 df$true.theta = theta.exact[1:1000,"mean.theta1"]
+#> Error in `$<-.data.frame`:
+#> ! le tableau de remplacement a 1000 lignes, le tableau remplacé en a 20004
 
 ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   geom_ribbon(aes(ymin = posterior_lower_ci, ymax = posterior_upper_ci), 
@@ -1706,21 +1338,18 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
   labs(x = "True Posterior Mean", y = "Predicted Mean",
        title = "TabNet-ABC Predictive check") +
   theme_bw()
+#> Error in `geom_ribbon()`:
+#> ! Problem while computing aesthetics.
+#> ℹ Error occurred in the 1st layer.
+#> Caused by error:
+#> ! objet 'posterior_lower_ci' introuvable
 ```
-
-![Scatter plot comparing TabNet-ABC predictions to exact posterior
-means. The shaded region represents 95% credible
-intervals.](figure/tabnet_accuracy-1.png)
-
-Scatter plot comparing TabNet-ABC predictions to exact posterior means.
-The shaded region represents 95% credible intervals.
 
 ``` r
 
 tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
-#> Back-transform scaled parameters with method: none
-#> Error in `self$posterior_samples[, sample, ]`:
-#> ! nombre de dimensions incorrect
+#> Error:
+#> ! objet 'tabnetabc' introuvable
 ```
 
 ### Tabnet attention maps for model explanation
@@ -1731,37 +1360,34 @@ methods are used instead of **innsight** methods:
 ``` r
 
 exp = explainn$new(tabnetabc)
-#> [1] "Note that Tabnet-ABC has its own set of explainability methods."
+#> Error:
+#> ! objet 'explainn' introuvable
 
 exp$run(data = sumstats.test)
+#> Error in `exp$run`:
+#> ! objet de type 'builtin' non indiçable
 ```
 
 ``` r
 
 exp$plot()
+#> Error in `exp$plot`:
+#> ! objet de type 'builtin' non indiçable
 ```
-
-![plot of chunk unnamed-chunk-74](figure/unnamed-chunk-74-1.png)
-
-plot of chunk unnamed-chunk-74
 
 ``` r
 
 exp$plot(type = "mask_agg")
+#> Error in `exp$plot`:
+#> ! objet de type 'builtin' non indiçable
 ```
-
-![plot of chunk unnamed-chunk-75](figure/unnamed-chunk-75-1.png)
-
-plot of chunk unnamed-chunk-75
 
 ``` r
 
 exp$plot(type = "steps")
+#> Error in `exp$plot`:
+#> ! objet de type 'builtin' non indiçable
 ```
-
-![plot of chunk unnamed-chunk-76](figure/unnamed-chunk-76-1.png)
-
-plot of chunk unnamed-chunk-76
 
 ## FAQ
 
@@ -2057,35 +1683,19 @@ sessionInfo()
 #> [11] spatstat.geom_3.8-2    spatstat.univar_3.2-0  spatstat.data_3.1-9    mvtnorm_1.4-1          kableExtra_1.4.0      
 #> [16] lubridate_1.9.5        forcats_1.0.1          stringr_1.6.0          dplyr_1.2.1            purrr_1.2.2           
 #> [21] readr_2.2.0            tidyr_1.3.2            tibble_3.3.1           tidyverse_2.0.0        torch_0.17.0          
-#> [26] ggplot2_4.0.3          abcneuralnet_0.3.1     testthat_3.3.2        
+#> [26] ggplot2_4.0.3         
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] fs_2.1.0              matrixStats_1.5.0     spatstat.sparse_3.2-0 devtools_2.5.2        DiceDesign_1.10       RColorBrewer_1.1-3   
-#>   [7] doParallel_1.0.17     tools_4.6.1           ConsRank_3.0          backports_1.5.1       utf8_1.2.6            R6_2.6.1             
-#>  [13] mgcv_1.9-4            yardstick_1.4.0       withr_3.0.2           prettyunits_1.2.0     quantreg_6.1          cli_3.6.6            
-#>  [19] textshaping_1.0.5     abc.data_1.1          Cubist_0.6.0          innsight_0.3.2        sandwich_3.1-1        labeling_0.4.3       
-#>  [25] S7_0.2.2              randomForest_4.7-1.2  tune_2.1.0            proxy_0.4-29          systemfonts_1.3.2     svglite_2.2.2        
-#>  [31] parallelly_1.47.0     sessioninfo_1.2.4     bundle_0.1.3          plotrix_3.8-14        rstudioapi_0.18.0     generics_0.1.4       
-#>  [37] shape_1.4.6.1         gtools_3.9.5          car_3.1-5             Matrix_1.7-5          abind_1.4-8           lifecycle_1.0.5      
-#>  [43] multcomp_1.4-30       yaml_2.3.12           snakecase_0.11.1      carData_3.0-6         rminer_1.5.0          recipes_1.3.3        
-#>  [49] grid_4.6.1            strucchange_1.5-4     pls_2.9-0             adabag_5.1            crayon_1.5.3          lattice_0.22-9       
-#>  [55] cowplot_1.2.0         zeallot_0.2.0         pillar_1.11.1         knitr_1.51            xgboost_3.2.1.1       future.apply_1.20.2  
-#>  [61] codetools_0.2-20      glue_1.8.1            rsample_1.3.2         data.table_1.18.4     vctrs_0.7.3           Rdpack_2.6.6         
-#>  [67] gtable_0.3.6          kernlab_0.9-33        cachem_1.1.0          gower_1.0.2           xfun_0.57             rbibutils_2.4.1      
-#>  [73] prodlim_2026.03.11    libcoin_1.0-13        safetensors_0.2.1     survival_3.8-6        timeDate_4052.112     iterators_1.0.14     
-#>  [79] hardhat_1.4.3         lava_1.9.1            ellipsis_0.3.3        TH.data_1.1-5         ipred_0.9-15          mcmc_0.9-8           
-#>  [85] usethis_3.2.1         bit64_4.8.2           progress_1.2.3        rprojroot_2.1.1       otel_0.2.0            nnet_7.3-20          
-#>  [91] tidyselect_1.2.1      processx_3.9.0        bit_4.6.0             compiler_4.6.1        mda_0.5-5             glmnet_5.0           
-#>  [97] abc_2.2.2             SparseM_1.84-2        xml2_1.5.2            desc_1.4.3            checkmate_2.3.4       scales_1.4.0         
-#> [103] callr_3.7.6           digest_0.6.39         goftest_1.2-3         spatstat.utils_3.2-4  rmarkdown_2.31        htmltools_0.5.9      
-#> [109] pkgconfig_2.0.3       coro_1.1.0            fastmap_1.2.0         rlang_1.2.0           farver_2.1.2          zoo_1.8-15           
-#> [115] jsonlite_2.0.0        ModelMetrics_1.2.2.2  rlist_0.4.6.2         magrittr_2.0.5        modeltools_0.2-24     Formula_1.2-5        
-#> [121] Rcpp_1.1.1-1.1        furrr_0.4.0           stringi_1.8.7         pROC_1.19.0.1         brio_1.1.5            plyr_1.8.9           
-#> [127] pkgbuild_1.4.8        tabnet_0.9.0          parallel_4.6.1        listenv_0.10.1        luz_0.5.2             deldir_2.0-4         
-#> [133] splines_4.6.1         tensor_1.5.1          hms_1.1.4             locfit_1.5-9.12       ps_1.9.3              igraph_2.3.1         
-#> [139] ggpubr_0.6.3          party_1.3-20          ggsignif_0.6.4        dials_1.4.3           reshape2_1.4.5        parsnip_1.6.0        
-#> [145] stats4_4.6.1          pkgload_1.5.2         evaluate_1.0.5        tzdb_0.5.0            foreach_1.5.2         MatrixModels_0.5-4   
-#> [151] polyclip_1.10-7       future_1.70.0         coin_1.4-3            janitor_2.2.1         broom_1.0.13          e1071_1.7-17         
-#> [157] rstatix_0.7.3         viridisLite_0.4.3     class_7.3-23          kknn_1.4.1            memoise_2.0.1         workflows_1.3.0      
-#> [163] timechange_0.4.0      globals_0.19.1        caret_7.0-1
+#>  [1] tidyselect_1.2.1      viridisLite_0.4.3     farver_2.1.2          S7_0.2.2              fastmap_1.2.0         digest_0.6.39        
+#>  [7] timechange_0.4.0      lifecycle_1.0.5       survival_3.8-6        processx_3.9.0        magrittr_2.0.5        compiler_4.6.1       
+#> [13] rlang_1.2.0           tools_4.6.1           knitr_1.51            ggsignif_0.6.4        labeling_0.4.3        bit_4.6.0            
+#> [19] xml2_1.5.2            RColorBrewer_1.1-3    abind_1.4-8           withr_3.0.2           grid_4.6.1            polyclip_1.10-7      
+#> [25] ggpubr_0.6.3          mcmc_0.9-8            scales_1.4.0          spatstat.utils_3.2-4  cli_3.6.6             rmarkdown_2.31       
+#> [31] generics_0.1.4        otel_0.2.0            rstudioapi_0.18.0     tzdb_0.5.0            splines_4.6.1         coro_1.1.0           
+#> [37] vctrs_0.7.3           Matrix_1.7-5          SparseM_1.84-2        carData_3.0-6         car_3.1-5             callr_3.7.6          
+#> [43] hms_1.1.4             bit64_4.8.2           rstatix_0.7.3         Formula_1.2-5         tensor_1.5.1          systemfonts_1.3.2    
+#> [49] goftest_1.2-3         glue_1.8.1            ps_1.9.3              cowplot_1.2.0         stringi_1.8.7         gtable_0.3.6         
+#> [55] deldir_2.0-4          pillar_1.11.1         quantreg_6.1          htmltools_0.5.9       R6_2.6.1              textshaping_1.0.5    
+#> [61] evaluate_1.0.5        lattice_0.22-9        backports_1.5.1       broom_1.0.13          MatrixModels_0.5-4    Rcpp_1.1.1-1.1       
+#> [67] svglite_2.2.2         spatstat.sparse_3.2-0 mgcv_1.9-4            xfun_0.57             pkgconfig_2.0.3
 ```
