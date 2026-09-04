@@ -113,7 +113,7 @@ or modified directly in the corresponding public <code>slot</code>.</p>
 
 
 <dt><code>method</code></dt>
-<dd><p>the ABC-NN method used</p></dd>
+<dd><p>the ABCNN method used, either "monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"</p></dd>
 
 
 <dt><code>scale_input</code></dt>
@@ -747,7 +747,7 @@ Use <code>predictions()</code> to obtain uncertainties and credible intervals on
 <dd><p>a <code>luz</code> model</p></dd>
 
       <dt><code>method</code></dt>
-<dd><p>the ABC-NN method used</p></dd>
+<dd><p>the ABC-NN method used, either "monte carlo dropout", "gaussian monte carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"</p></dd>
 
       <dt><code>scale_input</code></dt>
 <dd><p>the scaling method for summary statistics, whether <code>minmax</code>, <code>robustscaler</code>, <code>normalization</code>, <code>log</code>, <code>logit</code> or <code>none</code></p></dd>
@@ -765,7 +765,9 @@ Use <code>predictions()</code> to obtain uncertainties and credible intervals on
 <dd><p>proportion of samples retained for validation at the end of training</p></dd>
 
       <dt><code>num_conformal</code></dt>
-<dd><p>number of samples retained for conformal prediction</p></dd>
+<dd><p>number of samples retained for conformal prediction.
+Forced to <code>0</code> with a warning for <code>tabnet-abc</code>, whose calibration set is
+held out neither of the TabNet fit nor of the ABC reference table.</p></dd>
 
       <dt><code>credible_interval_p</code></dt>
 <dd><p>significance level for the credible interval, between 0 and 1</p></dd>
@@ -927,7 +929,12 @@ credible interval based on the epistemic uncertainty alone</p></li>
 credible interval based on the overall uncertainty</p></li>
 <li><p><code>posterior_median</code>, <code>posterior_lower_ci</code>, <code>posterior_upper_ci</code> quantiles of
 the sampled posterior (<code>NA</code> for <code>deep ensemble</code>, which does not draw posterior samples)</p></li>
-</ul><p>Note that under <code>log</code> and <code>logit</code> scaling, <code>predictive_mean</code> is the
+</ul><p>The four conformal columns are <code>NA</code> for <code>tabnet-abc</code>, which does not
+support conformal prediction; use the posterior quantile columns instead.
+For <code>monte carlo dropout</code> the overall uncertainty reduces to the
+epistemic one, so <code>overall_conformal_*</code> is identical to
+<code>epistemic_conformal_*</code>.</p>
+<p>Note that under <code>log</code> and <code>logit</code> scaling, <code>predictive_mean</code> is the
 back-transform of the mean computed in the scaled space. By Jensen's
 inequality it is a median-like point estimate rather than the posterior
 mean on the original scale.</p>

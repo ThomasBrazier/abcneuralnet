@@ -109,7 +109,8 @@ The hyperparameters of the neural network can be configured in the
 
 - `method`:
 
-  the ABC-NN method used
+  the ABCNN method used, either "monte carlo dropout", "gaussian monte
+  carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"
 
 - `scale_input`:
 
@@ -782,7 +783,8 @@ Create a new `abcnn` object
 
 - `method`:
 
-  the ABC-NN method used
+  the ABC-NN method used, either "monte carlo dropout", "gaussian monte
+  carlo dropout", "concrete dropout", "deep ensemble" or "tabnet-abc"
 
 - `scale_input`:
 
@@ -808,7 +810,9 @@ Create a new `abcnn` object
 
 - `num_conformal`:
 
-  number of samples retained for conformal prediction
+  number of samples retained for conformal prediction. Forced to `0`
+  with a warning for `tabnet-abc`, whose calibration set is held out
+  neither of the TabNet fit nor of the ABC reference table.
 
 - `credible_interval_p`:
 
@@ -1026,6 +1030,12 @@ The columns returned are:
 - `posterior_median`, `posterior_lower_ci`, `posterior_upper_ci`
   quantiles of the sampled posterior (`NA` for `deep ensemble`, which
   does not draw posterior samples)
+
+The four conformal columns are `NA` for `tabnet-abc`, which does not
+support conformal prediction; use the posterior quantile columns
+instead. For `monte carlo dropout` the overall uncertainty reduces to
+the epistemic one, so `overall_conformal_*` is identical to
+`epistemic_conformal_*`.
 
 Note that under `log` and `logit` scaling, `predictive_mean` is the
 back-transform of the mean computed in the scaled space. By Jensen's
