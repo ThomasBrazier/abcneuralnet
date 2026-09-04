@@ -168,6 +168,7 @@ test_that("Test random seed when initializing a torch model always return the sa
                     batch_size = 32,
                     tol = 0.1,
                     num_posterior_samples = num_posterior_samples,
+                    num_conformal = if (m == "tabnet-abc") 0 else 1000,
                     abc_method = "loclinear",
                     seed = 42)
 
@@ -189,6 +190,7 @@ test_that("Test random seed when initializing a torch model always return the sa
                     batch_size = 32,
                     tol = 0.1,
                     num_posterior_samples = num_posterior_samples,
+                    num_conformal = if (m == "tabnet-abc") 0 else 1000,
                     abc_method = "loclinear",
                     seed = 42)
 
@@ -212,6 +214,7 @@ test_that("Test random seed when initializing a torch model always return the sa
                     batch_size = 32,
                     tol = 0.1,
                     num_posterior_samples = num_posterior_samples,
+                    num_conformal = if (m == "tabnet-abc") 0 else 1000,
                     abc_method = "loclinear",
                     seed = 94)
 

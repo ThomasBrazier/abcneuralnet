@@ -31,6 +31,9 @@ test_that("save_abcnn() and load_abcnn() functions work", {
                     batch_size = 32,
                     tol = 0.1,
                     num_posterior_samples = num_posterior_samples,
+                    # `tabnet-abc` does not support conformal prediction and
+                    # forces this to 0 with a warning; ask for 0 up front
+                    num_conformal = if (m == "tabnet-abc") 0 else 1000,
                     abc_method = "loclinear")
 
     abc$fit()

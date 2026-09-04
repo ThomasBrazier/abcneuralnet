@@ -21,7 +21,10 @@ test_that("abcnn class initializes correctly", {
         method = method,
         epochs = 1,
         verbose = FALSE,
-        tol = 0.1
+        tol = 0.1,
+        # `tabnet-abc` does not support conformal prediction and forces this
+        # to 0 with a warning; ask for 0 up front
+        num_conformal = if (method == "tabnet-abc") 0 else 1000
       )
     }, message = paste("Failed to initialize with method:", method))
     
@@ -32,9 +35,10 @@ test_that("abcnn class initializes correctly", {
       sumstats_observed,
       method = method,
       epochs = 1,
-      verbose = FALSE
+      verbose = FALSE,
+      num_conformal = if (method == "tabnet-abc") 0 else 1000
     )
-    
+
     expect_r6_class(abc, "abcnn")
     expect_equal(abc$method, method)
     expect_equal(dim(abc$theta), c(n_samples, 1))
@@ -82,7 +86,10 @@ test_that("abcnn plotting methods work", {
       method = method,
       epochs = 3,
       verbose = FALSE,
-      tol = 0.1
+      tol = 0.1,
+      # `tabnet-abc` does not support conformal prediction and forces this
+      # to 0 with a warning; ask for 0 up front
+      num_conformal = if (method == "tabnet-abc") 0 else 1000
     )
     
     abc$fit()

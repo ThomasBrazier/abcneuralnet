@@ -29,12 +29,18 @@ for (m in methods) {
       tol = 0.1,
       abc_method = "rejection",
       num_posterior_samples = num_posterior_samples,
+      # `tabnet-abc` does not support conformal prediction and forces this to 0
+      # with a warning; ask for 0 up front
+      num_conformal = if (m == "tabnet-abc") 0 else 1000,
       verbose = FALSE
     )
 
     # Test fitting
     expect_no_error(abc$fit())
-    expect_true(abc$n_train == 7000)
+    # The training set is what is left once the validation, test and conformal
+    # calibration splits are taken out, so it is larger when no calibration set
+    # is retained
+    expect_true(abc$n_train == if (m == "tabnet-abc") 8000 else 7000)
     expect_true(abc$n_obs == 1)
 
     # Test prediction
@@ -151,7 +157,9 @@ test_that("Method-specific outputs are correct", {
   # Test TabNet-ABC outputs
   abc_tab = abcnn$new(
     theta_training, sumstats_training, sumstats_observed,
-    method = "tabnet-abc", tol = 0.1, epochs = 2, verbose = FALSE
+    method = "tabnet-abc", tol = 0.1, epochs = 2,
+    # `tabnet-abc` does not support conformal prediction
+    num_conformal = 0, verbose = FALSE
   )
   abc_tab$fit()
   abc_tab$predict()
