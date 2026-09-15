@@ -1,6 +1,6 @@
 Package: abcneuralnet
 Title: Bayesian Deep Learning and Approximate Bayesian Computation for Parameter Inference
-Version: 0.3.1
+Version: 0.3.2
 Authors@R: 
     person("Thomas", "Brazier", , "brazier.thomas@gmail.com", role = c("aut", "cre"))
 Author: Thomas Brazier [aut, cre]
