@@ -80,10 +80,18 @@ load_abcnn = function(prefix = "") {
 #' This is a more stable version of log(1 + exp(x)). Note that log(1 + exp(x)) is approximately equal to x when x is large enough.
 #' See https://stackoverflow.com/questions/60903821/how-to-prevent-inf-while-working-with-exponential for details
 #'
+#' Delegates to `torch::nnf_softplus()`, a single fused primitive with its own analytic
+#' backward pass. A `torch_where(x < threshold, log1p(exp(x)), x)` composition looks
+#' equivalent but is not: `torch_where` evaluates both branches, so for `x >> threshold`,
+#' `exp(x)` overflows to `Inf`, and even though the forward value is correctly discarded,
+#' the backward pass still multiplies that branch's `NaN` gradient by a zero mask
+#' (`0 * NaN = NaN`), silently poisoning every parameter gradient. `nnf_softplus()` has no
+#' such branch-and-select composition, so this can't happen regardless of how large `x` gets.
+#'
 #' @return a tensor with values corrected with the log1pexp trick
 #'
 log1pexp = function(x, threshold = 10) {
-  torch::torch_where(x < threshold, torch::torch_log1p(torch::torch_exp(x)) + 1e-6, x)
+  torch::nnf_softplus(x, threshold = threshold) + 1e-6
 }
 
 

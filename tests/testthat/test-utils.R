@@ -139,11 +139,35 @@ test_that("Scaling summary statistics works", {
 #     
 #     abc$fit()
 #     abc$predict()
-#     
+#
 #     # Check that proper scaling was applied
 #     # TODO
 #   }
 # })
+
+
+# Regression test: `log1pexp()` used to be implemented with
+# `torch_where(x < threshold, log1p(exp(x)), x)`. `torch_where` evaluates both
+# branches, so for `x >> threshold`, `exp(x)` overflows to `Inf`; the forward
+# value is correctly discarded, but the backward pass still multiplies that
+# branch's NaN gradient by a zero mask (0 * NaN = NaN), silently poisoning
+# every parameter gradient. The forward value stays finite throughout, so a
+# `is.nan(loss$item())` check (as used in `nn_ensemble$nll_loss()`) can never
+# catch this - only checking the gradient does.
+test_that("log1pexp() has no NaN forward value or gradient for large inputs", {
+  x = torch::torch_tensor(c(-50, -1, 0, 1, 9, 10, 11, 50, 1e6, 1e15), requires_grad = TRUE)
+  y = log1pexp(x)
+
+  expect_false(any(as.array(torch::torch_isnan(y))))
+
+  loss = torch::torch_sum(y)
+  loss$backward()
+
+  expect_false(any(as.array(torch::torch_isnan(x$grad))))
+
+  # Well above `threshold`, softplus is linear (slope 1), matching the old `x` branch
+  expect_equal(as.numeric(x$grad[8:10]), c(1, 1, 1), tolerance = 1e-5)
+})
 
 
 
