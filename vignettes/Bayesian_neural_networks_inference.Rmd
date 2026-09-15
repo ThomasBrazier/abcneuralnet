@@ -389,7 +389,9 @@ abc$predict()
 
 You can get predictions with their associated uncertainties and Conformal Credibility Intervals as a tidy data frame.
 
-Credible Intervals are returned as explicit bounds (`overall_conformal_lower`/`overall_conformal_upper`, and their `epistemic_` counterparts) rather than as a half-width around the mean. The bounds are computed in the scaled space in which the network was trained and each endpoint is then transformed back individually. Since every scaling method is monotone, this preserves the conformal coverage guarantee exactly and keeps the bounds within the range of the parameter. Under the non-linear `log` and `logit` scalings the intervals are therefore asymmetric around `predictive_mean`, and must be used as bounds rather than reconstructed from the mean.
+Credible Intervals are returned as explicit bounds (`overall_conformal_lower`/`overall_conformal_upper`, and their `epistemic_` counterparts) rather than as a half-width around the mean. The bounds are computed in the scaled space in which the network was trained and each endpoint is then transformed back individually. Since every scaling method is monotone, this preserves the conformal coverage guarantee exactly. Under the non-linear `log` and `logit` scalings the intervals are therefore asymmetric around `predictive_mean`, and must be used as bounds rather than reconstructed from the mean.
+
+By default (`clip_to_prior = TRUE`), `predictions()` also clips these bounds to the parameter's prior support (its training range): since a parameter lies almost surely within that support, intersecting a credible interval with it never reduces coverage, and it prevents e.g. a `minmax`-scaled rate from being reported with a negative lower bound. The unclipped values are always kept too, under a `_raw` suffix (e.g. `overall_conformal_lower_raw`), for diagnostics.
 
 
 ``` r

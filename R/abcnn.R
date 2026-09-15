@@ -1609,6 +1609,12 @@ abcnn = R6::R6Class("abcnn",
     #' @description
     #' Returns a tidy data frame with predictions, uncertainties and credible intervals
     #'
+    #' @param clip_to_prior logical (default `TRUE`). Whether the six interval-endpoint
+    #' columns (`epistemic_conformal_lower/upper`, `overall_conformal_lower/upper`,
+    #' `posterior_lower_ci`/`posterior_upper_ci`) are clipped to `[prior_lower, prior_upper]`
+    #' (the empirical min/max of the training simulations, i.e. `self$prior_lower`/
+    #' `self$prior_upper`), per parameter. See `Details`.
+    #'
     #' @details
     #'
     #' All quantities are returned on the original parameter scale.
@@ -1619,8 +1625,25 @@ abcnn = R6::R6Class("abcnn",
     #' endpoint at a time. Because every scaling method is monotone increasing,
     #' this preserves the conformal coverage guarantee exactly. It also means
     #' that under the non-linear `log` and `logit` scalings the intervals are
-    #' asymmetric around `predictive_mean`, and that they always stay within the
-    #' support implied by the scaling.
+    #' asymmetric around `predictive_mean`.
+    #'
+    #' Since a parameter lies almost surely within its prior support, intersecting
+    #' an interval with that support never reduces its coverage, and only removes
+    #' impossible values (e.g. a negative lower bound for a `minmax`-scaled rate).
+    #' When `clip_to_prior = TRUE` (the default), the six interval-endpoint columns
+    #' listed below are clipped this way; the unclipped values are always kept
+    #' available under a `_raw` suffix (e.g. `overall_conformal_lower_raw`) for
+    #' diagnostics. `predictive_mean` and `posterior_median` are never clipped: the
+    #' coverage argument applies to intervals, not point estimates, and a point
+    #' estimate that falls outside the prior support is itself a useful signal of
+    #' a poorly calibrated model that clipping would otherwise hide. One
+    #' consequence: if that happens, a clipped interval may no longer bracket the
+    #' (unclipped) point estimate — again, a diagnostic to investigate, not a bug.
+    #' Note also that `prior_lower`/`prior_upper` are the *empirical* min/max of
+    #' the training simulations, not necessarily the analytically exact prior
+    #' bounds, so this is coverage-preserving up to the (typically negligible, for
+    #' a realistically sized reference table) chance that a held-out true value
+    #' falls outside the observed training range.
     #'
     #' The columns returned are:
     #'
@@ -1637,6 +1660,10 @@ abcnn = R6::R6Class("abcnn",
     #' credible interval based on the overall uncertainty
     #' * `posterior_median`, `posterior_lower_ci`, `posterior_upper_ci` quantiles of
     #' the sampled posterior (`NA` for `deep ensemble`, which does not draw posterior samples)
+    #' * `epistemic_conformal_lower_raw`, `epistemic_conformal_upper_raw`,
+    #' `overall_conformal_lower_raw`, `overall_conformal_upper_raw`,
+    #' `posterior_lower_ci_raw`, `posterior_upper_ci_raw` the same six interval
+    #' endpoints above, always unclipped, regardless of `clip_to_prior`
     #'
     #' The four conformal columns are `NA` for `tabnet-abc`, which does not
     #' support conformal prediction; use the posterior quantile columns instead.
@@ -1651,7 +1678,7 @@ abcnn = R6::R6Class("abcnn",
     #'
     #' @return a `data.frame` with one row per observed sample and per parameter
     #'
-    predictions = function() {
+    predictions = function(clip_to_prior = TRUE) {
       # Back-transform predictions to original scale
       if (self$verbose) {cat("Back-transform scaled parameters with method:", self$scale_target,"\n")}
 
@@ -1785,6 +1812,25 @@ abcnn = R6::R6Class("abcnn",
         predictions$posterior_upper_ci = NA
       }
 
+      # A parameter lies almost surely within its prior support, so
+      # intersecting an interval with that support never reduces coverage.
+      # Keep the raw (unclipped) endpoints for diagnostics regardless of
+      # `clip_to_prior`, and clip the reported columns by default.
+      bound_cols = c("epistemic_conformal_lower", "epistemic_conformal_upper",
+                    "overall_conformal_lower", "overall_conformal_upper",
+                    "posterior_lower_ci", "posterior_upper_ci")
+
+      for (col in bound_cols) {
+        predictions[[paste0(col, "_raw")]] = predictions[[col]]
+      }
+
+      if (isTRUE(clip_to_prior)) {
+        for (col in bound_cols) {
+          predictions[[col]] = clip_to_prior_support(predictions[[col]], predictions$parameter,
+                                                     self$prior_lower, self$prior_upper)
+        }
+      }
+
       return(predictions)
     },
 
@@ -1891,16 +1937,21 @@ abcnn = R6::R6Class("abcnn",
     #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
     #' computed on the distribution of posteriors.
     #' The `conformal` and `posterior quantile` bounds are obtained by transforming the interval endpoints back to the
-    #' original scale, so they are exact under any scaling method and always remain within the support of the parameter.
-    #' The `uncertainty` band is a symmetric `mean +/- sd` band built from a delta-method approximation of the standard
-    #' deviation; under the non-linear `log` and `logit` scalings it is only a local linearisation and may extend beyond
-    #' that support.
+    #' original scale, so they are exact under any scaling method. The `uncertainty` band is a symmetric `mean +/- sd`
+    #' band built from a delta-method approximation of the standard deviation; under the non-linear `log` and `logit`
+    #' scalings it is only a local linearisation. With `clip_to_prior = TRUE` (the default), all three bands are
+    #' clipped to the parameter's prior support; see `predictions()`.
     #' @param epistemic_uncertainty logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.
     #' @param plot_type The type of plot, whether a `line` or `errorbar` around points
+    #' @param clip_to_prior logical (default `TRUE`). Whether the plotted bounds are clipped to
+    #' the prior support (`self$prior_lower`/`self$prior_upper`). See `predictions()`. Applies to
+    #' all three `uncertainty_type` values, including `uncertainty`, whose `mean +/- sd` band is
+    #' not otherwise guaranteed to stay within that support.
     #'
     plot_prediction = function(uncertainty_type = "conformal",
                                epistemic_uncertainty = TRUE,
-                              plot_type = "line") {
+                              plot_type = "line",
+                              clip_to_prior = TRUE) {
 
       # `conformal` is the default, so a user who never asked for it would
       # otherwise get an empty plot: the conformal columns are all `NA` for
@@ -1924,7 +1975,7 @@ abcnn = R6::R6Class("abcnn",
       } else {
         # If same number of parameters x and y, infer pairwise relationship between each x and y (i.e. x1 ~ y1, x2 ~ y2...)
         # Otherwise order x axis by index
-        df_predicted = self$predictions()
+        df_predicted = self$predictions(clip_to_prior = clip_to_prior)
 
         # Paired when the input and output dim are the same
         # hence output dim can be plotted as a function of input
@@ -1941,6 +1992,15 @@ abcnn = R6::R6Class("abcnn",
 
           df_predicted$ci_e_upper = df_predicted$predictive_mean + df_predicted$epistemic_uncertainty
           df_predicted$ci_e_lower = df_predicted$predictive_mean - df_predicted$epistemic_uncertainty
+
+          # This band is a delta-method approximation, not one of `predictions()`'s
+          # transformed-endpoint columns, so it needs its own clipping here.
+          if (isTRUE(clip_to_prior)) {
+            df_predicted$ci_overall_upper = clip_to_prior_support(df_predicted$ci_overall_upper, df_predicted$parameter, self$prior_lower, self$prior_upper)
+            df_predicted$ci_overall_lower = clip_to_prior_support(df_predicted$ci_overall_lower, df_predicted$parameter, self$prior_lower, self$prior_upper)
+            df_predicted$ci_e_upper = clip_to_prior_support(df_predicted$ci_e_upper, df_predicted$parameter, self$prior_lower, self$prior_upper)
+            df_predicted$ci_e_lower = clip_to_prior_support(df_predicted$ci_e_lower, df_predicted$parameter, self$prior_lower, self$prior_upper)
+          }
 
           df_predicted$mean = df_predicted$predictive_mean
         }
@@ -2021,16 +2081,21 @@ abcnn = R6::R6Class("abcnn",
     #' the `uncertainty` estimated (square root of the variance) or the `posterior quantile`, that are credible intervals
     #' computed on the distribution of posteriors.
     #' The `conformal` and `posterior quantile` bounds are obtained by transforming the interval endpoints back to the
-    #' original scale, so they are exact under any scaling method and always remain within the support of the parameter.
-    #' The `uncertainty` band is a symmetric `mean +/- sd` band built from a delta-method approximation of the standard
-    #' deviation; under the non-linear `log` and `logit` scalings it is only a local linearisation and may extend beyond
-    #' that support.
+    #' original scale, so they are exact under any scaling method. The `uncertainty` band is a symmetric `mean +/- sd`
+    #' band built from a delta-method approximation of the standard deviation; under the non-linear `log` and `logit`
+    #' scalings it is only a local linearisation. With `clip_to_prior = TRUE` (the default), all three bands are
+    #' clipped to the parameter's prior support; see `predictions()`.
     #' @param epistemic_uncertainty logical. Whether to plot the epistemic uncertainty in addition to overall uncertainty.
+    #' @param clip_to_prior logical (default `TRUE`). Whether the plotted bounds are clipped to
+    #' the prior support (`self$prior_lower`/`self$prior_upper`). See `predictions()`. Applies to
+    #' all three `uncertainty_type` values, including `uncertainty`, whose `mean +/- sd` band is
+    #' not otherwise guaranteed to stay within that support.
     #'
     plot_posterior = function(sample = 1,
                               prior = TRUE,
                               uncertainty_type = "conformal",
-                              epistemic_uncertainty = TRUE) {
+                              epistemic_uncertainty = TRUE,
+                              clip_to_prior = TRUE) {
       # Dim 1 is number of MC samples (predictions)
       # Dim 2 is number of observations
       # Dim 3 is parameters (mu + sigma)
@@ -2047,7 +2112,7 @@ abcnn = R6::R6Class("abcnn",
       if (is.null(self$fitted)) {
         warning("The model has not been fitted.")
       } else {
-        tidy_predictions = self$predictions()
+        tidy_predictions = self$predictions(clip_to_prior = clip_to_prior)
         pal = RColorBrewer::brewer.pal(8, "Dark2")
         cols = c("Epistemic" = pal[3],"Overall" = pal[2])
 
@@ -2057,6 +2122,15 @@ abcnn = R6::R6Class("abcnn",
 
           tidy_predictions$ci_e_upper = tidy_predictions$predictive_mean + tidy_predictions$epistemic_uncertainty
           tidy_predictions$ci_e_lower = tidy_predictions$predictive_mean - tidy_predictions$epistemic_uncertainty
+
+          # This band is a delta-method approximation, not one of `predictions()`'s
+          # transformed-endpoint columns, so it needs its own clipping here.
+          if (isTRUE(clip_to_prior)) {
+            tidy_predictions$ci_upper = clip_to_prior_support(tidy_predictions$ci_upper, tidy_predictions$parameter, self$prior_lower, self$prior_upper)
+            tidy_predictions$ci_lower = clip_to_prior_support(tidy_predictions$ci_lower, tidy_predictions$parameter, self$prior_lower, self$prior_upper)
+            tidy_predictions$ci_e_upper = clip_to_prior_support(tidy_predictions$ci_e_upper, tidy_predictions$parameter, self$prior_lower, self$prior_upper)
+            tidy_predictions$ci_e_lower = clip_to_prior_support(tidy_predictions$ci_e_lower, tidy_predictions$parameter, self$prior_lower, self$prior_upper)
+          }
         }
 
         if (uncertainty_type == "conformal") {

@@ -8,6 +8,12 @@
 #
 # These tests pin that behaviour down by setting the prediction slots directly,
 # so that no network has to be trained.
+#
+# All `predictions()` calls below use `clip_to_prior = FALSE`: several of them
+# deliberately use scaled mu/sd values that land outside the target's training
+# range to probe the raw transform arithmetic, which `clip_to_prior = TRUE`
+# (the default) would otherwise clip to `[prior_lower, prior_upper]`. The
+# clipping behaviour itself is tested separately in `test-clip-to-prior.R`.
 
 
 # An `abcnn` object with the target summary statistics filled in, but no fit
@@ -66,7 +72,7 @@ test_that("Without scaling the conformal bounds are mean +/- q * sd", {
   q_hat = 1.96
 
   abc = set_predictions(make_abcnn("none"), mu, sd, q_hat)
-  pred = abc$predictions()
+  pred = abc$predictions(clip_to_prior = FALSE)
 
   expect_equal(pred$overall_conformal_lower, mu - q_hat * sd)
   expect_equal(pred$overall_conformal_upper, mu + q_hat * sd)
@@ -85,7 +91,7 @@ test_that("Conformal bounds are the back-transform of the scaled endpoints", {
 
   for (m in scaling_methods) {
     abc = set_predictions(make_abcnn(m), mu, sd, q_hat)
-    pred = abc$predictions()
+    pred = abc$predictions(clip_to_prior = FALSE)
 
     # Recomputed independently: transform the endpoints, never the width
     expected_lower = scaler(data.frame(param1 = mu - q_hat * sd),
@@ -107,7 +113,7 @@ test_that("Conformal bounds bracket the predictive mean for every scaling", {
 
   for (m in scaling_methods) {
     abc = set_predictions(make_abcnn(m), mu, sd, q_hat = 2)
-    pred = abc$predictions()
+    pred = abc$predictions(clip_to_prior = FALSE)
 
     expect_true(all(pred$overall_conformal_lower < pred$predictive_mean),
                 info = paste("method:", m))
@@ -123,7 +129,7 @@ test_that("Logit conformal bounds stay inside the support of the prior", {
                         mu = c(-2, 0, 2),
                         sd = c(1e-6, 1, 5),
                         q_hat = 2)
-  pred = abc$predictions()
+  pred = abc$predictions(clip_to_prior = FALSE)
 
   expect_true(all(pred$overall_conformal_lower > 0))
   expect_true(all(pred$overall_conformal_upper < 1))
@@ -145,7 +151,7 @@ test_that("Logit conformal bounds stay inside the support of the prior", {
 #                         mu = c(-8, 0, 8),
 #                         sd = rep(50, 3),
 #                         q_hat = 2)
-#   pred = abc$predictions()
+#   pred = abc$predictions(clip_to_prior = FALSE)
 
 #   expect_true(all(pred$overall_conformal_lower >= 0))
 #   expect_true(all(pred$overall_conformal_upper <= 1))
@@ -155,7 +161,7 @@ test_that("Logit conformal bounds stay inside the support of the prior", {
 test_that("Logit and log intervals are asymmetric around the mean", {
   for (m in c("log", "logit")) {
     abc = set_predictions(make_abcnn(m), mu = c(-1, 0.5, 1), sd = rep(0.5, 3), q_hat = 2)
-    pred = abc$predictions()
+    pred = abc$predictions(clip_to_prior = FALSE)
 
     below = pred$predictive_mean - pred$overall_conformal_lower
     above = pred$overall_conformal_upper - pred$predictive_mean

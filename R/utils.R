@@ -121,10 +121,12 @@ inv_logit = function(z, a, b, n) {
   p = plogis(z)
   p = unsqueeze(p, n)
   # `unsqueeze()` undoes the `squeeze()` applied on the forward pass, but it
-  # overshoots [0, 1] by up to 0.5/(n - 1) once `plogis(z)` saturates. Clamp, as
-  # a parameter cannot fall outside the range learned on the training set.
+  # overshoots [0, 1] by up to 0.5/(n - 1) once `plogis(z)` saturates. The
+  # overshoot is intentionally left in `p` here; diagnostics still need the
+  # raw value. Interval endpoints are clipped to the prior support once,
+  # uniformly across every `scale_target` method (not just `logit`), in
+  # `abcnn$predictions(clip_to_prior = TRUE)`.
   # p = pmin(pmax(p, 0), 1)
-  # Keep it this way, I want to know when the CI is wrong (outside training range)
   a + (b - a) * p
 }
 
@@ -342,6 +344,29 @@ scaler_grad = function(z, sum_stats, method = "minmax") {
   }
 
   return(abs(grad))
+}
+
+
+#' Clip credible interval endpoints to the empirical prior support
+#'
+#' @description
+#' Intersecting a credible interval with the parameter's prior support never
+#' reduces its coverage: if `theta` lies almost surely in `[a, b]`, any set
+#' already contains `theta` with the same probability whether or not it is
+#' first intersected with `[a, b]`. This clips endpoints on the original
+#' parameter scale to `[prior_lower, prior_upper]`, looked up per element by
+#' `parameter`.
+#'
+#' @param x a numeric vector of interval endpoints
+#' @param parameter a character vector, same length as `x`, naming the
+#' parameter of each endpoint
+#' @param prior_lower named numeric vector of lower prior bounds, one per parameter
+#' @param prior_upper named numeric vector of upper prior bounds, one per parameter
+#'
+#' @return `x` clipped elementwise to `[prior_lower[parameter], prior_upper[parameter]]`
+#'
+clip_to_prior_support = function(x, parameter, prior_lower, prior_upper) {
+  pmin(pmax(x, prior_lower[parameter]), prior_upper[parameter])
 }
 
 

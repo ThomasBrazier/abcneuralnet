@@ -60,7 +60,9 @@ for (m in methods) {
 
     # Test credible intervals
     expect_no_error(abc$predictions())
-    expect_equal(dim(abc$predictions()), c(1, 13))
+    # 13 original columns + 6 unclipped `_raw` diagnostic columns for the
+    # interval endpoints (see `clip_to_prior` in `predictions()`)
+    expect_equal(dim(abc$predictions()), c(1, 19))
   })
 
 }
