@@ -157,9 +157,12 @@ nn_ensemble = torch::nn_module(
     # mean_prediction = torch_mean(predictions[1,,,], dim = 3)  # Mean of means
     # variance_prediction = torch_mean(predictions[2,,,], dim = 3)  # Mean of variances
     mean_prediction = torch::torch_mean(mu, dim = 3)  # Mean of means across networks
-    sd_prediction = torch::torch_sqrt(torch::torch_mean(sigma, dim = 3) +
+    # `clamp_variance()` guards against the E[X^2] - E[X]^2 identity
+    # undershooting zero in float32 when the ensemble members closely agree,
+    # which would otherwise make `torch_sqrt()` return NaN.
+    sd_prediction = torch::torch_sqrt(clamp_variance(torch::torch_mean(sigma, dim = 3) +
                                               torch::torch_mean(torch::torch_square(mu), dim = 3) -
-                                              torch::torch_square(mean_prediction))
+                                              torch::torch_square(mean_prediction)))
 
 
     # TODO Correct variance using ensemble variance formula

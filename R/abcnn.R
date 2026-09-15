@@ -1294,13 +1294,18 @@ abcnn = R6::R6Class("abcnn",
           predictive_mean = as.data.frame(array(as.numeric(out_mu_sample_final), dim = c(observed$shape[1], self$output_dim)))
           colnames(predictive_mean) = colnames(self$theta)
 
-          out_sig_sample_final = torch::torch_sqrt(torch::torch_mean(out_sig_sample, dim = 3) +
+          # `clamp_variance()` guards against the E[X^2] - E[X]^2 identity
+          # undershooting zero in float32 when the ensemble members closely
+          # agree, which would otherwise make `torch_sqrt()` return NaN. The
+          # epistemic-only term below is the most exposed to this, since it
+          # has no `+ mean(out_sig_sample)` term to absorb the rounding noise.
+          out_sig_sample_final = torch::torch_sqrt(clamp_variance(torch::torch_mean(out_sig_sample, dim = 3) +
                                                      torch::torch_mean(torch_square(out_mu_sample), dim = 3) -
-                                                     torch::torch_square(out_mu_sample_final))
+                                                     torch::torch_square(out_mu_sample_final)))
 
           out_sig_sample_aleatoric = torch::torch_sqrt(torch::torch_mean(out_sig_sample, dim = 3))
-          out_sig_sample_epistemic = torch::torch_sqrt(torch::torch_mean(torch::torch_square(out_mu_sample), dim = 3) -
-                                                         torch::torch_square(out_mu_sample_final))
+          out_sig_sample_epistemic = torch::torch_sqrt(clamp_variance(torch::torch_mean(torch::torch_square(out_mu_sample), dim = 3) -
+                                                         torch::torch_square(out_mu_sample_final)))
 
           epistemic_uncertainty = as.data.frame(array(as.numeric(out_sig_sample_epistemic), dim = c(observed$shape[1], self$output_dim)))
           colnames(epistemic_uncertainty) = colnames(self$theta)

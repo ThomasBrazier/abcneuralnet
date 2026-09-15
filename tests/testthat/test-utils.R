@@ -170,6 +170,31 @@ test_that("log1pexp() has no NaN forward value or gradient for large inputs", {
 })
 
 
+test_that("clamp_variance() floors negative input to zero and leaves positive input alone", {
+  x = torch::torch_tensor(c(-1e-5, -1, 0, 3, 1e5))
+  clamped = clamp_variance(x)
+
+  expect_equal(as.numeric(clamped), c(0, 0, 0, 3, 1e5))
+})
+
+
+# Illustrative reproduction of the actual failure mode: Deep Ensemble's
+# epistemic variance is `mean(mu^2) - mean(mu)^2` (`R/deep_ensemble.R`,
+# `R/abcnn.R`). Mathematically this can never be negative, but for several
+# *identical*, large-magnitude float32 values, `mean(mu^2)` and `mean(mu)^2`
+# are each computed via a different arithmetic path and can round to values
+# that are not bit-identical, so the subtraction can undershoot zero and
+# `torch_sqrt()` of that is `NaN`. This is exactly what happens when Deep
+# Ensemble's members closely agree - a confident, not a broken, ensemble.
+test_that("clamp_variance() prevents NaN in an E[X^2] - E[X]^2 variance for agreeing float32 members", {
+  mu = torch::torch_tensor(rep(100000, 5), dtype = torch::torch_float32())
+
+  raw_variance = torch::torch_mean(torch::torch_square(mu)) - torch::torch_square(torch::torch_mean(mu))
+  sd = torch::torch_sqrt(clamp_variance(raw_variance))
+
+  expect_false(as.logical(torch::torch_isnan(sd)))
+  expect_true(as.numeric(sd) >= 0)
+})
 
 
 

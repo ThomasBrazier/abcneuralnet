@@ -370,6 +370,25 @@ clip_to_prior_support = function(x, parameter, prior_lower, prior_upper) {
 }
 
 
+#' Clamp a variance computed as E[X^2] - E[X]^2 to be non-negative
+#'
+#' @description
+#' `E[X^2] - E[X]^2` is analytically always non-negative, but computing it this
+#' way subtracts two independently-rounded floating point values, so the
+#' result can undershoot zero by a tiny negative amount exactly when the true
+#' variance is very small (e.g. when Deep Ensemble's members closely agree).
+#' `torch_sqrt()` of that negative value is `NaN`. Variance can never be
+#' negative, so clamp before taking the square root.
+#'
+#' @param x a tensor, a variance computed via the `E[X^2] - E[X]^2` identity
+#'
+#' @return `x` clamped elementwise to be `>= 0`
+#'
+clamp_variance = function(x) {
+  torch::torch_clamp(x, min = 0)
+}
+
+
 #' Cross-validation metrics between ground truth and predictions
 #'
 #' @description
