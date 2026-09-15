@@ -220,19 +220,16 @@ nn_ensemble = torch::nn_module(
         # print(loss_for_adv)
 
         # Gradient for Gaussian NLL loss
-        grad = torch::autograd_grad(loss_for_adv, input, retain_graph = FALSE)[[1]]
+        # `retain_graph = TRUE` keeps the forward graph behind `mean`/`var` alive
+        # so the clean-input loss below can still backprop into the model
+        # parameters. Detaching them here (as before) zeroed out that term's
+        # gradient, leaving only the adversarial term to train the network.
+        grad = torch::autograd_grad(loss_for_adv, input, retain_graph = TRUE)[[1]]
 
         batch_x = input$detach()
         batch_y = target$detach()
         # print(batch_x)
         # print(batch_y)
-
-        mean = mean$detach()
-        var = var$detach()
-        loss_for_adv$detach_()
-        # print(mean)
-        # print(var)
-
 
         # print("Perturb input data")
         perturbed_data = self$fgsm_attack(batch_x, self$epsilon, grad)
@@ -309,7 +306,7 @@ nn_ensemble = torch::nn_module(
     # var_pos = torch_logsumexp(var, 1, keepdim = TRUE) + 1e-6
     var_pos = log1pexp(var) + 1e-6
 
-    loss = torch::torch_mean(0.5 * torch::torch_log(var_pos) + 0.5 * (torch::torch_square(target - input)/var_pos)) + 1
+    loss = torch::torch_mean(0.5 * torch::torch_log(var_pos) + 0.5 * (torch::torch_square(target - input)/var_pos)) + (log(2*pi) / 2)
 
     if (is.nan(loss$item())) {
       print(input)

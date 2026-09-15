@@ -68,7 +68,7 @@ gaussian_mc_model = torch::nn_module(
     precision = torch::torch_exp(-log_var) + 1e-6
 
     # Must return a scalar - Do two times the sum when more than one parameter (sum of losses)
-    heteroscedastic_loss = torch::torch_mean(torch::torch_sum(precision * (target - mu)^2 + log_var, 1), 1)
+    heteroscedastic_loss = torch::torch_mean(torch::torch_sum(precision * (target - mu)^2 + log_var, 1), 1) + (log(2*pi) / 2)
     
     return(heteroscedastic_loss)
   }

@@ -1015,6 +1015,8 @@ Understanding which summary statistics drive parameter estimates is crucial for 
 
 The [https://bips-hb.github.io/innsight/](**innsight**) package backend provides twelve different explainability methods to interpret feature importance within an **explainn** object. Both local and global methods are provided, to interpret feature importance for a focal prediction (a single output/sample) or summarize importances across a whole dataset (multiple samples).
 
+Two caveats apply to every attribution method exposed by **explainn**. First, attributions explain the mean (mu) prediction head only; the aleatoric log-variance head is never explained. A summary statistic that receives a low importance score for the mean can still be the one driving a high aleatoric uncertainty for that sample — low mean-importance is not evidence that a variable is unimportant to the model's uncertainty estimate. Second, for Deep Ensemble, `explainn` computes attributions for a single ensemble member only, chosen with `ensemble_num_model` (default = 1); results are not averaged across ensemble members.
+
 
 DeepLift (deep learning important features) is an algorithm introduced by Shrikumar et al. (2017). It's a local method for interpreting a single element output prediction $x$, given a reference $x'$, returning the contribution of each input feature from the difference of the output $y = f(x)$ and the reference output $y' = f(x')$ prediction.
 

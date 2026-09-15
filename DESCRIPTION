@@ -23,7 +23,7 @@ Description:
   Explain methods are specific the `tabnet-abc` model.
   In addition, Credible Intervals are calibrated with conformal prediction, as in Baragatti et al. (2024).
   As it requires a proxy of uncertainty, conformal prediction is only available for `concrete dropout`,
-  `deep ensemble` and `monte carlo dropout` (only for the epistemic uncertainty for this last method).
+  `deep ensemble`, `gaussian monte carlo dropout` and `monte carlo dropout` (only for the epistemic uncertainty for this last method).
   The neural networks are implemented with the `torch` R package and support CUDA devices for training.
   The `luz` package is used as a higher level API for training and predictions with `torch`.
   The device (`CUDA` or `cpu`) is automatically detected by `luz`.

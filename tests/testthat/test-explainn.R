@@ -538,8 +538,175 @@
 #   # Test plotting
 #   p = exp$plot()
 #   expect_s3_class(p, "ggplot")
-#   
+#
 #   # Test global plot
 #   p_global = exp$plot_global()
 #   expect_s3_class(p_global, "ggplot")
+
+# Regression tests: the converted model must preserve the trained network's
+# non-linearities. `explainn$new()` rebuilds a plain `nn_sequential` by hand
+# from the pieces of the fitted network before handing it to
+# `innsight::convert()`. If it ever forgets an activation function again, a
+# stack of linear layers alone collapses to a single affine map and every
+# attribution method degenerates to a constant weight vector.
+#
+# `nn_mc_dropout` (R/mc_dropout.R) and `nn_concrete_dropout`
+# (R/concrete_dropout.R) both apply stochastic dropout unconditionally
+# (neither checks `self$training`), so calling the trained model directly
+# (`abc$fitted$model(x)`) is non-deterministic and can never be used as the
+# reference value. Instead, each test below independently recomputes the
+# expected dropout-free forward pass by hand (bypassing `explainn.R`'s own
+# assembly code) and compares it to the converted surrogate.
+
+make_explainn_test_data = function(n_samples = 2000) {
+  theta_training = data.frame(param1 = runif(n_samples, 0, 1))
+  sumstats_training = data.frame(
+    stat1 = theta_training$param1 + rnorm(n_samples, 0, 0.05),
+    stat2 = theta_training$param1^2 + rnorm(n_samples, 0, 0.1)
+  )
+  sumstats_observed = data.frame(stat1 = 0.4, stat2 = 0.2)
+  list(theta = theta_training, sumstats = sumstats_training, observed = sumstats_observed)
+}
+
+test_that("explainn's converted model preserves non-linearities for monte carlo dropout", {
+  skip_if_not_installed("innsight")
+
+  set.seed(123)
+  data = make_explainn_test_data()
+
+  abc = abcnn$new(data$theta,
+                  data$sumstats,
+                  data$observed,
+                  method = "monte carlo dropout",
+                  num_hidden_layers = 2,
+                  num_hidden_dim = 16,
+                  epochs = 2,
+                  batch_size = 128,
+                  num_conformal = 0,
+                  verbose = FALSE)
+  abc$fit()
+
+  exp = explainn$new(abc)
+
+  x = torch::torch_tensor(as.matrix(abc$sumstat_adj[1:10, , drop = FALSE]),
+                          dtype = torch::torch_float())
+
+  model_mc = abc$fitted$model$mc_dropout
+  ref = torch::nnf_leaky_relu(model_mc[[1]](x))
+  for (i in seq_len(abc$num_hidden_layers - 1) + 1) {
+    ref = torch::nnf_leaky_relu(model_mc[[(i - 1) * 3 + 1]](ref))
+  }
+  ref = model_mc$output(ref)
+
+  converted = as.array(exp$converter$model(x)[[1]])
+  expect_equal(as.numeric(converted), as.numeric(as.array(ref)), tolerance = 1e-5)
+})
+
+test_that("explainn's converted model preserves non-linearities for gaussian monte carlo dropout", {
+  skip_if_not_installed("innsight")
+
+  set.seed(123)
+  data = make_explainn_test_data()
+
+  abc = abcnn$new(data$theta,
+                  data$sumstats,
+                  data$observed,
+                  method = "gaussian monte carlo dropout",
+                  num_hidden_layers = 2,
+                  num_hidden_dim = 16,
+                  epochs = 2,
+                  batch_size = 128,
+                  num_conformal = 0,
+                  verbose = FALSE)
+  abc$fit()
+
+  exp = explainn$new(abc)
+
+  x = torch::torch_tensor(as.matrix(abc$sumstat_adj[1:10, , drop = FALSE]),
+                          dtype = torch::torch_float())
+
+  model_gaussian_mc = abc$fitted$model$modules[[1]]$gaussian_mc_dropout
+  ref = torch::nnf_leaky_relu(model_gaussian_mc["0"][[1]](x))
+  for (i in seq_len(abc$num_hidden_layers - 1) + 1) {
+    linear_mod = model_gaussian_mc[paste0("linear_", i)][[1]]
+    ref = torch::nnf_leaky_relu(linear_mod(ref))
+  }
+  ref = abc$fitted$model$linear_mu(ref)
+
+  converted = as.array(exp$converter$model(x)[[1]])
+  expect_equal(as.numeric(converted), as.numeric(as.array(ref)), tolerance = 1e-5)
+})
+
+test_that("explainn's converted model preserves non-linearities for concrete dropout", {
+  skip_if_not_installed("innsight")
+
+  set.seed(123)
+  data = make_explainn_test_data()
+
+  abc = abcnn$new(data$theta,
+                  data$sumstats,
+                  data$observed,
+                  method = "concrete dropout",
+                  num_hidden_layers = 2,
+                  num_hidden_dim = 16,
+                  epochs = 2,
+                  batch_size = 128,
+                  num_conformal = 0,
+                  verbose = FALSE)
+  abc$fit()
+
+  exp = explainn$new(abc)
+
+  x = torch::torch_tensor(as.matrix(abc$sumstat_adj[1:10, , drop = FALSE]),
+                          dtype = torch::torch_float())
+
+  model_concrete = abc$fitted$model$modules[[1]]$concrete_dropout
+  ref = torch::nnf_leaky_relu(model_concrete[[1]]$linear(x))
+  for (i in seq_len(abc$num_hidden_layers - 1) + 1) {
+    ref = torch::nnf_leaky_relu(model_concrete[[i]]$linear(ref))
+  }
+  ref = abc$fitted$model$linear_mu(ref)
+
+  converted = as.array(exp$converter$model(x)[[1]])
+  expect_equal(as.numeric(converted), as.numeric(as.array(ref)), tolerance = 1e-5)
+})
+
+test_that("explainn's converted model matches deep ensemble and does not corrupt the trained network", {
+  skip_if_not_installed("innsight")
+
+  set.seed(123)
+  data = make_explainn_test_data()
+
+  abc = abcnn$new(data$theta,
+                  data$sumstats,
+                  data$observed,
+                  method = "deep ensemble",
+                  num_hidden_layers = 2,
+                  num_hidden_dim = 16,
+                  num_networks = 2,
+                  epochs = 2,
+                  batch_size = 128,
+                  num_conformal = 0,
+                  verbose = FALSE)
+  abc$fit()
+
+  exp = explainn$new(abc)
+
+  x = torch::torch_tensor(as.matrix(abc$sumstat_adj[1:10, , drop = FALSE]),
+                          dtype = torch::torch_float())
+
+  single_model = abc$fitted$model$model_list[[exp$ensemble_num_model]]
+
+  # `single_model$forward()` has no dropout, so it is deterministic and the
+  # converted surrogate should reproduce its mu output exactly.
+  ref = single_model(x)[1,,]
+
+  converted = as.array(exp$converter$model(x)[[1]])
+  expect_equal(as.numeric(converted), as.numeric(as.array(ref)), tolerance = 1e-5)
+
+  # Building the `explainn` object must not corrupt the live trained model. A
+  # naive rebuild that calls `add_module()` directly on `single_model$mlp`
+  # would splice the mu head into the backbone and break every later call.
+  expect_no_error(abc$predict())
+})
 # })

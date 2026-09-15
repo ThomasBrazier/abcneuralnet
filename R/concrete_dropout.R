@@ -192,7 +192,7 @@ concrete_model = torch::nn_module(
 
     # Must return a scalar - Do two times the sum when more than one parameter (sum of losses)
     # heteroscedastic_loss = torch_sum(torch_mean(torch_sum(precision * (target - mu)^2 + log_var, 1), 1))
-    heteroscedastic_loss = torch::torch_mean(torch::torch_sum(precision * (target - mu)^2 + log_var, 1), 1)
+    heteroscedastic_loss = torch::torch_mean(torch::torch_sum(precision * (target - mu)^2 + log_var, 1), 1) + (log(2*pi) / 2)
 
     # The objective of Gal et al. (2017) is the heteroscedastic likelihood plus
     # the regularization term accumulated over the concrete dropout layers by

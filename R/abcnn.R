@@ -534,6 +534,12 @@ abcnn = R6::R6Class("abcnn",
       self$weight_regularizer = weight_regularizer
       self$dropout_regularizer = dropout_regularizer
       self$epsilon_adversarial = epsilon_adversarial
+      # Normalize once so every downstream use (model construction here and in
+      # `fit()`) can rely on a plain numeric instead of re-deriving NULL/NA
+      # handling in multiple places.
+      if (is.null(self$epsilon_adversarial) || is.na(self$epsilon_adversarial)) {
+        self$epsilon_adversarial = 0
+      }
       self$credible_interval_p = credible_interval_p
       self$variance_clamping = variance_clamping
       self$num_conformal = num_conformal
@@ -696,7 +702,7 @@ abcnn = R6::R6Class("abcnn",
                          num_output_dim = self$output_dim,
                          num_hidden_layers = self$num_hidden_layers,
                          num_hidden_dim = self$num_hidden_dim,
-                         epsilon = NULL,
+                         epsilon = self$epsilon_adversarial,
                          clamp = self$variance_clamping)
         }
       } else {
@@ -805,19 +811,10 @@ abcnn = R6::R6Class("abcnn",
         # Load data
         # dl = self$dataloader()
 
-        # The range of noise to add to perturbed inputs in adversarial training
-        if (is.null(self$epsilon_adversarial)) {
-          epsilon = 0
-        } else {
-          if (is.na(self$epsilon_adversarial)) {
-            epsilon = 0
-          } else {
-            epsilon = self$epsilon_adversarial
-          }
-        }
-
         # Fit
         # Redefine model with epsilon based on training data
+        # `self$epsilon_adversarial` was already normalized to a plain numeric
+        # (0 if NULL/NA) in `initialize()`.
         self$fitted = nn_ensemble %>%
           luz::setup() %>%
           luz::set_hparams (model = single_model,
@@ -828,7 +825,7 @@ abcnn = R6::R6Class("abcnn",
                        num_output_dim = self$output_dim,
                        num_hidden_layers = self$num_hidden_layers,
                        num_hidden_dim = self$num_hidden_dim,
-                       epsilon = epsilon,
+                       epsilon = self$epsilon_adversarial,
                        clamp = self$variance_clamping) %>%
           luz::fit(dl$train,
                    epochs = self$epochs,
@@ -1132,7 +1129,8 @@ abcnn = R6::R6Class("abcnn",
           } else {
             predictive_mean = apply(means, 2, mean)
             epistemic_uncertainty = apply(means, 2, var)
-            aleatoric_uncertainty = exp(colMeans(logvar))
+            # aleatoric_uncertainty = exp(colMeans(logvar))
+            aleatoric_uncertainty = colMeans(exp(logvar)) # Fix arithmetic mean
 
             posterior_median = apply(means, 2, median)
             posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
@@ -1208,8 +1206,9 @@ abcnn = R6::R6Class("abcnn",
           } else {
             predictive_mean = apply(means, 2, mean)
             epistemic_uncertainty = apply(means, 2, var)
-            aleatoric_uncertainty = exp(colMeans(logvar))
-
+            # aleatoric_uncertainty = exp(colMeans(logvar))
+            aleatoric_uncertainty = colMeans(exp(logvar)) # Fix arithmetic mean
+            
             posterior_median = apply(means, 2, median)
             posterior_lower_ci = apply(means, 2, function(x) quantile(x, (1 - self$credible_interval_p)/2))
             posterior_upper_ci = apply(means, 2, function(x) quantile(x, (self$credible_interval_p + (1 - self$credible_interval_p)/2)))

@@ -15,7 +15,10 @@
 #' @param method A feature attribution method, as named in the `ìnnsight` R package
 #' including 'cw' (default), 'grad', 'smoothgrad', 'intgrad', 'expgrad', 'lrp', 'deeplift',
 #' 'deepshap', 'shap', 'lime.' No method required for tabnet-ABC.
-#' @param ensemble_num_model index of the model when the network is a deep ensemble (default = 1)
+#' @param ensemble_num_model index of the model when the network is a deep ensemble (default = 1).
+#' Attributions are computed for this single ensemble member only; they are not averaged across
+#' ensemble members. To assess consistency across the ensemble, create separate `explainn`
+#' objects with different `ensemble_num_model` values and compare results.
 #'
 #'
 #' @details
@@ -35,6 +38,12 @@
 #'
 #' See `https://bips-hb.github.io/innsight/` for details.
 #'
+#' For `monte carlo dropout`, `gaussian monte carlo dropout`, `concrete dropout` and
+#' `deep ensemble`, attributions explain the mean (mu) prediction head only. The aleatoric
+#' log-variance head is never explained: a summary statistic with a low importance score for
+#' the mean can still be the one driving a high aleatoric uncertainty for that sample, and this
+#' method will not surface that.
+#'
 #'
 #' @slot converter Stores the `innsight::converter` object
 #'
@@ -42,7 +51,7 @@
 #' @slot model_method method of the trained neural network (e.g. "concrete dropout")
 #' @slot variables names of the variables (summary statistics)
 #' @slot parameters names of the parameter to infer
-#' @slot ensemble_num_model index of the model when the network is a deep ensemble
+#' @slot ensemble_num_model index of the (single) ensemble member explained when the network is a deep ensemble; results are not averaged across members
 #' @slot scale_input the `abcnn$scale_input` slot from the `abcnn` input object
 #' @slot input_summary the `abcnn$input_summary` slot from the `abcnn` input object
 #'
@@ -75,7 +84,7 @@ explainn = R6::R6Class("explainn",
                       variables = NULL,
                       #' @field parameters names of the parameters to estimate (output dimensions)
                       parameters = NULL,
-                      #' @field ensemble_num_model index of the model to explain in Deep Ensemble (default is first model)
+                      #' @field ensemble_num_model index of the single ensemble member explained in Deep Ensemble (default is first model); results are not averaged across members
                       ensemble_num_model = NULL,
                       #' @field scale_input method used to scale input dimensions
                       scale_input = NULL,
@@ -87,7 +96,7 @@ explainn = R6::R6Class("explainn",
                       #'
                       #' @param x an `abcnn` model
                       #' @param method the explainability method to use (see `innsight` for details) (defauls is `cw`)
-                      #' @param ensemble_num_model index of the model to explain in Deep Ensemble (default is first model)
+                      #' @param ensemble_num_model index of the single ensemble member to explain in Deep Ensemble (default is first model); results are not averaged across members
                       #'
                       initialize = function(x,
                                             method = "cw",
@@ -110,11 +119,18 @@ explainn = R6::R6Class("explainn",
                             model = x$fitted$model
                             model_mc = model$mc_dropout
 
-                            model_sequential = torch::nn_sequential(model_mc[[1]])
+                            # `model_mc` interleaves linear / mc_dropout / leaky_relu modules
+                            # (see `R/mc_dropout.R`). Dropout is deliberately excluded here, as
+                            # is standard for deterministic attribution, but the activation
+                            # after each linear layer must be kept, or the surrogate collapses
+                            # to a single affine map.
+                            model_sequential = torch::nn_sequential(model_mc[[1]], model_mc[[3]])
 
                             for (i in seq_len(x$num_hidden_layers - 1) + 1) {
-                              mod = model_mc[[(i -1) * 3 + 1]]
-                              model_sequential$add_module(name = i - 1, module = mod)
+                              linear_mod = model_mc[[(i - 1) * 3 + 1]]
+                              relu_mod = model_mc[[(i - 1) * 3 + 3]]
+                              model_sequential$add_module(name = paste0("linear_", i), module = linear_mod)
+                              model_sequential$add_module(name = paste0("relu_", i), module = relu_mod)
                             }
 
                             mod = x$fitted$model$mc_dropout$output
@@ -130,11 +146,22 @@ explainn = R6::R6Class("explainn",
                             model_gaussian_mc = model_gaussian_mc$gaussian_mc_dropout
                             # model_concrete
 
-                            model_sequential = torch::nn_sequential(model_gaussian_mc["0"])[[1]]
+                            # `model_gaussian_mc` interleaves linear / mc_dropout / leaky_relu
+                            # modules, named "0"/"1"/"2" for the first block and
+                            # "linear_i"/"dropout_i"/"relu_i" for subsequent ones (see
+                            # `R/gaussian_mc_dropout.R`). Dropout is deliberately excluded here,
+                            # as is standard for deterministic attribution, but the activation
+                            # after each linear layer must be kept, or the surrogate collapses
+                            # to a single affine map.
+                            first_linear = model_gaussian_mc["0"][[1]]
+                            first_relu = model_gaussian_mc["2"][[1]]
+                            model_sequential = torch::nn_sequential(first_linear, first_relu)
 
                             for (i in seq_len(x$num_hidden_layers - 1) + 1) {
-                              mod = model_gaussian_mc[paste0("linear_", i)]
-                              model_sequential$add_module(name = paste0("linear_", i), module = mod[[1]])
+                              linear_mod = model_gaussian_mc[paste0("linear_", i)][[1]]
+                              relu_mod = model_gaussian_mc[paste0("relu_", i)][[1]]
+                              model_sequential$add_module(name = paste0("linear_", i), module = linear_mod)
+                              model_sequential$add_module(name = paste0("relu_", i), module = relu_mod)
                             }
 
                             mod = x$fitted$model$linear_mu
@@ -151,11 +178,16 @@ explainn = R6::R6Class("explainn",
                             model_concrete = model_concrete$concrete_dropout
                             # model_concrete
 
-                            model_sequential = torch::nn_sequential(model_concrete[[1]]$linear)
+                            # Each `nn_concrete_linear` applies concrete dropout, then its own
+                            # linear layer, then a leaky ReLU (see `R/concrete_dropout.R`).
+                            # Dropout is deliberately excluded here, as is standard for
+                            # deterministic attribution, but the activation must be kept, or the
+                            # surrogate collapses to a single affine map.
+                            model_sequential = torch::nn_sequential(model_concrete[[1]]$linear, model_concrete[[1]]$relu)
 
                             for (i in seq_len(x$num_hidden_layers - 1) + 1) {
-                              mod = model_concrete[[i]]$linear
-                              model_sequential$add_module(name = i - 1, module = mod)
+                              model_sequential$add_module(name = paste0("linear_", i), module = model_concrete[[i]]$linear)
+                              model_sequential$add_module(name = paste0("relu_", i), module = model_concrete[[i]]$relu)
                             }
 
                             mod = x$fitted$model$linear_mu
@@ -166,10 +198,16 @@ explainn = R6::R6Class("explainn",
                           if (self$model_method == "deep ensemble") {
                             # FOR A DEEP ENSEMBLE MODEL
                             model = x$fitted$model
-                            # Extract one model
+                            # Extract one model. Attributions are computed for this single
+                            # ensemble member only, not averaged across the ensemble.
                             single_model = model$model_list[[self$ensemble_num_model]]
-                            # Extract nn_sequential
-                            model_sequential = single_model$mlp
+                            # Clone the container before appending the mu head below:
+                            # `single_model$mlp` is the SAME live module used by
+                            # `single_model$forward()`. Calling `add_module()` directly on it
+                            # would permanently splice the mu head into the trained network's
+                            # forward pass, corrupting every later prediction from this `abcnn`
+                            # object.
+                            model_sequential = single_model$mlp$clone()
 
                             model_sequential$add_module(name = "output_mu", module = single_model$mu)
                           }
