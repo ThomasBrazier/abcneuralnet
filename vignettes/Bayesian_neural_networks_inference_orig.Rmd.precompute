@@ -136,6 +136,42 @@ The package automatically detects and utilizes CUDA-enabled GPUs through the **l
 
 (7) Perform posterior predictive check. Draw parameters for `n` random samples in the posterior distribution with `abcnn$draw_from_posterior(n)`. Re-simulate summary statistics under your generative model with the parameters drawn from the posterior. Compare the fit of the distribution of your observed summary statistics with the distribution of re-simulated summary statistics given the posterior distributions.
 
+(8) Optionally, interpret the model with `explainn$new(abcnn)`, to find which summary statistics drive the estimate of each parameter.
+
+
+## Inputs
+
+`abcnn$new()` takes three `data.frame`s with column names:
+
+- `theta`: the simulated parameters, one row per simulation and one column per parameter to estimate.
+- `sumstat`: the summary statistics of the same simulations, in the same row order as `theta`.
+- `observed`: the summary statistics to predict on, with the same columns as `sumstat`. This can be your real data, or simulations with known parameters used as a test set.
+
+Together, `theta` and `sumstat` form the ABC reference table. Both are drawn from the prior, so the network only learns the parameter space covered by the prior: a prediction outside the range of `theta` is an extrapolation.
+
+
+## How the reference table is used
+
+At `fit()`, the reference table is randomly split into four disjoint sets:
+
+- **Training set**: used to update the network weights.
+- **Validation set** (`validation_split`, default 10%): monitors the loss at each epoch, to detect over-fitting.
+- **Evaluation set** (`test_split`, default 10%): used once, at the end of training, to give an unbiased loss.
+- **Calibration set** (`num_conformal`, default 1,000 simulations): never seen during training, it is used to calibrate the Conformal Credible Intervals (see below).
+
+The scaling functions (`scale_input`, `scale_target`) learn their parameters on the training set only. Every result returned to you (`predictions()`, plots, posterior draws) is transformed back to the original scale of the parameters.
+
+
+## What the network estimates
+
+For each observed sample and each parameter, the network returns:
+
+- **a point estimate**, `predictive_mean`, the approximate posterior mean;
+- **uncertainties**, as standard deviations: `epistemic_uncertainty` (the model's uncertainty), `aleatoric_uncertainty` (the noise in the data, not available with Monte Carlo Dropout) and `overall_uncertainty`, which combines both ($\sqrt{\sigma^2_{epistemic} + \sigma^2_{aleatoric}}$);
+- **Conformal Credible Intervals**, bounds calibrated to contain the true value with the probability `credible_interval_p` (default 95%).
+
+The Conformal Credible Interval works in two steps. First, the network predicts the calibration set, whose true parameters are known, and computes a score for each simulation: the error divided by the predicted uncertainty, $|\theta - \hat{\theta}| / \hat{\sigma}$. Then, the 95% quantile $q$ of these scores gives the interval $\hat{\theta} \pm q \, \hat{\sigma}$ for any new sample. If the network under-estimates its uncertainty, $q$ grows to compensate, and conversely. This guarantees the coverage on average over samples drawn from the prior, whatever the quality of the network. A bad network still gets a valid interval, but a wide one.
+
 
 
 # Uncertainty quantification in statistical inference: epistemic vs. aleatoric
@@ -297,6 +333,13 @@ abc$plot_training()
 ```
 
 
+How to read the training curve:
+
+- **Good fit**: training and validation losses both decrease, then flatten at a similar value, and the evaluation loss (black line) is close to them.
+- **Over-fitting**: the training loss keeps decreasing while the validation loss stops improving or increases. Reduce the number of epochs, the size of the network, or increase the batch size or the L2 weight decay.
+- **Under-fitting**: both losses stay high, or are still decreasing at the last epoch. Train for more epochs, or use a larger network.
+- **Unstable training**: the losses fluctuate strongly from one epoch to the next, or become `NaN`. Reduce the learning rate, increase the batch size, or scale the data.
+
 Note that sometimes the heteroscedastic loss value can be negative with the Concrete Dropout method. It can be confusing as MSE losses are always positive. However, negative concrete dropout losses do not impact the training procedure.
 
 You can save the `abccn` object with the fitted model and predictions.
@@ -310,6 +353,8 @@ abc = load_abcnn(prefix = "../path/abc_concrete")
 
 
 ## Cross-validation
+
+A low loss does not tell you whether the estimates are accurate, nor whether the credible intervals are reliable. Cross-validation answers these questions: the network predicts new simulations whose true parameters are known, and the predictions are compared to the truth. The new simulations must be generated with the same model and the same priors as the reference table.
 
 
 Re-use the generative model to generate a new dataset of unseen simulations with ground truth:
@@ -340,12 +385,41 @@ Print the already computed cross-validation error metrics:
 abc$cross_validation()
 ```
 
+The metrics are computed for each parameter, on its original scale:
+
+- `mae`, `mse`, `rmse`: the mean absolute error, the mean squared error and its square root. They are in the units of the parameter (squared units for `mse`), so compare them to the width of the prior. `rmse` penalizes large errors more than `mae`.
+- `nmae`: the mean absolute error normalized by the range of the true values (in %), to compare the accuracy of parameters with different units.
+- `cor`: the Spearman correlation between estimates and true values. Close to 1, the network ranks the simulations correctly.
+- `cov`: the covariance between estimates and true values.
+- `mean_epistemic_interval`, `mean_overall_interval`: the mean width of the Conformal Credible Intervals. For the same coverage, a narrower interval means a more informative estimate.
+
 
 Plot the cross-validation scatter plot (predicted ~ ground truth) with Conformal Credible Intervals:
 
 ```{r, echo = T}
 abc$plot_cross_validation()
 ```
+
+Each point is a simulation. A perfect estimator puts all points on the diagonal. Look for:
+
+- **Bias**: points systematically above or below the diagonal, often at the edges of the prior, where the estimates are pulled towards the center of the prior.
+- **Precision**: the spread of the points around the diagonal. It can vary along the prior, and the credible intervals should then vary accordingly.
+- **Informativeness**: if the estimates are flat, close to the prior mean whatever the true value, the summary statistics are not informative about this parameter.
+
+You can also check that the credible intervals have the expected coverage, i.e. that about 95% of the true values fall inside their interval:
+
+```{r, echo = T, eval = F}
+cv = abc$cross_validation_predictions
+# Same order as the predictions: one parameter after the other
+cv$true_value = unlist(abc$cross_validation_data$param)
+
+cv %>%
+  group_by(parameter) %>%
+  summarise(coverage = mean(true_value >= overall_conformal_lower &
+                              true_value <= overall_conformal_upper))
+```
+
+The coverage is guaranteed on average over the prior, not for every region of the parameter space: a coverage lower than expected in one region is a sign that the network is less reliable there.
 
 
 ## Estimates and uncertainty with the **Concrete Dropout** method
@@ -358,6 +432,8 @@ After the model is efficiently trained and the training quality has been assesse
 abc$predict()
 ```
 
+By default, `predict()` predicts the `observed` samples given to `abcnn$new()`. To predict another dataset with the same trained network, pass it as an argument, e.g. `abc$predict(data = new_observed)`. The new data replaces `observed`, and all results below then refer to it.
+
 
 
 
@@ -368,6 +444,20 @@ Credible Intervals are returned as explicit bounds (`overall_conformal_lower`/`o
 ```{r, echo = T, message=F}
 head(abc$predictions())
 ```
+
+The table has one row per sample and per parameter:
+
+| Columns | Meaning |
+|---------|---------|
+| `sample`, `parameter` | the index of the observed sample and the name of the parameter |
+| `predictive_mean` | the point estimate |
+| `epistemic_uncertainty`, `aleatoric_uncertainty`, `overall_uncertainty` | the uncertainties, as standard deviations |
+| `overall_conformal_lower`, `overall_conformal_upper` | the Conformal Credible Interval based on the overall uncertainty (recommended) |
+| `epistemic_conformal_lower`, `epistemic_conformal_upper` | the Conformal Credible Interval based on the epistemic uncertainty alone |
+| `posterior_median`, `posterior_lower_ci`, `posterior_upper_ci` | the median and quantiles of the posterior samples (`NA` for Deep Ensemble, which does not sample the posterior) |
+| columns ending with `_raw` | the interval bounds before clipping to the prior range |
+
+By default, the interval bounds are clipped to the range of the prior (`clip_to_prior = TRUE`), since the parameter cannot lie outside of it. This never reduces the coverage.
 
 
 The trained model provides separate estimates of aleatoric and epistemic uncertainty:
@@ -470,7 +560,13 @@ abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
 ## Plotting posteriors for individual observations
 
 
-For specific observations, we can examine the approximate posterior distribution:
+For specific observations, we can examine the approximate posterior distribution. `plot_posterior(sample)` draws the posterior of one sample over its prior (with `prior = TRUE`), with the point estimate and the credible interval. Compare the two distributions:
+
+- A posterior much **narrower** than the prior means that the summary statistics are informative: the data has updated our knowledge of the parameter.
+- A posterior **similar** to the prior means that the data tells little about the parameter.
+- A posterior pushed against a **bound** of the prior suggests that the true value may lie outside the prior range: consider widening the prior and re-simulating.
+
+Here, the true value (red vertical line) is known, as the observed samples are simulations:
 
 
 ```{r, echo = T, fig.height = 4, fig.width = 8, fig.align="center"}
@@ -488,6 +584,26 @@ abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "conformal") +
 Y_obs[501]
 abc$predictive_mean$y1[501]
 ```
+
+
+## Posterior predictive check
+
+Cross-validation tests the network on simulations, so it cannot detect a model that does not fit the real data. The posterior predictive check does: if the model is adequate, data simulated with parameters drawn from the posterior should look like the observed data.
+
+1. Draw parameters from the posterior of each observed sample. `draw_from_posterior(n)` returns a list with one `data.frame` per sample, of `n` rows and one column per parameter, on the original scale. The draws follow a normal distribution centred on the point estimate, with the overall uncertainty as standard deviation.
+2. Simulate new data with these parameters, with your own simulator, and compute the same summary statistics.
+3. Compare the distribution of the re-simulated summary statistics with the observed ones.
+
+```{r, echo = T, eval = F}
+posterior_draws = abc$draw_from_posterior(n = 100)
+# The parameters drawn for the first observed sample
+head(posterior_draws$sample_1)
+
+# Then, for each row, run your simulator with these parameters
+# and compute the summary statistics on the simulated data
+```
+
+If the observed summary statistics fall in the tails of the re-simulated ones, the model, or the priors, fail to reproduce the data: the estimates must then be interpreted with caution.
 
 
 
@@ -713,6 +829,12 @@ When predicting out of the training distribution, the epistemic conformal predic
 # which(abc$observed < 1 & abc$observed > -1)
 abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 ```
+
+In practice, compare the two uncertainties for each observed sample:
+
+- **Both low**: the sample is similar to the training simulations, and the estimate is precise.
+- **High aleatoric, low epistemic**: the sample is well covered by the simulations, but the data is noisy. The estimate is as good as the data allows, and more simulations will not help.
+- **High epistemic**: the sample is unlike the training simulations, and the network extrapolates. Check that the observed summary statistics lie within the range of the simulated ones, and consider simulating more data in this region or revising the priors.
 
 
 
@@ -1011,7 +1133,9 @@ deepensemble_highdim$plot_training()
 ## Model performance
 
 
-Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience):
+Evaluate performance with cross-validation (here we re-use the previous observed test set for convenience).
+
+In this toy model, the exact posterior mean of each test sample is known. The network is trained to estimate the posterior mean, not the true parameter, which remains uncertain given the data. The exact posterior mean is therefore the right reference: points on the diagonal mean that the network has learned the exact posterior mean.
 
 
 ```{r, echo = T}
@@ -1091,8 +1215,23 @@ Understanding which summary statistics drive parameter estimates is crucial for 
 
 The [https://bips-hb.github.io/innsight/](**innsight**) package backend provides twelve different explainability methods to interpret feature importance within an **explainn** object. Both local and global methods are provided, to interpret feature importance for a focal prediction (a single output/sample) or summarize importances across a whole dataset (multiple samples).
 
+### What is explained, and on which scale
+
+For every method except TabNet-ABC, **explainn** explains the mean (`mu`) head of the network; the aleatoric variance head is not explained. That head predicts the *scaled* parameter $z_j = f_j(x)$, where the scaling is set by `scale_target`. Raw attributions are therefore in units of $z_j$. These units differ between parameters (a rate in $[0, 1]$, a population size in the thousands) and between scalings (`minmax`, `logit`, ...), so the raw scores of two parameters are not comparable.
+
+To make them comparable, `run()` rescales the attributions with the chain rule. With $\theta_j = g_j(z_j)$ the back-transformation, $\partial \theta_j / \partial x_i = g_j'(z_j) \, \partial z_j / \partial x_i$. The `output_scale` argument offers three scales:
+
+- `"prior_range"` (default): attributions are multiplied by $|g_j'(z_j)| / (\max_j - \min_j)$, and read as *the change in $\theta_j$, as a fraction of its prior range*. This is the scale `minmax` already trains on, so `minmax` results, such as those below, are unchanged. The rescaling is exact for the affine scalings (`none`, `minmax`, `normalization`, `robustscaler`). For `log` and `logit` it is a local linearisation at each sample's prediction.
+- `"relative"`: for each sample and parameter, attributions are divided by $\sum_i |R_{ij}|$, giving signed shares of importance whose absolute values sum to 1. For gradient-based methods (`grad`, `smoothgrad`, `cw`) the factor $g_j'(z_j)$ cancels exactly, so the result does not depend on `scale_target`, but the magnitude of each parameter's sensitivity is lost.
+- `"none"`: raw attributions on the scaled target space.
+
+For instance, `exp$run(data, method = "grad", output_scale = "relative")` ranks the summary statistics within each parameter, independently of how that parameter was scaled.
+
+
 
 DeepLift (deep learning important features) is an algorithm introduced by Shrikumar et al. (2017). It's a local method for interpreting a single element output prediction $x$, given a reference $x'$, returning the contribution of each input feature from the difference of the output $y = f(x)$ and the reference output $y' = f(x')$ prediction.
+
+The contributions sum to this difference $f(x) - f(x')$. Here the reference $x'$ is a sample whose summary statistics are all zero on the scaled input space, i.e. the minimum of each statistic in the training set with `scale_input = "minmax"`. A contribution therefore answers the question: *how much does this summary statistic move the estimate, compared to the reference?*
 
 
 
@@ -1109,6 +1248,8 @@ exp$run(data = sumstats.test[1:1000,],
 exp$plot()
 ```
 
+There is one panel per parameter, and one bar per summary statistic. The **sign** of a bar gives the direction of the effect: a positive contribution increases the estimate of the parameter, a negative one decreases it. The **length** of a bar gives the strength of the effect. With the default `output_scale = "prior_range"`, a contribution of 0.1 means that this statistic moves the estimate by 10% of the prior range. The panels of different parameters can therefore be compared.
+
 
 Even if DeepLift is a local method, multiple samples can be passed and importance scores summarizzed across all samples' predictions.
 
@@ -1118,6 +1259,7 @@ Even if DeepLift is a local method, multiple samples can be passed and importanc
 exp$plot_global()
 ```
 
+The global plot shows the distribution of the contributions over all samples. A statistic is important for a parameter if its contributions are large in absolute value for most samples. In this example, we expect the informative statistics (`expectation`, `variance`, `mad` and their sums and products) to dominate, and the 50 noise statistics (`x1` to `x50`) to have contributions close to zero.
 
 
 The individual contributions of input variables to the subject prediction:
@@ -1135,6 +1277,8 @@ exp$get_result()[1,1:10,1:2]
 
 
 SmoothGrad is another method, which can also be interpreted as local and global feature importance scores. SmoothGrad was introduced by D. Smilkov et al. (2017) and is an extension to the classical Vanilla Gradient method (see [SmoothGrad](https://bips-hb.github.io/innsight/reference/SmoothGrad.html) for more details).
+
+Unlike DeepLift, a gradient is not a contribution relative to a reference, but a local sensitivity: *how much does the estimate change if this summary statistic changes slightly?* SmoothGrad averages the gradients over noisy copies of each sample, which makes them less noisy.
 
 
 
@@ -1162,6 +1306,17 @@ The individual contributions of input variables to individual predictions:
 ```{r, echo = T}
 exp$get_result()[1:5,1:10,1]
 ```
+
+
+### Using feature importance
+
+Feature importance is mostly useful to select summary statistics. Statistics with contributions close to zero for all parameters can be removed from the reference table. Then re-train the network, and check with cross-validation that the accuracy is not reduced.
+
+Keep in mind three limits when interpreting the scores:
+
+- Correlated summary statistics share their importance. A statistic may get a low score only because another statistic carries the same information.
+- The scores explain the network, not the simulator. They show which statistics the network uses, which is not necessarily how the parameters act in the real system.
+- Only the point estimate is explained. A statistic may matter for the uncertainty, but not for the estimate.
 
 
 
@@ -1218,6 +1373,8 @@ tabnetabc$predict()
 
 ## Model performance
 
+TabNet-ABC does not support conformal prediction. Its credible intervals are the quantiles of the ABC posterior samples (`posterior_lower_ci`, `posterior_upper_ci` in `predictions()`), so use `uncertainty_type = "posterior quantile"` in the plots. Their coverage is not calibrated: check it with cross-validation.
+
 
 ```{r tabnet_performance, echo = T, fig.height = 4, fig.width = 8, fig.cap="TabNet-ABC performance showing posterior quantile predictions compared to true parameter values."}
 tabnetabc$plot_prediction(uncertainty_type = "posterior quantile",
@@ -1257,7 +1414,13 @@ tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
 ## Tabnet attention maps for model explanation
 
 
-With the method **Tabnet-ABC**, built-in attention maps and **tabnet** methods are used instead of **innsight** methods:
+With the method **Tabnet-ABC**, built-in attention maps and **tabnet** methods are used instead of **innsight** methods.
+
+At each of its decision steps, TabNet selects the summary statistics it uses with a mask: the mask value of a statistic is its share of attention, between 0 and 1. Unlike the contributions above, mask values have no sign: they tell which statistics are used, not whether they increase or decrease the estimate. The same importance is shared by all parameters.
+
+- `plot()` (`type = "barplot"`): the mean mask value of each statistic, over all samples and steps. This is the global importance.
+- `type = "mask_agg"`: the mask values aggregated over steps, for each sample (rows) and statistic (columns). It shows whether the same statistics are used for all samples.
+- `type = "steps"`: one heatmap per decision step, to see which statistics each step focuses on.
 
 
 ```{r, echo = T, eval = T}
