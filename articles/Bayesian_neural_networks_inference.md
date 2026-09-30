@@ -225,6 +225,70 @@ analysis workflow:
     statistics with the distribution of re-simulated summary statistics
     given the posterior distributions.
 
+8.  Optionally, interpret the model with `explainn$new(abcnn)`, to find
+    which summary statistics drive the estimate of each parameter.
+
+### Inputs
+
+`abcnn$new()` takes three `data.frame`s with column names:
+
+- `theta`: the simulated parameters, one row per simulation and one
+  column per parameter to estimate.
+- `sumstat`: the summary statistics of the same simulations, in the same
+  row order as `theta`.
+- `observed`: the summary statistics to predict on, with the same
+  columns as `sumstat`. This can be your real data, or simulations with
+  known parameters used as a test set.
+
+Together, `theta` and `sumstat` form the ABC reference table. Both are
+drawn from the prior, so the network only learns the parameter space
+covered by the prior: a prediction outside the range of `theta` is an
+extrapolation.
+
+### How the reference table is used
+
+At `fit()`, the reference table is randomly split into four disjoint
+sets:
+
+- **Training set**: used to update the network weights.
+- **Validation set** (`validation_split`, default 10%): monitors the
+  loss at each epoch, to detect over-fitting.
+- **Evaluation set** (`test_split`, default 10%): used once, at the end
+  of training, to give an unbiased loss.
+- **Calibration set** (`num_conformal`, default 1,000 simulations):
+  never seen during training, it is used to calibrate the Conformal
+  Credible Intervals (see below).
+
+The scaling functions (`scale_input`, `scale_target`) learn their
+parameters on the training set only. Every result returned to you
+(`predictions()`, plots, posterior draws) is transformed back to the
+original scale of the parameters.
+
+### What the network estimates
+
+For each observed sample and each parameter, the network returns:
+
+- **a point estimate**, `predictive_mean`, the approximate posterior
+  mean;
+- **uncertainties**, as standard deviations: `epistemic_uncertainty`
+  (the model’s uncertainty), `aleatoric_uncertainty` (the noise in the
+  data, not available with Monte Carlo Dropout) and
+  `overall_uncertainty`, which combines both
+  ($`\sqrt{\sigma^2_{epistemic} + \sigma^2_{aleatoric}}`$);
+- **Conformal Credible Intervals**, bounds calibrated to contain the
+  true value with the probability `credible_interval_p` (default 95%).
+
+The Conformal Credible Interval works in two steps. First, the network
+predicts the calibration set, whose true parameters are known, and
+computes a score for each simulation: the error divided by the predicted
+uncertainty, $`|\theta - \hat{\theta}| / \hat{\sigma}`$. Then, the 95%
+quantile $`q`$ of these scores gives the interval
+$`\hat{\theta} \pm q \, \hat{\sigma}`$ for any new sample. If the
+network under-estimates its uncertainty, $`q`$ grows to compensate, and
+conversely. This guarantees the coverage on average over samples drawn
+from the prior, whatever the quality of the network. A bad network still
+gets a valid interval, but a wide one.
+
 ## Uncertainty quantification in statistical inference: epistemic vs. aleatoric
 
 Understanding the sources of uncertainty is crucial for robust
@@ -456,7 +520,7 @@ abc$fit()
 #>   <chr>  <dbl>
 #> 1 loss    39.9
 #> A `luz_module_evaluation`
-#> ── Results ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Results ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> loss: 39.8622
 ```
 
@@ -488,20 +552,20 @@ curve of the deep learning model.
 # The luz fitted model
 abc$fitted
 #> A `luz_module_fitted`
-#> ── Time ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#> • Total time: 3m 24.3s
-#> • Avg time per training epoch: 9.3s
+#> ── Time ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> • Total time: 3m 53.4s
+#> • Avg time per training epoch: 10.6s
 #> 
-#> ── Results ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Results ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> Metrics observed in the last epoch.
 #> 
 #> ℹ Training:
 #> loss: 39.5084
 #> 
-#> ── Model ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Model ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> An `nn_module` containing 33,543 parameters.
 #> 
-#> ── Modules ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Modules ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> • concrete_dropout: <nn_sequential> #33,283 parameters
 #> • linear_mu: <nn_linear> #129 parameters
 #> • linear_logvar: <nn_linear> #129 parameters
@@ -536,13 +600,28 @@ training data split in three partitions: training, validation (also
 called testing) and evaluation. Training and validation are computed at
 the end of each epoch. The black horizontal line is the loss computed on
 the evaluation dataset at the end of the training
-procedure.](figure/unnamed-chunk-18-1.png)
+procedure.](figure/unnamed-chunk-6-1.png)
 
 The training curve of the neural network across 30 epochs, computed on
 training data split in three partitions: training, validation (also
 called testing) and evaluation. Training and validation are computed at
 the end of each epoch. The black horizontal line is the loss computed on
 the evaluation dataset at the end of the training procedure.
+
+How to read the training curve:
+
+- **Good fit**: training and validation losses both decrease, then
+  flatten at a similar value, and the evaluation loss (black line) is
+  close to them.
+- **Over-fitting**: the training loss keeps decreasing while the
+  validation loss stops improving or increases. Reduce the number of
+  epochs, the size of the network, or increase the batch size or the L2
+  weight decay.
+- **Under-fitting**: both losses stay high, or are still decreasing at
+  the last epoch. Train for more epochs, or use a larger network.
+- **Unstable training**: the losses fluctuate strongly from one epoch to
+  the next, or become `NaN`. Reduce the learning rate, increase the
+  batch size, or scale the data.
 
 Note that sometimes the heteroscedastic loss value can be negative with
 the Concrete Dropout method. It can be confusing as MSE losses are
@@ -559,6 +638,13 @@ abc = load_abcnn(prefix = "../path/abc_concrete")
 ```
 
 ### Cross-validation
+
+A low loss does not tell you whether the estimates are accurate, nor
+whether the credible intervals are reliable. Cross-validation answers
+these questions: the network predicts new simulations whose true
+parameters are known, and the predictions are compared to the truth. The
+new simulations must be generated with the same model and the same
+priors as the reference table.
 
 Re-use the generative model to generate a new dataset of unseen
 simulations with ground truth:
@@ -604,6 +690,22 @@ abc$cross_validation()
 #> 1 y1         1000 0.813  1.03  1.02  5.94 0.891  4.29                    5.03                  4.04
 ```
 
+The metrics are computed for each parameter, on its original scale:
+
+- `mae`, `mse`, `rmse`: the mean absolute error, the mean squared error
+  and its square root. They are in the units of the parameter (squared
+  units for `mse`), so compare them to the width of the prior. `rmse`
+  penalizes large errors more than `mae`.
+- `nmae`: the mean absolute error normalized by the range of the true
+  values (in %), to compare the accuracy of parameters with different
+  units.
+- `cor`: the Spearman correlation between estimates and true values.
+  Close to 1, the network ranks the simulations correctly.
+- `cov`: the covariance between estimates and true values.
+- `mean_epistemic_interval`, `mean_overall_interval`: the mean width of
+  the Conformal Credible Intervals. For the same coverage, a narrower
+  interval means a more informative estimate.
+
 Plot the cross-validation scatter plot (predicted ~ ground truth) with
 Conformal Credible Intervals:
 
@@ -612,9 +714,42 @@ Conformal Credible Intervals:
 abc$plot_cross_validation()
 ```
 
-![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22-1.png)
+![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10-1.png)
 
-plot of chunk unnamed-chunk-22
+plot of chunk unnamed-chunk-10
+
+Each point is a simulation. A perfect estimator puts all points on the
+diagonal. Look for:
+
+- **Bias**: points systematically above or below the diagonal, often at
+  the edges of the prior, where the estimates are pulled towards the
+  center of the prior.
+- **Precision**: the spread of the points around the diagonal. It can
+  vary along the prior, and the credible intervals should then vary
+  accordingly.
+- **Informativeness**: if the estimates are flat, close to the prior
+  mean whatever the true value, the summary statistics are not
+  informative about this parameter.
+
+You can also check that the credible intervals have the expected
+coverage, i.e. that about 95% of the true values fall inside their
+interval:
+
+``` r
+
+cv = abc$cross_validation_predictions
+# Same order as the predictions: one parameter after the other
+cv$true_value = unlist(abc$cross_validation_data$param)
+
+cv %>%
+  group_by(parameter) %>%
+  summarise(coverage = mean(true_value >= overall_conformal_lower &
+                              true_value <= overall_conformal_upper))
+```
+
+The coverage is guaranteed on average over the prior, not for every
+region of the parameter space: a coverage lower than expected in one
+region is a sign that the network is less reliable there.
 
 ### Estimates and uncertainty with the **Concrete Dropout** method
 
@@ -632,6 +767,12 @@ abc$predict()
 #> 
 #> [1] "Predictions with 1000 samples."
 ```
+
+By default, [`predict()`](https://rdrr.io/r/stats/predict.html) predicts
+the `observed` samples given to `abcnn$new()`. To predict another
+dataset with the same trained network, pass it as an argument,
+e.g. `abc$predict(data = new_observed)`. The new data replaces
+`observed`, and all results below then refer to it.
 
 You can get predictions with their associated uncertainties and
 Conformal Credibility Intervals as a tidy data frame.
@@ -665,21 +806,37 @@ head(abc$predictions())
 #> 4                  9.121168                5.473535                9.280075         7.384099           6.853655           7.826929
 #> 5                 12.376858                7.637078               11.673106         9.732057           8.481791          10.226108
 #> 6                  8.491236                2.914346                6.936023         4.856439           4.459275           6.475613
-#>   epistemic_conformal_lower_raw epistemic_conformal_upper_raw overall_conformal_lower_raw overall_conformal_upper_raw
-#> 1                      7.470950                     13.731788                    8.548126                   12.654612
-#> 2                      6.077671                      9.455619                    5.794153                    9.739136
-#> 3                      5.872578                      9.312102                    5.657490                    9.527189
-#> 4                      5.632442                      9.121168                    5.473535                    9.280075
-#> 5                      6.933326                     12.376858                    7.637078                   11.673106
-#> 6                      1.359133                      8.491236                    2.914346                    6.936023
-#>   posterior_lower_ci_raw posterior_upper_ci_raw
-#> 1               9.646818              11.211327
-#> 2               7.227952               8.200615
-#> 3               7.071207               8.037649
-#> 4               6.853655               7.826929
-#> 5               8.481791              10.226108
-#> 6               4.459275               6.475613
+#>   epistemic_conformal_lower_raw epistemic_conformal_upper_raw overall_conformal_lower_raw overall_conformal_upper_raw posterior_lower_ci_raw
+#> 1                      7.470950                     13.731788                    8.548126                   12.654612               9.646818
+#> 2                      6.077671                      9.455619                    5.794153                    9.739136               7.227952
+#> 3                      5.872578                      9.312102                    5.657490                    9.527189               7.071207
+#> 4                      5.632442                      9.121168                    5.473535                    9.280075               6.853655
+#> 5                      6.933326                     12.376858                    7.637078                   11.673106               8.481791
+#> 6                      1.359133                      8.491236                    2.914346                    6.936023               4.459275
+#>   posterior_upper_ci_raw
+#> 1              11.211327
+#> 2               8.200615
+#> 3               8.037649
+#> 4               7.826929
+#> 5              10.226108
+#> 6               6.475613
 ```
+
+The table has one row per sample and per parameter:
+
+| Columns | Meaning |
+|----|----|
+| `sample`, `parameter` | the index of the observed sample and the name of the parameter |
+| `predictive_mean` | the point estimate |
+| `epistemic_uncertainty`, `aleatoric_uncertainty`, `overall_uncertainty` | the uncertainties, as standard deviations |
+| `overall_conformal_lower`, `overall_conformal_upper` | the Conformal Credible Interval based on the overall uncertainty (recommended) |
+| `epistemic_conformal_lower`, `epistemic_conformal_upper` | the Conformal Credible Interval based on the epistemic uncertainty alone |
+| `posterior_median`, `posterior_lower_ci`, `posterior_upper_ci` | the median and quantiles of the posterior samples (`NA` for Deep Ensemble, which does not sample the posterior) |
+| columns ending with `_raw` | the interval bounds before clipping to the prior range |
+
+By default, the interval bounds are clipped to the range of the prior
+(`clip_to_prior = TRUE`), since the parameter cannot lie outside of it.
+This never reduces the coverage.
 
 The trained model provides separate estimates of aleatoric and epistemic
 uncertainty:
@@ -726,7 +883,7 @@ ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
 ![Predictions as a function of simulated parameter. The purple ribbon is
 the Conformal Credible Interval based on the epistemic unvertainty
 alone. The green ribbon is the Conformal Credible Interval based on the
-overall unvertainty.](figure/unnamed-chunk-26-1.png)
+overall unvertainty.](figure/unnamed-chunk-15-1.png)
 
 Predictions as a function of simulated parameter. The purple ribbon is
 the Conformal Credible Interval based on the epistemic unvertainty
@@ -770,7 +927,7 @@ ggplot(data = df_training[1:1000,], aes(x = x, y = y)) +
 
 ![Predictions as a function of simulated parameters. The epistemic
 uncertainty (red) and aleatoric uncertainty (blue) were estimated with
-Concrete Dropout (Gal et 2017).](figure/unnamed-chunk-27-1.png)
+Concrete Dropout (Gal et 2017).](figure/unnamed-chunk-16-1.png)
 
 Predictions as a function of simulated parameters. The epistemic
 uncertainty (red) and aleatoric uncertainty (blue) were estimated with
@@ -839,9 +996,9 @@ and below):
 abc$plot_cross_validation()
 ```
 
-![plot of chunk unnamed-chunk-28](figure/unnamed-chunk-28-1.png)
+![plot of chunk unnamed-chunk-17](figure/unnamed-chunk-17-1.png)
 
-plot of chunk unnamed-chunk-28
+plot of chunk unnamed-chunk-17
 
 If you have the same number of input and output parameters (e.g., x1 and
 x2 as input, y1 and y2 as output), then the default representation in
@@ -856,14 +1013,28 @@ abc$plot_prediction(uncertainty_type = "uncertainty", plot_type = "errorbar")
 #> Back-transform scaled parameters with method: none
 ```
 
-![plot of chunk unnamed-chunk-29](figure/unnamed-chunk-29-1.png)
+![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18-1.png)
 
-plot of chunk unnamed-chunk-29
+plot of chunk unnamed-chunk-18
 
 ### Plotting posteriors for individual observations
 
 For specific observations, we can examine the approximate posterior
-distribution:
+distribution. `plot_posterior(sample)` draws the posterior of one sample
+over its prior (with `prior = TRUE`), with the point estimate and the
+credible interval. Compare the two distributions:
+
+- A posterior much **narrower** than the prior means that the summary
+  statistics are informative: the data has updated our knowledge of the
+  parameter.
+- A posterior **similar** to the prior means that the data tells little
+  about the parameter.
+- A posterior pushed against a **bound** of the prior suggests that the
+  true value may lie outside the prior range: consider widening the
+  prior and re-simulating.
+
+Here, the true value (red vertical line) is known, as the observed
+samples are simulations:
 
 ``` r
 
@@ -873,9 +1044,9 @@ abc$plot_posterior(sample = 701, prior = TRUE, uncertainty_type = "uncertainty")
 #> Back-transform scaled posteriors with method: none
 ```
 
-![plot of chunk unnamed-chunk-30](figure/unnamed-chunk-30-1.png)
+![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19-1.png)
 
-plot of chunk unnamed-chunk-30
+plot of chunk unnamed-chunk-19
 
 ``` r
 
@@ -896,7 +1067,7 @@ abc$plot_posterior(sample = 501, prior = TRUE, uncertainty_type = "conformal") +
 ![Distribution of approximate posterior estimates with predictive means
 and credible intervals. The prior distribution is plotted underneath
 (white bars) to compare priors and
-posteriors.](figure/unnamed-chunk-31-1.png)
+posteriors.](figure/unnamed-chunk-20-1.png)
 
 Distribution of approximate posterior estimates with predictive means
 and credible intervals. The prior distribution is plotted underneath
@@ -909,6 +1080,37 @@ Y_obs[501]
 abc$predictive_mean$y1[501]
 #> [1] 10.09593
 ```
+
+### Posterior predictive check
+
+Cross-validation tests the network on simulations, so it cannot detect a
+model that does not fit the real data. The posterior predictive check
+does: if the model is adequate, data simulated with parameters drawn
+from the posterior should look like the observed data.
+
+1.  Draw parameters from the posterior of each observed sample.
+    `draw_from_posterior(n)` returns a list with one `data.frame` per
+    sample, of `n` rows and one column per parameter, on the original
+    scale. The draws follow a normal distribution centred on the point
+    estimate, with the overall uncertainty as standard deviation.
+2.  Simulate new data with these parameters, with your own simulator,
+    and compute the same summary statistics.
+3.  Compare the distribution of the re-simulated summary statistics with
+    the observed ones.
+
+``` r
+
+posterior_draws = abc$draw_from_posterior(n = 100)
+# The parameters drawn for the first observed sample
+head(posterior_draws$sample_1)
+
+# Then, for each row, run your simulator with these parameters
+# and compute the summary statistics on the simulated data
+```
+
+If the observed summary statistics fall in the tails of the re-simulated
+ones, the model, or the priors, fail to reproduce the data: the
+estimates must then be interpreted with caution.
 
 ## Case study 2: Nonlinear multivariate regression with **Deep Ensemble**
 
@@ -1014,9 +1216,9 @@ df_deepensemble = list(df_train = df_train,
                        df_observed = df_observed)
 ```
 
-![plot of chunk unnamed-chunk-33](figure/unnamed-chunk-33-1.png)
+![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23-1.png)
 
-plot of chunk unnamed-chunk-33
+plot of chunk unnamed-chunk-23
 
 ### Deep Ensemble Training
 
@@ -1082,9 +1284,9 @@ Checking the model training:
 abc_ensemble$plot_training()
 ```
 
-![plot of chunk unnamed-chunk-36](figure/unnamed-chunk-36-1.png)
+![plot of chunk unnamed-chunk-26](figure/unnamed-chunk-26-1.png)
 
-plot of chunk unnamed-chunk-36
+plot of chunk unnamed-chunk-26
 
 ### Variation in Uncertainty Quantification across different regions
 
@@ -1119,9 +1321,9 @@ abc_ensemble$plot_prediction(uncertainty_type = "uncertainty")
 #> Back-transform scaled parameters with method: none
 ```
 
-![plot of chunk unnamed-chunk-39](figure/unnamed-chunk-39-1.png)
+![plot of chunk unnamed-chunk-29](figure/unnamed-chunk-29-1.png)
 
-plot of chunk unnamed-chunk-39
+plot of chunk unnamed-chunk-29
 
 ``` r
 
@@ -1129,9 +1331,9 @@ abc_ensemble$plot_prediction(uncertainty_type = "conformal")
 #> Back-transform scaled parameters with method: none
 ```
 
-![plot of chunk unnamed-chunk-40](figure/unnamed-chunk-40-1.png)
+![plot of chunk unnamed-chunk-30](figure/unnamed-chunk-30-1.png)
 
-plot of chunk unnamed-chunk-40
+plot of chunk unnamed-chunk-30
 
 The uncertainty, especially epistemic uncertainty, increases in unseen
 regions during training. In addition, the aleatoric uncertainty
@@ -1148,9 +1350,9 @@ abc_ensemble$plot_posterior(sample = 155, prior = TRUE)
 #> Back-transform scaled parameters with method: none
 ```
 
-![plot of chunk unnamed-chunk-41](figure/unnamed-chunk-41-1.png)
+![plot of chunk unnamed-chunk-31](figure/unnamed-chunk-31-1.png)
 
-plot of chunk unnamed-chunk-41
+plot of chunk unnamed-chunk-31
 
 For samples in a region with a lot of noise in the data, both the
 overall and epistemic conformal prediction intervals increase:
@@ -1163,9 +1365,9 @@ abc_ensemble$plot_posterior(sample = 800, prior = TRUE)
 #> Back-transform scaled parameters with method: none
 ```
 
-![plot of chunk unnamed-chunk-42](figure/unnamed-chunk-42-1.png)
+![plot of chunk unnamed-chunk-32](figure/unnamed-chunk-32-1.png)
 
-plot of chunk unnamed-chunk-42
+plot of chunk unnamed-chunk-32
 
 When predicting out of the training distribution, the epistemic
 conformal prediction interval increases a lot compared to the overall:
@@ -1178,9 +1380,21 @@ abc_ensemble$plot_posterior(sample = 520, prior = TRUE)
 #> Back-transform scaled parameters with method: none
 ```
 
-![plot of chunk unnamed-chunk-43](figure/unnamed-chunk-43-1.png)
+![plot of chunk unnamed-chunk-33](figure/unnamed-chunk-33-1.png)
 
-plot of chunk unnamed-chunk-43
+plot of chunk unnamed-chunk-33
+
+In practice, compare the two uncertainties for each observed sample:
+
+- **Both low**: the sample is similar to the training simulations, and
+  the estimate is precise.
+- **High aleatoric, low epistemic**: the sample is well covered by the
+  simulations, but the data is noisy. The estimate is as good as the
+  data allows, and more simulations will not help.
+- **High epistemic**: the sample is unlike the training simulations, and
+  the network extrapolates. Check that the observed summary statistics
+  lie within the range of the simulated ones, and consider simulating
+  more data in this region or revising the priors.
 
 ## Case Study 3: Model Interpretability and Feature Importance in a high-dimensional dataset
 
@@ -1315,14 +1529,20 @@ deepensemble_highdim$fit()
 deepensemble_highdim$plot_training()
 ```
 
-![plot of chunk unnamed-chunk-48](figure/unnamed-chunk-48-1.png)
+![plot of chunk unnamed-chunk-38](figure/unnamed-chunk-38-1.png)
 
-plot of chunk unnamed-chunk-48
+plot of chunk unnamed-chunk-38
 
 ### Model performance
 
 Evaluate performance with cross-validation (here we re-use the previous
-observed test set for convenience):
+observed test set for convenience).
+
+In this toy model, the exact posterior mean of each test sample is
+known. The network is trained to estimate the posterior mean, not the
+true parameter, which remains uncertain given the data. The exact
+posterior mean is therefore the right reference: points on the diagonal
+mean that the network has learned the exact posterior mean.
 
 ``` r
 
@@ -1347,9 +1567,9 @@ deepensemble_highdim$cross_validation(true.theta,
 deepensemble_highdim$plot_cross_validation()
 ```
 
-![plot of chunk unnamed-chunk-49](figure/unnamed-chunk-49-1.png)
+![plot of chunk unnamed-chunk-39](figure/unnamed-chunk-39-1.png)
 
-plot of chunk unnamed-chunk-49
+plot of chunk unnamed-chunk-39
 
 Plot the predictions on the observed summary statistics:
 
@@ -1368,7 +1588,7 @@ deepensemble_highdim$plot_prediction(uncertainty_type = "conformal")
 ```
 
 ![TabNet-ABC performance showing posterior quantile predictions compared
-to true parameter values.](figure/unnamed-chunk-50-1.png)
+to true parameter values.](figure/unnamed-chunk-40-1.png)
 
 TabNet-ABC performance showing posterior quantile predictions compared
 to true parameter values.
@@ -1394,7 +1614,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 ![Scatter plot comparing DeepEnsemble predictions to exact posterior
 means. The shaded region represents 95% credible
-intervals.](figure/unnamed-chunk-51-1.png)
+intervals.](figure/unnamed-chunk-41-1.png)
 
 Scatter plot comparing DeepEnsemble predictions to exact posterior
 means. The shaded region represents 95% credible intervals.
@@ -1420,7 +1640,7 @@ ggplot(df, aes(x = true.theta, y = predictive_mean)) +
 
 ![Scatter plot comparing DeepEnsemble predictions to exact posterior
 means. The shaded region represents 95% credible
-intervals.](figure/unnamed-chunk-52-1.png)
+intervals.](figure/unnamed-chunk-42-1.png)
 
 Scatter plot comparing DeepEnsemble predictions to exact posterior
 means. The shaded region represents 95% credible intervals.
@@ -1431,7 +1651,7 @@ deepensemble_highdim$plot_posterior(100)
 #> Back-transform scaled parameters with method: minmax
 ```
 
-![Prediction for a single point.](figure/unnamed-chunk-53-1.png)
+![Prediction for a single point.](figure/unnamed-chunk-43-1.png)
 
 Prediction for a single point.
 
@@ -1451,12 +1671,55 @@ and global methods are provided, to interpret feature importance for a
 focal prediction (a single output/sample) or summarize importances
 across a whole dataset (multiple samples).
 
+#### What is explained, and on which scale
+
+For every method except TabNet-ABC, **explainn** explains the mean
+(`mu`) head of the network; the aleatoric variance head is not
+explained. That head predicts the *scaled* parameter $`z_j = f_j(x)`$,
+where the scaling is set by `scale_target`. Raw attributions are
+therefore in units of $`z_j`$. These units differ between parameters (a
+rate in $`[0, 1]`$, a population size in the thousands) and between
+scalings (`minmax`, `logit`, …), so the raw scores of two parameters are
+not comparable.
+
+To make them comparable, `run()` rescales the attributions with the
+chain rule. With $`\theta_j = g_j(z_j)`$ the back-transformation,
+$`\partial \theta_j / \partial x_i = g_j'(z_j) \, \partial z_j / \partial x_i`$.
+The `output_scale` argument offers three scales:
+
+- `"prior_range"` (default): attributions are multiplied by
+  $`|g_j'(z_j)| / (\max_j - \min_j)`$, and read as *the change in
+  $`\theta_j`$, as a fraction of its prior range*. This is the scale
+  `minmax` already trains on, so `minmax` results, such as those below,
+  are unchanged. The rescaling is exact for the affine scalings (`none`,
+  `minmax`, `normalization`, `robustscaler`). For `log` and `logit` it
+  is a local linearisation at each sample’s prediction.
+- `"relative"`: for each sample and parameter, attributions are divided
+  by $`\sum_i |R_{ij}|`$, giving signed shares of importance whose
+  absolute values sum to 1. For gradient-based methods (`grad`,
+  `smoothgrad`, `cw`) the factor $`g_j'(z_j)`$ cancels exactly, so the
+  result does not depend on `scale_target`, but the magnitude of each
+  parameter’s sensitivity is lost.
+- `"none"`: raw attributions on the scaled target space.
+
+For instance,
+`exp$run(data, method = "grad", output_scale = "relative")` ranks the
+summary statistics within each parameter, independently of how that
+parameter was scaled.
+
 DeepLift (deep learning important features) is an algorithm introduced
 by Shrikumar et al. (2017). It’s a local method for interpreting a
 single element output prediction $`x`$, given a reference $`x'`$,
 returning the contribution of each input feature from the difference of
 the output $`y = f(x)`$ and the reference output $`y' = f(x')`$
 prediction.
+
+The contributions sum to this difference $`f(x) - f(x')`$. Here the
+reference $`x'`$ is a sample whose summary statistics are all zero on
+the scaled input space, i.e. the minimum of each statistic in the
+training set with `scale_input = "minmax"`. A contribution therefore
+answers the question: *how much does this summary statistic move the
+estimate, compared to the reference?*
 
 ``` r
 
@@ -1479,6 +1742,14 @@ Feature importance visualization using DeepLIFT attribution methods, for
 the first sample output prediction. Colors indicate the contribution of
 each feature to the final prediction.
 
+There is one panel per parameter, and one bar per summary statistic. The
+**sign** of a bar gives the direction of the effect: a positive
+contribution increases the estimate of the parameter, a negative one
+decreases it. The **length** of a bar gives the strength of the effect.
+With the default `output_scale = "prior_range"`, a contribution of 0.1
+means that this statistic moves the estimate by 10% of the prior range.
+The panels of different parameters can therefore be compared.
+
 Even if DeepLift is a local method, multiple samples can be passed and
 importance scores summarizzed across all samples’ predictions.
 
@@ -1489,11 +1760,18 @@ exp$plot_global()
 
 ![Feature importance visualization using DeepLIFT attribution methods,
 summarized across the 1,000 smaples. Colors indicate the contribution of
-each feature to the final prediction.](figure/unnamed-chunk-55-1.png)
+each feature to the final prediction.](figure/unnamed-chunk-45-1.png)
 
 Feature importance visualization using DeepLIFT attribution methods,
 summarized across the 1,000 smaples. Colors indicate the contribution of
 each feature to the final prediction.
+
+The global plot shows the distribution of the contributions over all
+samples. A statistic is important for a parameter if its contributions
+are large in absolute value for most samples. In this example, we expect
+the informative statistics (`expectation`, `variance`, `mad` and their
+sums and products) to dominate, and the 50 noise statistics (`x1` to
+`x50`) to have contributions close to zero.
 
 The individual contributions of input variables to the subject
 prediction:
@@ -1525,6 +1803,11 @@ Gradient method (see
 [SmoothGrad](https://bips-hb.github.io/innsight/reference/SmoothGrad.html)
 for more details).
 
+Unlike DeepLift, a gradient is not a contribution relative to a
+reference, but a local sensitivity: *how much does the estimate change
+if this summary statistic changes slightly?* SmoothGrad averages the
+gradients over noisy copies of each sample, which makes them less noisy.
+
 ``` r
 
 exp = explainn$new(deepensemble_highdim)
@@ -1540,7 +1823,7 @@ exp$plot()
 
 ![Feature importance visualization using SmoothGrad attribution methods.
 Colors indicate the contribution of each feature to the final
-prediction.](figure/unnamed-chunk-58-1.png)
+prediction.](figure/unnamed-chunk-48-1.png)
 
 Feature importance visualization using SmoothGrad attribution methods.
 Colors indicate the contribution of each feature to the final
@@ -1553,7 +1836,7 @@ exp$plot_global()
 
 ![Feature importance visualization using SmoothGrad attribution methods.
 Colors indicate the contribution of each feature to the final
-prediction.](figure/unnamed-chunk-59-1.png)
+prediction.](figure/unnamed-chunk-49-1.png)
 
 Feature importance visualization using SmoothGrad attribution methods.
 Colors indicate the contribution of each feature to the final
@@ -1572,6 +1855,24 @@ exp$get_result()[1:5,1:10,1]
 #> [4,]   0.2815911 -0.2726069 -0.09904933 -0.0002048982 -0.0050899796 -0.005167882  0.0027714744 -0.0031999976  0.0001999787  0.0049915854
 #> [5,]   0.2819223 -0.2315628 -0.09524434 -0.0011065223  0.0005494779 -0.004843851 -0.0018232102 -0.0020965657 -0.0046313121  0.0026019877
 ```
+
+#### Using feature importance
+
+Feature importance is mostly useful to select summary statistics.
+Statistics with contributions close to zero for all parameters can be
+removed from the reference table. Then re-train the network, and check
+with cross-validation that the accuracy is not reduced.
+
+Keep in mind three limits when interpreting the scores:
+
+- Correlated summary statistics share their importance. A statistic may
+  get a low score only because another statistic carries the same
+  information.
+- The scores explain the network, not the simulator. They show which
+  statistics the network uses, which is not necessarily how the
+  parameters act in the real system.
+- Only the point estimate is explained. A statistic may matter for the
+  uncertainty, but not for the estimate.
 
 ## ABC Integration with TabNet
 
@@ -1685,11 +1986,17 @@ tabnetabc$fit()
 tabnetabc$plot_training()
 ```
 
-![plot of chunk unnamed-chunk-63](figure/unnamed-chunk-63-1.png)
+![plot of chunk unnamed-chunk-53](figure/unnamed-chunk-53-1.png)
 
-plot of chunk unnamed-chunk-63
+plot of chunk unnamed-chunk-53
 
 ### Model performance
+
+TabNet-ABC does not support conformal prediction. Its credible intervals
+are the quantiles of the ABC posterior samples (`posterior_lower_ci`,
+`posterior_upper_ci` in `predictions()`), so use
+`uncertainty_type = "posterior quantile"` in the plots. Their coverage
+is not calibrated: check it with cross-validation.
 
 ``` r
 
@@ -1740,7 +2047,23 @@ tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
 ### Tabnet attention maps for model explanation
 
 With the method **Tabnet-ABC**, built-in attention maps and **tabnet**
-methods are used instead of **innsight** methods:
+methods are used instead of **innsight** methods.
+
+At each of its decision steps, TabNet selects the summary statistics it
+uses with a mask: the mask value of a statistic is its share of
+attention, between 0 and 1. Unlike the contributions above, mask values
+have no sign: they tell which statistics are used, not whether they
+increase or decrease the estimate. The same importance is shared by all
+parameters.
+
+- [`plot()`](https://rdrr.io/r/graphics/plot.default.html)
+  (`type = "barplot"`): the mean mask value of each statistic, over all
+  samples and steps. This is the global importance.
+- `type = "mask_agg"`: the mask values aggregated over steps, for each
+  sample (rows) and statistic (columns). It shows whether the same
+  statistics are used for all samples.
+- `type = "steps"`: one heatmap per decision step, to see which
+  statistics each step focuses on.
 
 ``` r
 
@@ -1755,27 +2078,27 @@ exp$run(data = sumstats.test)
 exp$plot()
 ```
 
-![plot of chunk unnamed-chunk-67](figure/unnamed-chunk-67-1.png)
+![plot of chunk unnamed-chunk-57](figure/unnamed-chunk-57-1.png)
 
-plot of chunk unnamed-chunk-67
+plot of chunk unnamed-chunk-57
 
 ``` r
 
 exp$plot(type = "mask_agg")
 ```
 
-![plot of chunk unnamed-chunk-68](figure/unnamed-chunk-68-1.png)
+![plot of chunk unnamed-chunk-58](figure/unnamed-chunk-58-1.png)
 
-plot of chunk unnamed-chunk-68
+plot of chunk unnamed-chunk-58
 
 ``` r
 
 exp$plot(type = "steps")
 ```
 
-![plot of chunk unnamed-chunk-69](figure/unnamed-chunk-69-1.png)
+![plot of chunk unnamed-chunk-59](figure/unnamed-chunk-59-1.png)
 
-plot of chunk unnamed-chunk-69
+plot of chunk unnamed-chunk-59
 
 ## FAQ
 
@@ -2066,40 +2389,42 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#>  [1] MCMCpack_1.7-1         MASS_7.3-65            coda_0.19-4.1          spatstat_3.6-1         spatstat.linnet_3.5-1 
-#>  [6] spatstat.model_3.7-1   rpart_4.1.27           spatstat.explore_3.8-1 nlme_3.1-169           spatstat.random_3.5-0 
-#> [11] spatstat.geom_3.8-2    spatstat.univar_3.2-0  spatstat.data_3.1-9    mvtnorm_1.4-1          kableExtra_1.4.0      
-#> [16] lubridate_1.9.5        forcats_1.0.1          stringr_1.6.0          dplyr_1.2.1            purrr_1.2.2           
-#> [21] readr_2.2.0            tidyr_1.3.2            tibble_3.3.1           tidyverse_2.0.0        torch_0.17.0          
-#> [26] ggplot2_4.0.3          abcneuralnet_0.3.1     testthat_3.3.2        
+#>  [1] abcneuralnet_0.3.2     testthat_3.3.2         MCMCpack_1.7-1         MASS_7.3-65            coda_0.19-4.1         
+#>  [6] spatstat_3.6-1         spatstat.linnet_3.5-1  spatstat.model_3.7-1   rpart_4.1.27           spatstat.explore_3.8-1
+#> [11] nlme_3.1-169           spatstat.random_3.5-0  spatstat.geom_3.8-2    spatstat.univar_3.2-0  spatstat.data_3.1-9   
+#> [16] mvtnorm_1.4-1          kableExtra_1.4.0       lubridate_1.9.5        forcats_1.0.1          stringr_1.6.0         
+#> [21] dplyr_1.2.1            purrr_1.2.2            readr_2.2.0            tidyr_1.3.2            tibble_3.3.1          
+#> [26] tidyverse_2.0.0        torch_0.17.0           ggplot2_4.0.3         
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] fs_2.1.0              matrixStats_1.5.0     spatstat.sparse_3.2-0 devtools_2.5.2        DiceDesign_1.10       RColorBrewer_1.1-3   
-#>   [7] doParallel_1.0.17     tools_4.6.1           ConsRank_3.0          backports_1.5.1       utf8_1.2.6            R6_2.6.1             
-#>  [13] mgcv_1.9-4            yardstick_1.4.0       withr_3.0.2           prettyunits_1.2.0     quantreg_6.1          cli_3.6.6            
-#>  [19] textshaping_1.0.5     abc.data_1.1          Cubist_0.6.0          innsight_0.3.2        sandwich_3.1-1        labeling_0.4.3       
-#>  [25] S7_0.2.2              randomForest_4.7-1.2  tune_2.1.0            proxy_0.4-29          systemfonts_1.3.2     svglite_2.2.2        
-#>  [31] parallelly_1.47.0     sessioninfo_1.2.4     bundle_0.1.3          plotrix_3.8-14        rstudioapi_0.18.0     generics_0.1.4       
-#>  [37] shape_1.4.6.1         gtools_3.9.5          car_3.1-5             Matrix_1.7-5          waldo_0.6.2           abind_1.4-8          
-#>  [43] lifecycle_1.0.5       multcomp_1.4-30       yaml_2.3.12           carData_3.0-6         snakecase_0.11.1      rminer_1.5.0         
-#>  [49] recipes_1.3.3         grid_4.6.1            strucchange_1.5-4     pls_2.9-0             adabag_5.1            crayon_1.5.3         
-#>  [55] lattice_0.22-9        cowplot_1.2.0         zeallot_0.2.0         pillar_1.11.1         knitr_1.51            xgboost_3.2.1.1      
-#>  [61] future.apply_1.20.2   codetools_0.2-20      glue_1.8.1            rsample_1.3.2         data.table_1.18.4     vctrs_0.7.3          
-#>  [67] Rdpack_2.6.6          gtable_0.3.6          kernlab_0.9-33        assertthat_0.2.1      cachem_1.1.0          gower_1.0.2          
-#>  [73] xfun_0.57             rbibutils_2.4.1       prodlim_2026.03.11    libcoin_1.0-13        safetensors_0.2.1     survival_3.8-6       
-#>  [79] timeDate_4052.112     diffobj_0.3.6         iterators_1.0.14      hardhat_1.4.3         lava_1.9.1            ellipsis_0.3.3       
-#>  [85] TH.data_1.1-5         ipred_0.9-15          mcmc_0.9-8            usethis_3.2.1         bit64_4.8.2           progress_1.2.3       
-#>  [91] rprojroot_2.1.1       otel_0.2.0            nnet_7.3-20           tidyselect_1.2.1      processx_3.9.0        bit_4.6.0            
-#>  [97] compiler_4.6.1        mda_0.5-5             glmnet_5.0            abc_2.2.2             SparseM_1.84-2        xml2_1.5.2           
-#> [103] desc_1.4.3            checkmate_2.3.4       scales_1.4.0          callr_3.7.6           digest_0.6.39         goftest_1.2-3        
-#> [109] spatstat.utils_3.2-4  rmarkdown_2.31        htmltools_0.5.9       pkgconfig_2.0.3       coro_1.1.0            fastmap_1.2.0        
-#> [115] rlang_1.2.0           farver_2.1.2          zoo_1.8-15            jsonlite_2.0.0        ModelMetrics_1.2.2.2  rlist_0.4.6.2        
-#> [121] magrittr_2.0.5        Formula_1.2-5         modeltools_0.2-24     Rcpp_1.1.1-1.1        furrr_0.4.0           stringi_1.8.7        
-#> [127] pROC_1.19.0.1         brio_1.1.5            plyr_1.8.9            pkgbuild_1.4.8        tabnet_0.9.0          parallel_4.6.1       
-#> [133] listenv_0.10.1        luz_0.5.2             deldir_2.0-4          splines_4.6.1         tensor_1.5.1          hms_1.1.4            
-#> [139] locfit_1.5-9.12       ps_1.9.3              igraph_2.3.1          ggpubr_0.6.3          party_1.3-20          ggsignif_0.6.4       
-#> [145] dials_1.4.3           reshape2_1.4.5        parsnip_1.6.0         stats4_4.6.1          pkgload_1.5.2         evaluate_1.0.5       
-#> [151] tzdb_0.5.0            foreach_1.5.2         MatrixModels_0.5-4    polyclip_1.10-7       future_1.70.0         coin_1.4-3           
-#> [157] janitor_2.2.1         broom_1.0.13          e1071_1.7-17          rstatix_0.7.3         viridisLite_0.4.3     class_7.3-23         
-#> [163] kknn_1.4.1            memoise_2.0.1         workflows_1.3.0       timechange_0.4.0      globals_0.19.1        caret_7.0-1
+#>   [1] fs_2.1.0              matrixStats_1.5.0     spatstat.sparse_3.2-0 xopen_1.0.1           devtools_2.5.2        DiceDesign_1.10      
+#>   [7] RColorBrewer_1.1-3    doParallel_1.0.17     tools_4.6.1           ConsRank_3.0          backports_1.5.1       utf8_1.2.6           
+#>  [13] R6_2.6.1              mgcv_1.9-4            yardstick_1.4.0       withr_3.0.2           prettyunits_1.2.0     quantreg_6.1         
+#>  [19] cli_3.6.6             textshaping_1.0.5     abc.data_1.1          Cubist_0.6.0          innsight_0.3.2        sandwich_3.1-1       
+#>  [25] labeling_0.4.3        S7_0.2.2              randomForest_4.7-1.2  tune_2.1.0            proxy_0.4-29          askpass_1.2.1        
+#>  [31] systemfonts_1.3.2     svglite_2.2.2         parallelly_1.47.0     sessioninfo_1.2.4     bundle_0.1.3          plotrix_3.8-14       
+#>  [37] rstudioapi_0.18.0     shape_1.4.6.1         generics_0.1.4        gtools_3.9.5          car_3.1-5             Matrix_1.7-5         
+#>  [43] abind_1.4-8           lifecycle_1.0.5       multcomp_1.4-30       yaml_2.3.12           snakecase_0.11.1      carData_3.0-6        
+#>  [49] rminer_1.5.0          recipes_1.3.3         grid_4.6.1            pls_2.9-0             strucchange_1.5-4     adabag_5.1           
+#>  [55] crayon_1.5.3          lattice_0.22-9        cowplot_1.2.0         sys_3.4.3             zeallot_0.2.0         pillar_1.11.1        
+#>  [61] knitr_1.51            pak_0.9.5             xgboost_3.2.1.1       future.apply_1.20.2   codetools_0.2-20      glue_1.8.1           
+#>  [67] rsample_1.3.2         data.table_1.18.4     remotes_2.5.0         vctrs_0.7.3           Rdpack_2.6.6          gtable_0.3.6         
+#>  [73] rcmdcheck_1.4.0       kernlab_0.9-33        cachem_1.1.0          gower_1.0.2           xfun_0.57             rbibutils_2.4.1      
+#>  [79] prodlim_2026.03.11    libcoin_1.0-13        safetensors_0.2.1     survival_3.8-6        timeDate_4052.112     iterators_1.0.14     
+#>  [85] hardhat_1.4.3         lava_1.9.1            ellipsis_0.3.3        TH.data_1.1-5         ipred_0.9-15          mcmc_0.9-8           
+#>  [91] usethis_3.2.1         bit64_4.8.2           progress_1.2.3        rprojroot_2.1.1       otel_0.2.0            nnet_7.3-20          
+#>  [97] tidyselect_1.2.1      processx_3.9.0        bit_4.6.0             compiler_4.6.1        curl_7.1.0            mda_0.5-5            
+#> [103] glmnet_5.0            abc_2.2.2             SparseM_1.84-2        xml2_1.5.2            desc_1.4.3            checkmate_2.3.4      
+#> [109] scales_1.4.0          callr_3.7.6           digest_0.6.39         goftest_1.2-3         spatstat.utils_3.2-4  rmarkdown_2.31       
+#> [115] htmltools_0.5.9       pkgconfig_2.0.3       coro_1.1.0            fastmap_1.2.0         rlang_1.2.0           farver_2.1.2         
+#> [121] jsonlite_2.0.0        zoo_1.8-15            ModelMetrics_1.2.2.2  rlist_0.4.6.2         magrittr_2.0.5        modeltools_0.2-24    
+#> [127] Formula_1.2-5         credentials_2.0.3     Rcpp_1.1.1-1.1        furrr_0.4.0           stringi_1.8.7         pROC_1.19.0.1        
+#> [133] brio_1.1.5            tabnet_0.9.0          plyr_1.8.9            pkgbuild_1.4.8        parallel_4.6.1        listenv_0.10.1       
+#> [139] luz_0.5.2             deldir_2.0-4          splines_4.6.1         tensor_1.5.1          hms_1.1.4             locfit_1.5-9.12      
+#> [145] ps_1.9.3              igraph_2.3.1          ggpubr_0.6.3          party_1.3-20          ggsignif_0.6.4        dials_1.4.3          
+#> [151] parsnip_1.6.0         reshape2_1.4.5        stats4_4.6.1          pkgload_1.5.2         evaluate_1.0.5        tzdb_0.5.0           
+#> [157] foreach_1.5.2         MatrixModels_0.5-4    openssl_2.4.1         polyclip_1.10-7       future_1.70.0         coin_1.4-3           
+#> [163] janitor_2.2.1         broom_1.0.13          e1071_1.7-17          rstatix_0.7.3         viridisLite_0.4.3     class_7.3-23         
+#> [169] gert_2.3.1            kknn_1.4.1            memoise_2.0.1         workflows_1.3.0       timechange_0.4.0      globals_0.19.1       
+#> [175] caret_7.0-1
 ```
