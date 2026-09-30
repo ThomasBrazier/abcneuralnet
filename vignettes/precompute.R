@@ -26,6 +26,10 @@
 # restores the working directory only once `knit()` has returned. At top level,
 # under `source()`, it would fire straight away and `knit()` would look for the
 # document in the wrong directory.
+
+# install package
+devtools::load_all()
+
 precompute = function() {
   # Works whether this is run from the package root or from `vignettes/`
   dir = if (dir.exists("vignettes")) "vignettes" else "."
