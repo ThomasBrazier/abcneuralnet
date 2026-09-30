@@ -41,6 +41,13 @@ package, that is part of the R torch ecosystem. These methods are:
 
 See `https://bips-hb.github.io/innsight/` for details.
 
+The network is trained on scaled targets (see `scale_target` in
+`abcnn`), so raw attributions are expressed in units of the scaled
+target, which differ between parameters and between scaling methods. By
+default, `run()` rescales them to a common scale, the fraction of each
+parameter's prior range, so that they are comparable across parameters.
+See the `output_scale` argument of `run()`.
+
 ## Slots
 
 - `converter`:
@@ -119,6 +126,31 @@ See `https://bips-hb.github.io/innsight/` for details.
 
   summary statistics for the input scaling method
 
+- `scale_target`:
+
+  method used to scale the targets (parameters) in the `abcnn` object
+
+- `target_summary`:
+
+  summary statistics for the target scaling method (see
+  `abcnn$target_summary`)
+
+- `target_center`:
+
+  median of the scaled training targets, the point at which `cw`
+  attributions are rescaled under the non-linear `log` and `logit`
+  target scalings
+
+- `model`:
+
+  the explained network (mu head only) as a `torch` module on cpu, used
+  to compute the scaled predictions needed to rescale attributions
+
+- `output_scale`:
+
+  the scale of the attributions in `result` (`prior_range`, `relative`
+  or `none`), see `run()`
+
 ## Methods
 
 ### Public methods
@@ -185,7 +217,12 @@ The method is run on a `data` object (see `innsight` manual)
 
 #### Usage
 
-    explainn$run(data, data_ref = NULL, method = NULL)
+    explainn$run(
+      data,
+      data_ref = NULL,
+      method = NULL,
+      output_scale = "prior_range"
+    )
 
 #### Arguments
 
@@ -213,6 +250,27 @@ The method is run on a `data` object (see `innsight` manual)
 - `method`:
 
   The method to run. Change the method specified in `new()`
+
+- `output_scale`:
+
+  The scale on which attributions are reported, so that they are
+  comparable across parameters whatever their `scale_target` (ignored
+  for Tabnet-ABC):
+
+  - `prior_range` (default): the change in each parameter, expressed as
+    a fraction of the width of its prior support
+    (`target_summary$max - target_summary$min`). This is the scale
+    `minmax` already trains on, so `minmax` attributions are left
+    unchanged.
+
+  - `relative`: per sample and per parameter, attributions are divided
+    by the sum of their absolute values over all summary statistics,
+    giving signed shares whose absolute values sum to 1. Magnitude
+    across parameters is lost, but only relative importance is kept.
+
+  - `none`: raw attributions of the network output, i.e. on the *scaled*
+    target space. These are not comparable across parameters with
+    different `scale_target` or ranges.
 
 ------------------------------------------------------------------------
 

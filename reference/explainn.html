@@ -68,6 +68,10 @@ and to interpret properly the output of the model.</p>
 <li><p>Local interpretable model-agnostic explanations (LIME)</p></li>
 <li><p>Shapley values (SHAP)</p></li>
 </ul><p>See <code>https://bips-hb.github.io/innsight/</code> for details.</p>
+<p>The network is trained on scaled targets (see <code>scale_target</code> in <code>abcnn</code>), so raw attributions
+are expressed in units of the scaled target, which differ between parameters and between scaling
+methods. By default, <code>run()</code> rescales them to a common scale, the fraction of each parameter's
+prior range, so that they are comparable across parameters. See the <code>output_scale</code> argument of <code>run()</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="slots">Slots<a class="anchor" aria-label="anchor" href="#slots"></a></h2>
@@ -148,6 +152,26 @@ and to interpret properly the output of the model.</p>
 <dd><p>summary statistics for the input scaling method</p></dd>
 
 
+    <dt><code>scale_target</code></dt>
+<dd><p>method used to scale the targets (parameters) in the <code>abcnn</code> object</p></dd>
+
+
+    <dt><code>target_summary</code></dt>
+<dd><p>summary statistics for the target scaling method (see <code>abcnn$target_summary</code>)</p></dd>
+
+
+    <dt><code>target_center</code></dt>
+<dd><p>median of the scaled training targets, the point at which <code>cw</code> attributions are rescaled under the non-linear <code>log</code> and <code>logit</code> target scalings</p></dd>
+
+
+    <dt><code>model</code></dt>
+<dd><p>the explained network (mu head only) as a <code>torch</code> module on cpu, used to compute the scaled predictions needed to rescale attributions</p></dd>
+
+
+    <dt><code>output_scale</code></dt>
+<dd><p>the scale of the attributions in <code>result</code> (<code>prior_range</code>, <code>relative</code> or <code>none</code>), see <code>run()</code></p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -199,7 +223,12 @@ and to interpret properly the output of the model.</p>
 <p>Apply the <code>method</code> to the passed <code>data</code> to be explained</p>
 <p>The method is run on a <code>data</code> object (see <code>innsight</code> manual)</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span><span class="va">data</span>, data_ref <span class="op">=</span> <span class="cn">NULL</span>, method <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">explainn</span><span class="op">$</span><span class="fu">run</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  data_ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  method <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  output_scale <span class="op">=</span> <span class="st">"prior_range"</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>data</code></dt>
@@ -216,6 +245,19 @@ Note: For the model-agnostic methods, only models with a single input and output
 
       <dt><code>method</code></dt>
 <dd><p>The method to run. Change the method specified in <code>new()</code></p></dd>
+
+
+      <dt><code>output_scale</code></dt>
+<dd><p>The scale on which attributions are reported, so that they are
+comparable across parameters whatever their <code>scale_target</code> (ignored for Tabnet-ABC):</p><ul><li><p><code>prior_range</code> (default): the change in each parameter, expressed as a fraction of the
+width of its prior support (<code>target_summary$max - target_summary$min</code>). This is the
+scale <code>minmax</code> already trains on, so <code>minmax</code> attributions are left unchanged.</p></li>
+<li><p><code>relative</code>: per sample and per parameter, attributions are divided by the sum of
+their absolute values over all summary statistics, giving signed shares whose absolute
+values sum to 1. Magnitude across parameters is lost, but only relative importance is kept.</p></li>
+<li><p><code>none</code>: raw attributions of the network output, i.e. on the <em>scaled</em> target space.
+These are not comparable across parameters with different <code>scale_target</code> or ranges.</p></li>
+</ul></dd>
 
 
 </dl><p></p></div>
