@@ -31,6 +31,11 @@ All the methods used in explain are implemented in the \code{innsight} R package
 }
 
 See \verb{https://bips-hb.github.io/innsight/} for details.
+
+The network is trained on scaled targets (see \code{scale_target} in \code{abcnn}), so raw attributions
+are expressed in units of the scaled target, which differ between parameters and between scaling
+methods. By default, \code{run()} rescales them to a common scale, the fraction of each parameter's
+prior range, so that they are comparable across parameters. See the \code{output_scale} argument of \code{run()}.
 }
 \section{Slots}{
 
@@ -74,6 +79,16 @@ See \verb{https://bips-hb.github.io/innsight/} for details.
     \item{\code{scale_input}}{method used to scale input dimensions}
 
     \item{\code{input_summary}}{summary statistics for the input scaling method}
+
+    \item{\code{scale_target}}{method used to scale the targets (parameters) in the \code{abcnn} object}
+
+    \item{\code{target_summary}}{summary statistics for the target scaling method (see \code{abcnn$target_summary})}
+
+    \item{\code{target_center}}{median of the scaled training targets, the point at which \code{cw} attributions are rescaled under the non-linear \code{log} and \code{logit} target scalings}
+
+    \item{\code{model}}{the explained network (mu head only) as a \code{torch} module on cpu, used to compute the scaled predictions needed to rescale attributions}
+
+    \item{\code{output_scale}}{the scale of the attributions in \code{result} (\code{prior_range}, \code{relative} or \code{none}), see \code{run()}}
   }
   \if{html}{\out{</div>}}
 }
@@ -132,7 +147,12 @@ See \verb{https://bips-hb.github.io/innsight/} for details.
 The method is run on a \code{data} object (see \code{innsight} manual)
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{explainn$run(data, data_ref = NULL, method = NULL)}
+    \preformatted{explainn$run(
+  data,
+  data_ref = NULL,
+  method = NULL,
+  output_scale = "prior_range"
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -148,6 +168,19 @@ Note: For the model-agnostic methods, only models with a single input and output
 The dataset to which the method is to be applied. These must have the same format as the input data of the passed model and has to be either matrix, an array, a data.frame or a torch_tensor.
 Note: For the model-agnostic methods, only models with a single input and output layer is allowed!}
       \item{\code{method}}{The method to run. Change the method specified in \code{new()}}
+
+      \item{\code{output_scale}}{The scale on which attributions are reported, so that they are
+comparable across parameters whatever their \code{scale_target} (ignored for Tabnet-ABC):
+\itemize{
+\item \code{prior_range} (default): the change in each parameter, expressed as a fraction of the
+width of its prior support (\code{target_summary$max - target_summary$min}). This is the
+scale \code{minmax} already trains on, so \code{minmax} attributions are left unchanged.
+\item \code{relative}: per sample and per parameter, attributions are divided by the sum of
+their absolute values over all summary statistics, giving signed shares whose absolute
+values sum to 1. Magnitude across parameters is lost, but only relative importance is kept.
+\item \code{none}: raw attributions of the network output, i.e. on the \emph{scaled} target space.
+These are not comparable across parameters with different \code{scale_target} or ranges.
+}}
     }
     \if{html}{\out{</div>}}
   }

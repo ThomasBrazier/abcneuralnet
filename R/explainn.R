@@ -44,6 +44,11 @@
 #' the mean can still be the one driving a high aleatoric uncertainty for that sample, and this
 #' method will not surface that.
 #'
+#' The network is trained on scaled targets (see `scale_target` in `abcnn`), so raw attributions
+#' are expressed in units of the scaled target, which differ between parameters and between scaling
+#' methods. By default, `run()` rescales them to a common scale, the fraction of each parameter's
+#' prior range, so that they are comparable across parameters. See the `output_scale` argument of `run()`.
+#'
 #'
 #' @slot converter Stores the `innsight::converter` object
 #'
@@ -90,6 +95,16 @@ explainn = R6::R6Class("explainn",
                       scale_input = NULL,
                       #' @field input_summary summary statistics for the input scaling method
                       input_summary = NULL,
+                      #' @field scale_target method used to scale the targets (parameters) in the `abcnn` object
+                      scale_target = NULL,
+                      #' @field target_summary summary statistics for the target scaling method (see `abcnn$target_summary`)
+                      target_summary = NULL,
+                      #' @field target_center median of the scaled training targets, the point at which `cw` attributions are rescaled under the non-linear `log` and `logit` target scalings
+                      target_center = NULL,
+                      #' @field model the explained network (mu head only) as a `torch` module on cpu, used to compute the scaled predictions needed to rescale attributions
+                      model = NULL,
+                      #' @field output_scale the scale of the attributions in `result` (`prior_range`, `relative` or `none`), see `run()`
+                      output_scale = NULL,
 
                       #' @description
                       #' Create a new `explainn` object
@@ -109,6 +124,11 @@ explainn = R6::R6Class("explainn",
                         self$ensemble_num_model = ensemble_num_model
                         self$scale_input = x$scale_input
                         self$input_summary = x$input_summary
+                        self$scale_target = x$scale_target
+                        self$target_summary = x$target_summary
+                        if (is.data.frame(x$theta_adj) || is.matrix(x$theta_adj)) {
+                          self$target_center = apply(as.matrix(x$theta_adj), 2, function(z) median(z, na.rm = TRUE))
+                        }
 
                         # Tabnet-ABC has its own set of methods
                         if (self$model_method == "tabnet-abc") {
@@ -215,6 +235,7 @@ explainn = R6::R6Class("explainn",
                           # move tensors to a common device on cpu
                           # Avoid errors when training on CUDA
                           model_sequential$to(device = 'cpu')
+                          self$model = model_sequential
                           model_input_dim = dim(x$sumstat)[2]
                           converter = innsight::convert(model_sequential,
                                                         input_dim = model_input_dim,
@@ -255,10 +276,35 @@ explainn = R6::R6Class("explainn",
                       #' The dataset to which the method is to be applied. These must have the same format as the input data of the passed model and has to be either matrix, an array, a data.frame or a torch_tensor.
                       #' Note: For the model-agnostic methods, only models with a single input and output layer is allowed!
                       #' @param method The method to run. Change the method specified in `new()`
+                      #' @param output_scale The scale on which attributions are reported, so that they are
+                      #' comparable across parameters whatever their `scale_target` (ignored for Tabnet-ABC):
+                      #' - `prior_range` (default): the change in each parameter, expressed as a fraction of the
+                      #'   width of its prior support (`target_summary$max - target_summary$min`). This is the
+                      #'   scale `minmax` already trains on, so `minmax` attributions are left unchanged.
+                      #' - `relative`: per sample and per parameter, attributions are divided by the sum of
+                      #'   their absolute values over all summary statistics, giving signed shares whose absolute
+                      #'   values sum to 1. Magnitude across parameters is lost, but only relative importance is kept.
+                      #' - `none`: raw attributions of the network output, i.e. on the *scaled* target space.
+                      #'   These are not comparable across parameters with different `scale_target` or ranges.
+                      #'
+                      #' @details
+                      #' The network predicts the scaled target `z = f(x)`, and the parameter is `theta = g(z)`,
+                      #' with `g` the backward transform of `scaler()`. By the chain rule
+                      #' `d theta / dx = g'(z) * dz / dx`, so `prior_range` multiplies the attributions of each
+                      #' parameter by `|g'(z)| / (max - min)` (see `scaler_grad()`). The factor is constant, and the
+                      #' rescaling exact, for the affine scalings (`none`, `minmax`, `robustscaler`,
+                      #' `normalization`). For `log` and `logit` it is a local linearisation evaluated at each
+                      #' sample's prediction; for `cw`, which uses no data, it is evaluated at the median of the
+                      #' scaled training targets instead. With `relative`, the factor `g'(z)` is shared by all
+                      #' summary statistics of a sample and cancels out, so gradient-based results are invariant
+                      #' to `scale_target` without linearisation.
                       #'
                       run = function(data,
                                      data_ref = NULL,
-                                     method = NULL) {
+                                     method = NULL,
+                                     output_scale = "prior_range") {
+                        output_scale = match.arg(output_scale, c("prior_range", "relative", "none"))
+
                         # TODO Scale the new input data to the same scale as training data
                         data = scaler(data,
                                       self$input_summary,
@@ -315,6 +361,11 @@ explainn = R6::R6Class("explainn",
                         }
 
                         self$result = result
+
+                        if (self$model_method != "tabnet-abc") {
+                          private$rescale_result(data, output_scale)
+                          self$output_scale = output_scale
+                        }
 
                         # return(result)
 
@@ -444,6 +495,85 @@ explainn = R6::R6Class("explainn",
                           # Interactive plots can also be created for both methods
                           innsight::boxplot(result, as_plotly = as_plotly)
                         }
+                      }
+                    ),
+
+                    private = list(
+                      # The factor |g'(z)| / (max - min) that carries the attributions of each parameter
+                      # from the scaled target space to fractions of its prior range (see `run()`).
+                      # Returns a matrix with one column per parameter, and either one row per sample
+                      # or a single row when the factor does not depend on the sample.
+                      prior_range_factor = function(data) {
+                        n_param = length(self$parameters)
+                        method = if (length(self$scale_target) == 1) rep(self$scale_target, n_param) else self$scale_target
+                        nonlinear = any(method %in% c("log", "logit"))
+
+                        if (!nonlinear) {
+                          # Affine scalings: the gradient does not depend on z
+                          z = as.data.frame(matrix(0, nrow = 1, ncol = n_param))
+                        } else if (self$method == "cw") {
+                          if (is.null(self$target_center)) {
+                            stop("The scaled training targets are required to rescale 'cw' attributions under 'log' or 'logit' scaling. Fit the `abcnn` model first, or use output_scale = 'relative'.")
+                          }
+                          warning("'cw' uses no data, so under 'log' or 'logit' target scaling its attributions are rescaled at the median of the scaled training targets.")
+                          z = as.data.frame(matrix(self$target_center, nrow = 1))
+                        } else {
+                          self$model$eval()
+                          z = torch::with_no_grad({
+                            self$model(torch::torch_tensor(as.matrix(data), dtype = torch::torch_float()))
+                          })
+                          z = as.data.frame(torch::as_array(z))
+                        }
+
+                        grad = as.matrix(scaler_grad(z, self$target_summary, method))
+                        prior_range = self$target_summary$max - self$target_summary$min
+                        sweep(grad, 2, prior_range, "/")
+                      },
+
+                      # Rescale the attributions stored in `self$result` in place, so that `get_result()`,
+                      # `plot()`, `plot_global()` and `boxplot()` all report them on `output_scale`.
+                      rescale_result = function(data, output_scale) {
+                        if (output_scale == "none") {return(invisible(NULL))}
+
+                        # A single input and a single output layer: the attributions are an
+                        # array of dim (batch, number of summary statistics, number of explained outputs)
+                        res = self$result$result[[1]][[1]]
+                        is_tensor = inherits(res, "torch_tensor")
+                        r = if (is_tensor) torch::as_array(res$to(device = "cpu")) else res
+                        if (length(dim(r)) != 3) {
+                          stop("Unexpected layout of the innsight result, attributions could not be rescaled. Use output_scale = 'none'.")
+                        }
+                        batch_size = dim(r)[1]
+
+                        # innsight explains a subset of the outputs (`output_idx`), in that order
+                        out_idx = self$result$output_idx
+                        out_idx = if (is.list(out_idx)) out_idx[[1]] else out_idx
+                        if (is.null(out_idx)) {out_idx = seq_len(dim(r)[3])}
+
+                        if (output_scale == "prior_range") {
+                          factor = private$prior_range_factor(data)
+                          if (nrow(factor) == 1) {
+                            factor = factor[rep(1, batch_size), , drop = FALSE]
+                          }
+                          if (nrow(factor) != batch_size) {
+                            stop("The number of samples in `data` does not match the number of attributions.")
+                          }
+                        }
+
+                        for (k in seq_along(out_idx)) {
+                          r_k = r[, , k, drop = FALSE]
+                          if (output_scale == "prior_range") {
+                            # Recycled along the first (batch) dimension
+                            r[, , k] = r_k * factor[, out_idx[k]]
+                          }
+                          if (output_scale == "relative") {
+                            total = apply(abs(r_k), 1, sum)
+                            r[, , k] = r_k / pmax(total, .Machine$double.eps)
+                          }
+                        }
+
+                        self$result$result[[1]][[1]] = if (is_tensor) torch::torch_tensor(r, dtype = res$dtype) else r
+                        invisible(NULL)
                       }
                     )
 )
