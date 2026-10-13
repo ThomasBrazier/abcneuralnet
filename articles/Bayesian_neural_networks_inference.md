@@ -520,7 +520,7 @@ abc$fit()
 #>   <chr>  <dbl>
 #> 1 loss    39.9
 #> A `luz_module_evaluation`
-#> ── Results ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Results ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> loss: 39.8622
 ```
 
@@ -552,20 +552,20 @@ curve of the deep learning model.
 # The luz fitted model
 abc$fitted
 #> A `luz_module_fitted`
-#> ── Time ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#> • Total time: 3m 53.4s
-#> • Avg time per training epoch: 10.6s
+#> ── Time ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> • Total time: 3m 52.3s
+#> • Avg time per training epoch: 10.5s
 #> 
-#> ── Results ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Results ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> Metrics observed in the last epoch.
 #> 
 #> ℹ Training:
 #> loss: 39.5084
 #> 
-#> ── Model ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Model ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> An `nn_module` containing 33,543 parameters.
 #> 
-#> ── Modules ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#> ── Modules ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #> • concrete_dropout: <nn_sequential> #33,283 parameters
 #> • linear_mu: <nn_linear> #129 parameters
 #> • linear_logvar: <nn_linear> #129 parameters
@@ -806,20 +806,20 @@ head(abc$predictions())
 #> 4                  9.121168                5.473535                9.280075         7.384099           6.853655           7.826929
 #> 5                 12.376858                7.637078               11.673106         9.732057           8.481791          10.226108
 #> 6                  8.491236                2.914346                6.936023         4.856439           4.459275           6.475613
-#>   epistemic_conformal_lower_raw epistemic_conformal_upper_raw overall_conformal_lower_raw overall_conformal_upper_raw posterior_lower_ci_raw
-#> 1                      7.470950                     13.731788                    8.548126                   12.654612               9.646818
-#> 2                      6.077671                      9.455619                    5.794153                    9.739136               7.227952
-#> 3                      5.872578                      9.312102                    5.657490                    9.527189               7.071207
-#> 4                      5.632442                      9.121168                    5.473535                    9.280075               6.853655
-#> 5                      6.933326                     12.376858                    7.637078                   11.673106               8.481791
-#> 6                      1.359133                      8.491236                    2.914346                    6.936023               4.459275
-#>   posterior_upper_ci_raw
-#> 1              11.211327
-#> 2               8.200615
-#> 3               8.037649
-#> 4               7.826929
-#> 5              10.226108
-#> 6               6.475613
+#>   epistemic_conformal_lower_raw epistemic_conformal_upper_raw overall_conformal_lower_raw overall_conformal_upper_raw
+#> 1                      7.470950                     13.731788                    8.548126                   12.654612
+#> 2                      6.077671                      9.455619                    5.794153                    9.739136
+#> 3                      5.872578                      9.312102                    5.657490                    9.527189
+#> 4                      5.632442                      9.121168                    5.473535                    9.280075
+#> 5                      6.933326                     12.376858                    7.637078                   11.673106
+#> 6                      1.359133                      8.491236                    2.914346                    6.936023
+#>   posterior_lower_ci_raw posterior_upper_ci_raw
+#> 1               9.646818              11.211327
+#> 2               7.227952               8.200615
+#> 3               7.071207               8.037649
+#> 4               6.853655               7.826929
+#> 5               8.481791              10.226108
+#> 6               4.459275               6.475613
 ```
 
 The table has one row per sample and per parameter:
@@ -1990,6 +1990,12 @@ tabnetabc$plot_training()
 
 plot of chunk unnamed-chunk-53
 
+``` r
+
+tabnetabc$predict()
+#> [1] "Predictions with 1000 samples."
+```
+
 ### Model performance
 
 TabNet-ABC does not support conformal prediction. Its credible intervals
@@ -2039,10 +2045,13 @@ The shaded region represents 95% credible intervals.
 ``` r
 
 tabnetabc$plot_posterior(5, uncertainty_type = "posterior quantile")
-#> Back-transform scaled parameters with method: none
-#> Error in `self$posterior_samples[, sample, ]`:
-#> ! nombre de dimensions incorrect
+#> Back-transform scaled parameters with method: none 
+#> Back-transform scaled posteriors with method: none
 ```
+
+![plot of chunk unnamed-chunk-55](figure/unnamed-chunk-55-1.png)
+
+plot of chunk unnamed-chunk-55
 
 ### Tabnet attention maps for model explanation
 
@@ -2389,42 +2398,41 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#>  [1] abcneuralnet_0.3.2     testthat_3.3.2         MCMCpack_1.7-1         MASS_7.3-65            coda_0.19-4.1         
-#>  [6] spatstat_3.6-1         spatstat.linnet_3.5-1  spatstat.model_3.7-1   rpart_4.1.27           spatstat.explore_3.8-1
-#> [11] nlme_3.1-169           spatstat.random_3.5-0  spatstat.geom_3.8-2    spatstat.univar_3.2-0  spatstat.data_3.1-9   
-#> [16] mvtnorm_1.4-1          kableExtra_1.4.0       lubridate_1.9.5        forcats_1.0.1          stringr_1.6.0         
-#> [21] dplyr_1.2.1            purrr_1.2.2            readr_2.2.0            tidyr_1.3.2            tibble_3.3.1          
-#> [26] tidyverse_2.0.0        torch_0.17.0           ggplot2_4.0.3         
+#>  [1] abcneuralnet_0.3.2     MCMCpack_1.7-1         MASS_7.3-65            coda_0.19-4.1          spatstat_3.6-1        
+#>  [6] spatstat.linnet_3.5-1  spatstat.model_3.7-1   rpart_4.1.27           spatstat.explore_3.8-1 nlme_3.1-169          
+#> [11] spatstat.random_3.5-0  spatstat.geom_3.8-2    spatstat.univar_3.2-0  spatstat.data_3.1-9    mvtnorm_1.4-1         
+#> [16] kableExtra_1.4.0       lubridate_1.9.5        forcats_1.0.1          stringr_1.6.0          dplyr_1.2.1           
+#> [21] purrr_1.2.2            readr_2.2.0            tidyr_1.3.2            tibble_3.3.1           tidyverse_2.0.0       
+#> [26] torch_0.17.0           ggplot2_4.0.3          testthat_3.3.2        
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] fs_2.1.0              matrixStats_1.5.0     spatstat.sparse_3.2-0 xopen_1.0.1           devtools_2.5.2        DiceDesign_1.10      
-#>   [7] RColorBrewer_1.1-3    doParallel_1.0.17     tools_4.6.1           ConsRank_3.0          backports_1.5.1       utf8_1.2.6           
-#>  [13] R6_2.6.1              mgcv_1.9-4            yardstick_1.4.0       withr_3.0.2           prettyunits_1.2.0     quantreg_6.1         
-#>  [19] cli_3.6.6             textshaping_1.0.5     abc.data_1.1          Cubist_0.6.0          innsight_0.3.2        sandwich_3.1-1       
-#>  [25] labeling_0.4.3        S7_0.2.2              randomForest_4.7-1.2  tune_2.1.0            proxy_0.4-29          askpass_1.2.1        
-#>  [31] systemfonts_1.3.2     svglite_2.2.2         parallelly_1.47.0     sessioninfo_1.2.4     bundle_0.1.3          plotrix_3.8-14       
-#>  [37] rstudioapi_0.18.0     shape_1.4.6.1         generics_0.1.4        gtools_3.9.5          car_3.1-5             Matrix_1.7-5         
-#>  [43] abind_1.4-8           lifecycle_1.0.5       multcomp_1.4-30       yaml_2.3.12           snakecase_0.11.1      carData_3.0-6        
-#>  [49] rminer_1.5.0          recipes_1.3.3         grid_4.6.1            pls_2.9-0             strucchange_1.5-4     adabag_5.1           
-#>  [55] crayon_1.5.3          lattice_0.22-9        cowplot_1.2.0         sys_3.4.3             zeallot_0.2.0         pillar_1.11.1        
-#>  [61] knitr_1.51            pak_0.9.5             xgboost_3.2.1.1       future.apply_1.20.2   codetools_0.2-20      glue_1.8.1           
-#>  [67] rsample_1.3.2         data.table_1.18.4     remotes_2.5.0         vctrs_0.7.3           Rdpack_2.6.6          gtable_0.3.6         
-#>  [73] rcmdcheck_1.4.0       kernlab_0.9-33        cachem_1.1.0          gower_1.0.2           xfun_0.57             rbibutils_2.4.1      
-#>  [79] prodlim_2026.03.11    libcoin_1.0-13        safetensors_0.2.1     survival_3.8-6        timeDate_4052.112     iterators_1.0.14     
-#>  [85] hardhat_1.4.3         lava_1.9.1            ellipsis_0.3.3        TH.data_1.1-5         ipred_0.9-15          mcmc_0.9-8           
-#>  [91] usethis_3.2.1         bit64_4.8.2           progress_1.2.3        rprojroot_2.1.1       otel_0.2.0            nnet_7.3-20          
-#>  [97] tidyselect_1.2.1      processx_3.9.0        bit_4.6.0             compiler_4.6.1        curl_7.1.0            mda_0.5-5            
-#> [103] glmnet_5.0            abc_2.2.2             SparseM_1.84-2        xml2_1.5.2            desc_1.4.3            checkmate_2.3.4      
-#> [109] scales_1.4.0          callr_3.7.6           digest_0.6.39         goftest_1.2-3         spatstat.utils_3.2-4  rmarkdown_2.31       
-#> [115] htmltools_0.5.9       pkgconfig_2.0.3       coro_1.1.0            fastmap_1.2.0         rlang_1.2.0           farver_2.1.2         
-#> [121] jsonlite_2.0.0        zoo_1.8-15            ModelMetrics_1.2.2.2  rlist_0.4.6.2         magrittr_2.0.5        modeltools_0.2-24    
-#> [127] Formula_1.2-5         credentials_2.0.3     Rcpp_1.1.1-1.1        furrr_0.4.0           stringi_1.8.7         pROC_1.19.0.1        
-#> [133] brio_1.1.5            tabnet_0.9.0          plyr_1.8.9            pkgbuild_1.4.8        parallel_4.6.1        listenv_0.10.1       
-#> [139] luz_0.5.2             deldir_2.0-4          splines_4.6.1         tensor_1.5.1          hms_1.1.4             locfit_1.5-9.12      
-#> [145] ps_1.9.3              igraph_2.3.1          ggpubr_0.6.3          party_1.3-20          ggsignif_0.6.4        dials_1.4.3          
-#> [151] parsnip_1.6.0         reshape2_1.4.5        stats4_4.6.1          pkgload_1.5.2         evaluate_1.0.5        tzdb_0.5.0           
-#> [157] foreach_1.5.2         MatrixModels_0.5-4    openssl_2.4.1         polyclip_1.10-7       future_1.70.0         coin_1.4-3           
-#> [163] janitor_2.2.1         broom_1.0.13          e1071_1.7-17          rstatix_0.7.3         viridisLite_0.4.3     class_7.3-23         
-#> [169] gert_2.3.1            kknn_1.4.1            memoise_2.0.1         workflows_1.3.0       timechange_0.4.0      globals_0.19.1       
-#> [175] caret_7.0-1
+#>   [1] fs_2.1.0              matrixStats_1.5.0     spatstat.sparse_3.2-0 devtools_2.5.2        DiceDesign_1.10       RColorBrewer_1.1-3   
+#>   [7] doParallel_1.0.17     tools_4.6.1           ConsRank_3.0          backports_1.5.1       utf8_1.2.6            R6_2.6.1             
+#>  [13] mgcv_1.9-4            yardstick_1.4.0       withr_3.0.2           prettyunits_1.2.0     quantreg_6.1          cli_3.6.6            
+#>  [19] textshaping_1.0.5     abc.data_1.1          Cubist_0.6.0          innsight_0.3.2        sandwich_3.1-1        labeling_0.4.3       
+#>  [25] S7_0.2.2              randomForest_4.7-1.2  askpass_1.2.1         tune_2.1.0            proxy_0.4-29          systemfonts_1.3.2    
+#>  [31] svglite_2.2.2         parallelly_1.47.0     sessioninfo_1.2.4     bundle_0.1.3          plotrix_3.8-14        rstudioapi_0.18.0    
+#>  [37] generics_0.1.4        shape_1.4.6.1         gtools_3.9.5          car_3.1-5             Matrix_1.7-5          abind_1.4-8          
+#>  [43] lifecycle_1.0.5       multcomp_1.4-30       yaml_2.3.12           snakecase_0.11.1      carData_3.0-6         rminer_1.5.0         
+#>  [49] recipes_1.3.3         grid_4.6.1            strucchange_1.5-4     pls_2.9-0             adabag_5.1            crayon_1.5.3         
+#>  [55] lattice_0.22-9        cowplot_1.2.0         sys_3.4.3             zeallot_0.2.0         pillar_1.11.1         knitr_1.51           
+#>  [61] pak_0.9.5             xgboost_3.2.1.1       future.apply_1.20.2   codetools_0.2-20      glue_1.8.1            rsample_1.3.2        
+#>  [67] remotes_2.5.0         data.table_1.18.4     vctrs_0.7.3           Rdpack_2.6.6          gtable_0.3.6          kernlab_0.9-33       
+#>  [73] cachem_1.1.0          gower_1.0.2           xfun_0.57             rbibutils_2.4.1       prodlim_2026.03.11    libcoin_1.0-13       
+#>  [79] safetensors_0.2.1     survival_3.8-6        timeDate_4052.112     iterators_1.0.14      hardhat_1.4.3         lava_1.9.1           
+#>  [85] ellipsis_0.3.3        TH.data_1.1-5         ipred_0.9-15          mcmc_0.9-8            usethis_3.2.1         bit64_4.8.2          
+#>  [91] progress_1.2.3        rprojroot_2.1.1       otel_0.2.0            nnet_7.3-20           tidyselect_1.2.1      processx_3.9.0       
+#>  [97] bit_4.6.0             compiler_4.6.1        mda_0.5-5             glmnet_5.0            abc_2.2.2             SparseM_1.84-2       
+#> [103] xml2_1.5.2            desc_1.4.3            checkmate_2.3.4       scales_1.4.0          callr_3.7.6           digest_0.6.39        
+#> [109] goftest_1.2-3         spatstat.utils_3.2-4  rmarkdown_2.31        htmltools_0.5.9       pkgconfig_2.0.3       coro_1.1.0           
+#> [115] fastmap_1.2.0         rlang_1.2.0           farver_2.1.2          zoo_1.8-15            jsonlite_2.0.0        ModelMetrics_1.2.2.2 
+#> [121] rlist_0.4.6.2         magrittr_2.0.5        credentials_2.0.3     modeltools_0.2-24     Formula_1.2-5         Rcpp_1.1.1-1.1       
+#> [127] furrr_0.4.0           stringi_1.8.7         pROC_1.19.0.1         brio_1.1.5            plyr_1.8.9            pkgbuild_1.4.8       
+#> [133] tabnet_0.9.0          parallel_4.6.1        listenv_0.10.1        luz_0.5.2             deldir_2.0-4          splines_4.6.1        
+#> [139] tensor_1.5.1          hms_1.1.4             locfit_1.5-9.12       ps_1.9.3              igraph_2.3.1          ggpubr_0.6.3         
+#> [145] party_1.3-20          ggsignif_0.6.4        dials_1.4.3           reshape2_1.4.5        parsnip_1.6.0         stats4_4.6.1         
+#> [151] pkgload_1.5.2         evaluate_1.0.5        tzdb_0.5.0            foreach_1.5.2         MatrixModels_0.5-4    openssl_2.4.1        
+#> [157] polyclip_1.10-7       future_1.70.0         coin_1.4-3            janitor_2.2.1         broom_1.0.13          e1071_1.7-17         
+#> [163] rstatix_0.7.3         viridisLite_0.4.3     class_7.3-23          gert_2.3.1            kknn_1.4.1            memoise_2.0.1        
+#> [169] workflows_1.3.0       timechange_0.4.0      globals_0.19.1        caret_7.0-1
 ```
