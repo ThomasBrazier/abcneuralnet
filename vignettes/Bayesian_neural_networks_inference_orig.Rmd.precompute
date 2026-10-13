@@ -1365,7 +1365,7 @@ tabnetabc$plot_training()
 ```
 
 
-```{r, eval = F, message=FALSE, results = FALSE, include=FALSE}
+```{r, echo = T, eval = T, message = FALSE}
 tabnetabc$predict()
 ```
 
